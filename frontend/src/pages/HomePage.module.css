@@ -1,0 +1,331 @@
+/* HomePage — Editorial/Magazine meets Developer Tool */
+
+/* ── Hero ── */
+.hero {
+  position: relative;
+  padding: 80px 48px 60px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  background:
+    radial-gradient(ellipse 80% 60% at 70% 20%, var(--accent-bg), transparent 70%),
+    linear-gradient(165deg, var(--bg) 40%, color-mix(in srgb, var(--accent) 4%, var(--bg)) 100%);
+}
+
+.heroInner {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: start;
+  gap: 24px;
+}
+
+.heroTitle {
+  font-family: 'Space Grotesk', var(--heading);
+  font-size: clamp(48px, 6vw, 72px);
+  font-weight: 700;
+  letter-spacing: -2.5px;
+  line-height: 1;
+  margin: 0;
+  color: var(--text-h);
+}
+
+.heroSeparator {
+  width: 48px;
+  height: 1px;
+  background: var(--accent);
+  margin: 16px 0;
+  border: none;
+}
+
+.heroSubtitle {
+  font-family: 'DM Sans', var(--sans);
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--text);
+  margin: 0;
+}
+
+.heroAuth {
+  text-align: right;
+  padding-top: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.greeting {
+  font-family: 'DM Sans', var(--sans);
+  font-size: 14px;
+  color: var(--text);
+}
+
+.loginLink {
+  font-family: 'DM Sans', var(--sans);
+  font-size: 14px;
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.2s;
+}
+
+.loginLink:hover {
+  border-bottom-color: var(--accent);
+}
+
+.adminLink {
+  font-family: 'DM Sans', var(--sans);
+  font-size: 13px;
+  color: var(--text);
+  text-decoration: none;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.adminLink:hover {
+  opacity: 1;
+  color: var(--accent);
+}
+
+/* ── Sections ── */
+.main {
+  padding: 0 48px 64px;
+  text-align: left;
+}
+
+.section {
+  padding-top: 56px;
+}
+
+.sectionTitle {
+  font-family: 'Space Grotesk', var(--heading);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0 0 28px;
+  position: relative;
+  padding-left: 0;
+}
+
+.sectionTitle::after {
+  content: '';
+  display: inline-block;
+  width: 32px;
+  height: 1px;
+  background: var(--accent-border);
+  vertical-align: middle;
+  margin-left: 12px;
+}
+
+/* ── Document Card Grid ── */
+.cardGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.card {
+  display: block;
+  padding: 24px 24px 24px 26px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-left: none;
+  border-radius: 2px;
+  text-decoration: none;
+  color: inherit;
+  position: relative;
+  transition:
+    transform 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    box-shadow 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* Left accent border via pseudo-element */
+.card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: 3px 0 0 3px;
+  transition: width 0.2s;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow);
+}
+
+.card:hover::before {
+  width: 4px;
+}
+
+/* Accent colors — each card gets a different hue */
+.cardAccent1::before { background: var(--accent); }
+.cardAccent2::before { background: #3b82f6; }
+.cardAccent3::before { background: #f59e0b; }
+.cardAccent4::before { background: #10b981; }
+
+.cardIcon {
+  font-size: 18px;
+  margin-bottom: 10px;
+  display: block;
+  line-height: 1;
+}
+
+.cardTitle {
+  font-family: 'Space Grotesk', var(--heading);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-h);
+  margin: 0 0 6px;
+  letter-spacing: -0.2px;
+}
+
+.cardDesc {
+  font-family: 'DM Sans', var(--sans);
+  font-size: 14px;
+  color: var(--text);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ── Tool Cards ── */
+.toolGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.toolCard {
+  display: block;
+  padding: 32px;
+  background: color-mix(in srgb, var(--accent) 3%, var(--bg));
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  text-decoration: none;
+  color: inherit;
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    box-shadow 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    border-color 0.25s;
+}
+
+.toolCard:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow);
+  border-color: var(--accent-border);
+}
+
+.toolCard::after {
+  content: '\2192';
+  position: absolute;
+  top: 32px;
+  right: 32px;
+  font-size: 18px;
+  color: var(--accent);
+  opacity: 0;
+  transform: translateX(-8px);
+  transition: opacity 0.25s, transform 0.25s;
+}
+
+.toolCard:hover::after {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.toolIcon {
+  font-size: 24px;
+  margin-bottom: 14px;
+  display: block;
+  line-height: 1;
+}
+
+.toolTitle {
+  font-family: 'Space Grotesk', var(--heading);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-h);
+  margin: 0 0 8px;
+  letter-spacing: -0.3px;
+}
+
+.toolDesc {
+  font-family: 'DM Sans', var(--sans);
+  font-size: 14px;
+  color: var(--text);
+  line-height: 1.55;
+  margin: 0;
+}
+
+/* ── Footer ── */
+.footer {
+  margin-top: auto;
+  padding: 24px 48px;
+  border-top: 1px solid var(--border);
+  text-align: left;
+}
+
+.footerText {
+  font-family: 'DM Sans', var(--sans);
+  font-size: 12px;
+  color: var(--text);
+  opacity: 0.6;
+  margin: 0;
+}
+
+/* ── Animations ── */
+.animFadeUp {
+  opacity: 0;
+  transform: translateY(16px);
+  animation: fadeUp 0.5s ease forwards;
+}
+
+@keyframes fadeUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animDelay1 { animation-delay: 0.06s; }
+.animDelay2 { animation-delay: 0.12s; }
+.animDelay3 { animation-delay: 0.18s; }
+.animDelay4 { animation-delay: 0.24s; }
+.animDelay5 { animation-delay: 0.30s; }
+.animDelay6 { animation-delay: 0.36s; }
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .hero {
+    padding: 48px 24px 40px;
+  }
+
+  .heroInner {
+    grid-template-columns: 1fr;
+  }
+
+  .heroAuth {
+    align-items: flex-start;
+    text-align: left;
+    padding-top: 0;
+  }
+
+  .main {
+    padding: 0 24px 48px;
+  }
+
+  .cardGrid,
+  .toolGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .footer {
+    padding: 20px 24px;
+  }
+}

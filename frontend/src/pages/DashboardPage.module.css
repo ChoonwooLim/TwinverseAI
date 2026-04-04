@@ -1,0 +1,183 @@
+/* DashboardPage — Editorial admin layout */
+
+.page {
+  min-height: 100vh;
+  background: #f7f7f5;
+  font-family: 'Noto Sans KR', 'Space Grotesk', system-ui, sans-serif;
+}
+
+/* ─── Top bar ─── */
+
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 48px;
+  height: 64px;
+  border-bottom: 1px solid #e4e2de;
+  background: #fff;
+}
+
+.title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #1a1a1a;
+}
+
+.backLink {
+  font-size: 13px;
+  font-weight: 500;
+  color: #8a8680;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.backLink:hover {
+  color: #1a1a1a;
+}
+
+/* ─── Loading skeleton ─── */
+
+.skeleton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: calc(100vh - 64px);
+}
+
+.skeletonPulse {
+  width: 320px;
+  height: 4px;
+  background: linear-gradient(
+    90deg,
+    #e4e2de 25%,
+    #d4d2ce 50%,
+    #e4e2de 75%
+  );
+  background-size: 200% 100%;
+  border-radius: 2px;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ─── Stats section ─── */
+
+.statsSection {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: calc(100vh - 64px);
+  padding: 0 48px;
+}
+
+.statsRow {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+}
+
+.statBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 72px;
+}
+
+.statBlock:not(:last-child) {
+  border-right: 1px solid #d4d2ce;
+}
+
+.statNumber {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 96px;
+  font-weight: 300;
+  line-height: 1;
+  color: #1a1a1a;
+  letter-spacing: -0.03em;
+  opacity: 0;
+  transform: translateY(24px);
+  animation: countReveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.statBlock:nth-child(1) .statNumber {
+  animation-delay: 0.1s;
+}
+
+.statBlock:nth-child(2) .statNumber {
+  animation-delay: 0.35s;
+}
+
+@keyframes countReveal {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.statLabel {
+  margin-top: 16px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #8a8680;
+}
+
+/* ─── Footer line ─── */
+
+.footerLine {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-top: 1px solid #e4e2de;
+  background: #fff;
+}
+
+.footerText {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #b5b0aa;
+}
+
+/* ─── Responsive ─── */
+
+@media (max-width: 640px) {
+  .topBar {
+    padding: 0 24px;
+  }
+
+  .statsRow {
+    flex-direction: column;
+    gap: 48px;
+  }
+
+  .statBlock {
+    padding: 0;
+    border-right: none !important;
+  }
+
+  .statBlock:not(:last-child) {
+    padding-bottom: 48px;
+    border-right: none;
+    border-bottom: 1px solid #d4d2ce;
+  }
+
+  .statNumber {
+    font-size: 72px;
+  }
+}

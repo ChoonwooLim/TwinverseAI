@@ -1,0 +1,26 @@
+# Orbitron 배포 설정
+services:
+  - name: backend
+    type: web
+    source: backend
+    build:
+      command: pip install -r requirements.txt
+    run:
+      command: uvicorn main:app --host 0.0.0.0 --port 8000
+    env:
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+
+  - name: frontend
+    type: static
+    source: frontend
+    build:
+      command: npm install && npm run build
+      output: dist
+    env:
+      - key: VITE_API_URL
+        sync: false
