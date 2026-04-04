@@ -1,39 +1,33 @@
-/* Portal variable aliases — bridge component CSS to design system tokens */
+/* Component variable aliases — bridge to design system */
 :root {
-  /* Component-facing variables mapped to design system */
-  --color-bg: var(--surface-page);
-  --color-bg-hover: var(--color-neutral-100);
-  --color-bg-subtle: var(--color-neutral-50);
-  --color-text: var(--text-primary);
+  --color-bg:             var(--surface-page);
+  --color-bg-hover:       var(--cream-200);
+  --color-bg-subtle:      var(--cream-50);
+  --color-text:           var(--text-primary);
   --color-text-secondary: var(--text-secondary);
-  --color-text-tertiary: var(--text-tertiary);
-  --color-primary: var(--color-primary-500);
-  --color-primary-bg: var(--color-primary-50);
-  --color-border: var(--border-default);
-  --color-border-light: var(--border-subtle);
-  --color-danger: var(--color-danger);
-  --color-success: var(--color-success);
+  --color-text-tertiary:  var(--text-tertiary);
+  --color-primary:        var(--ultra-500);
+  --color-primary-bg:     var(--ultra-50);
+  --color-border:         var(--border-default);
+  --color-border-light:   var(--border-subtle);
+  --color-danger:         var(--color-danger);
+  --color-success:        var(--color-success);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-bg: var(--surface-page);
-    --color-bg-hover: oklch(0.22 0.012 232);
-    --color-bg-subtle: oklch(0.18 0.01 230);
-    --color-text: var(--text-primary);
+    --color-bg:             var(--surface-page);
+    --color-bg-hover:       #222120;
+    --color-bg-subtle:      #1a1918;
+    --color-text:           var(--text-primary);
     --color-text-secondary: var(--text-secondary);
-    --color-text-tertiary: var(--text-tertiary);
-    --color-primary: var(--color-primary-300);
-    --color-primary-bg: oklch(0.22 0.04 225);
-    --color-border: var(--border-default);
-    --color-border-light: var(--border-subtle);
+    --color-text-tertiary:  var(--text-tertiary);
+    --color-primary:        var(--ultra-200);
+    --color-primary-bg:     rgba(168, 177, 248, 0.1);
+    --color-border:         var(--border-default);
+    --color-border-light:   var(--border-subtle);
   }
 }
 
-body {
-  margin: 0;
-}
-
-#root {
-  min-height: 100dvh;
-}
+body { margin: 0; }
+#root { min-height: 100dvh; }
