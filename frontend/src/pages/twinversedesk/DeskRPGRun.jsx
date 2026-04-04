@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import styles from "./DeskRPGRun.module.css";
 
-const DESKRPG_URL = import.meta.env.VITE_DESKRPG_URL || "http://localhost:3100";
+const DESKRPG_URL = import.meta.env.VITE_DESKRPG_URL || "http://192.168.219.101:3100";
 
 export default function DeskRPGRun() {
   const [status, setStatus] = useState("checking"); // checking | online | offline
