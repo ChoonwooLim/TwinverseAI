@@ -1,0 +1,8 @@
+.form { display: flex; flex-direction: column; gap: 1rem; max-width: 800px; }
+.input { padding: 0.75rem 1rem; border: 1px solid var(--color-border, #ddd); border-radius: 6px; font-size: 0.95rem; outline: none; transition: border-color 0.15s; }
+.input:focus { border-color: var(--color-primary, #2563eb); }
+.textarea { padding: 0.75rem 1rem; border: 1px solid var(--color-border, #ddd); border-radius: 6px; font-size: 0.95rem; resize: vertical; min-height: 200px; outline: none; font-family: inherit; transition: border-color 0.15s; }
+.textarea:focus { border-color: var(--color-primary, #2563eb); }
+.submitBtn { align-self: flex-start; padding: 0.6rem 1.5rem; border-radius: 6px; font-size: 0.9rem; font-weight: 600; cursor: pointer; border: none; background: var(--color-primary, #2563eb); color: #fff; transition: opacity 0.15s; }
+.submitBtn:hover { opacity: 0.9; }
+.submitBtn:disabled { opacity: 0.5; cursor: not-allowed; }

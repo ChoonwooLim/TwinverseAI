@@ -1,0 +1,14 @@
+.section { margin-top: 2rem; border-top: 1px solid var(--color-border, #e5e5e5); padding-top: 1.5rem; }
+.title { font-size: 1rem; font-weight: 600; margin: 0 0 1rem; }
+.list { list-style: none; padding: 0; margin: 0 0 1.5rem; }
+.item { padding: 0.75rem 0; border-bottom: 1px solid var(--color-border-light, #f0f0f0); }
+.commentHeader { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.25rem; }
+.author { font-size: 0.85rem; }
+.date { font-size: 0.8rem; color: var(--color-text-tertiary, #999); }
+.deleteBtn { font-size: 0.75rem; color: var(--color-danger, #dc2626); background: none; border: none; cursor: pointer; margin-left: auto; }
+.commentText { margin: 0; font-size: 0.9rem; line-height: 1.5; }
+.form { display: flex; flex-direction: column; gap: 0.5rem; }
+.textarea { padding: 0.75rem; border: 1px solid var(--color-border, #ddd); border-radius: 6px; font-size: 0.9rem; resize: vertical; font-family: inherit; outline: none; }
+.textarea:focus { border-color: var(--color-primary, #2563eb); }
+.submitBtn { align-self: flex-end; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.85rem; font-weight: 500; border: none; background: var(--color-primary, #2563eb); color: #fff; cursor: pointer; }
+.submitBtn:disabled { opacity: 0.5; }
