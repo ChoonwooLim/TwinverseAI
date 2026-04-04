@@ -8,12 +8,35 @@ load_dotenv()
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+import database
 from database import create_db_and_tables
 from routers import auth, admin, docs, skills, plugins
+
+def _seed_admin():
+    """Ensure default admin account exists on startup."""
+    from sqlmodel import Session, select
+    from models import User
+    import bcrypt
+    username = os.getenv("SUPERADMIN_USERNAME", "admin")
+    password = os.getenv("SUPERADMIN_PASSWORD", "admin1234")
+    with Session(database.engine) as session:
+        existing = session.exec(select(User).where(User.username == username)).first()
+        if not existing:
+            hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+            user = User(
+                username=username,
+                email=f"{username}@twinverse.org",
+                hashed_password=hashed,
+                role="superadmin",
+            )
+            session.add(user)
+            session.commit()
+            print(f"[seed] SuperAdmin '{username}' created.")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     create_db_and_tables()
+    _seed_admin()
     yield
 
 app = FastAPI(title="TwinverseAI API", lifespan=lifespan)
