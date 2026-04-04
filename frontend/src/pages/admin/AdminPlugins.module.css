@@ -1,0 +1,9 @@
+.page { max-width: 900px; }
+.title { font-size: 1.5rem; font-weight: 700; margin: 0 0 1.5rem; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
+.card { padding: 1.25rem; border: 1px solid var(--color-border, #e5e5e5); border-radius: 8px; }
+.cardName { font-size: 1rem; font-weight: 600; margin: 0 0 0.5rem; }
+.cardDesc { font-size: 0.85rem; color: var(--color-text-secondary, #555); margin: 0 0 0.5rem; line-height: 1.5; }
+.cardUsage { font-size: 0.8rem; color: var(--color-text-tertiary, #999); margin: 0 0 0.75rem; }
+.configured { font-size: 0.8rem; color: var(--color-success, #16a34a); font-weight: 500; }
+.notConfigured { font-size: 0.8rem; color: var(--color-danger, #dc2626); font-weight: 500; }

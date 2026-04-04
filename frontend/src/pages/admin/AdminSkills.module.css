@@ -1,0 +1,8 @@
+.page { max-width: 800px; }
+.title { font-size: 1.5rem; font-weight: 700; margin: 0 0 1.5rem; }
+.list { list-style: none; padding: 0; }
+.item { border-bottom: 1px solid var(--color-border-light, #f0f0f0); }
+.skillBtn { display: flex; flex-direction: column; width: 100%; padding: 0.75rem 0; background: none; border: none; cursor: pointer; text-align: left; }
+.skillBtn strong { font-size: 0.95rem; }
+.desc { font-size: 0.85rem; color: var(--color-text-secondary, #666); margin-top: 0.25rem; }
+.detail { padding: 1rem; background: var(--color-bg-subtle, #fafafa); border-radius: 6px; margin-bottom: 0.75rem; font-size: 0.9rem; line-height: 1.6; }

@@ -1,0 +1,8 @@
+.page { max-width: 800px; }
+.title { font-size: 1.5rem; font-weight: 700; margin: 0 0 1.5rem; }
+.list { list-style: none; padding: 0; }
+.list li { padding: 0.5rem 0; border-bottom: 1px solid var(--color-border-light, #f0f0f0); }
+.docLink { text-decoration: none; color: var(--color-primary, #2563eb); font-weight: 500; }
+.backLink { display: inline-block; margin-bottom: 1rem; font-size: 0.85rem; color: var(--color-text-secondary, #666); text-decoration: none; }
+.backLink:hover { color: var(--color-text, #111); }
+.content { line-height: 1.7; }

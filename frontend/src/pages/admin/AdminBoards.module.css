@@ -1,0 +1,12 @@
+.page { max-width: 1000px; }
+.title { font-size: 1.5rem; font-weight: 700; margin: 0 0 1.5rem; }
+.table { width: 100%; border-collapse: collapse; }
+.table th, .table td { padding: 0.6rem 0.75rem; text-align: left; border-bottom: 1px solid var(--color-border, #e5e5e5); font-size: 0.85rem; }
+.table th { font-weight: 600; color: var(--color-text-tertiary, #999); font-size: 0.8rem; }
+.link { color: var(--color-text, #111); text-decoration: none; }
+.link:hover { color: var(--color-primary, #2563eb); }
+.deleteBtn { padding: 0.2rem 0.5rem; border: 1px solid var(--color-danger, #dc2626); border-radius: 4px; background: none; color: var(--color-danger, #dc2626); cursor: pointer; font-size: 0.8rem; }
+.deleteBtn:hover { background: #fef2f2; }
+.pagination { display: flex; justify-content: center; gap: 0.25rem; margin-top: 1.5rem; }
+.pageBtn { padding: 0.4rem 0.75rem; border: 1px solid var(--color-border, #ddd); border-radius: 4px; background: none; cursor: pointer; font-size: 0.85rem; }
+.pageActive { background: var(--color-primary, #2563eb); color: #fff; border-color: var(--color-primary, #2563eb); }
