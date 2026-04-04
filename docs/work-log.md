@@ -89,3 +89,28 @@
 - App.jsx에 TwinverseDesk 라우트 추가
 
 ---
+
+## 2026-04-05
+
+### 작업 요약
+
+| 카테고리 | 작업 내용 | 상태 |
+|----------|----------|------|
+| fix | TVDesk Socket.IO 실시간 연결 실패 — 쿠키 Secure 플래그 문제 해결 | 완료 |
+| fix | TVDesk 리눅스 브라우저 소켓 인증 실패 — 프록시 토큰 자동 주입 | 완료 |
+| infra | TVDesk 서버 프록시 업그레이드 (twinverse_token → DeskRPG token 변환) | 완료 |
+| infra | TVDesk start.sh 영구 설정 (COOKIE_SECURE=false, JWT_SECRET 등) | 완료 |
+
+### 세부 내용
+
+- TVDesk NPC 호출/대화 기능 "연결끊김" 디버깅 및 해결
+  - 원인 1: DeskRPG 쿠키에 `Secure` 플래그 → Cloudflare Tunnel 내부 HTTP에서 브라우저가 쿠키 저장 거부
+  - 해결: `COOKIE_SECURE=false` 환경변수로 Secure 플래그 제거
+- 리눅스 브라우저 소켓 인증 실패 디버깅 및 해결
+  - 원인 2: 리눅스 브라우저에 DeskRPG `token` 쿠키가 설정되지 않고 `twinverse_token`만 존재
+  - 해결: 프록시(proxy.js)에서 `twinverse_token`을 감지하여 DeskRPG 호환 JWT를 자동 생성/주입
+- 프록시(~/.deskrpg/proxy.js) 업그레이드 — jose 라이브러리로 JWT 재서명, 유저 매핑 테이블 내장
+- start.sh 영구 설정 파일 생성 (COOKIE_SECURE, JWT_SECRET, INTERNAL_HOSTNAME 포함)
+- 멀티유저 동작 확인 (Windows + Linux 동시 접속, 캐릭터 표시, 채널 채팅 동작)
+
+---
