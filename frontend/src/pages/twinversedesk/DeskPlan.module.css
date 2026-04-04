@@ -1,0 +1,363 @@
+/* ═══════════════════════════════════════════════
+   DeskPlan — Dark Glass Neon
+   ═══════════════════════════════════════════════ */
+
+.page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: var(--sp-8, 2rem) var(--sp-6, 1.5rem) var(--sp-16, 5rem);
+}
+
+/* ── Page Header ── */
+.pageHeader {
+  padding-top: var(--sp-10, 3rem);
+  padding-bottom: var(--sp-8, 2.5rem);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: var(--sp-10, 3rem);
+}
+
+.overline {
+  display: block;
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--neon-cyan, #00d4ff);
+  margin-bottom: var(--sp-3, 0.75rem);
+  text-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
+}
+
+.title {
+  font-family: var(--font-display, 'Noto Sans KR'), sans-serif;
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 var(--sp-4, 1rem);
+  text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.subtitle {
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-base, 1rem);
+  line-height: 1.7;
+  color: var(--text-secondary, #ccc);
+  max-width: 60ch;
+  margin: 0;
+}
+
+/* ── Section ── */
+.section {
+  margin-bottom: var(--sp-12, 4rem);
+}
+
+.sectionTitle {
+  font-family: var(--font-display, 'Noto Sans KR'), sans-serif;
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 var(--sp-4, 1rem);
+}
+
+.sectionDesc {
+  font-size: var(--text-sm, 0.875rem);
+  line-height: 1.7;
+  color: var(--text-secondary, #ccc);
+  margin: 0 0 var(--sp-6, 1.5rem);
+  max-width: 65ch;
+}
+
+/* ── Vision ── */
+.visionBox {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  border-radius: var(--radius-lg, 15px);
+  padding: var(--sp-10, 3rem) var(--sp-8, 2rem);
+  text-align: center;
+}
+
+.vision {
+  font-family: var(--font-display, 'Noto Sans KR'), sans-serif;
+  font-size: clamp(1.1rem, 2vw, 1.4rem);
+  line-height: 1.8;
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0;
+  font-style: normal;
+}
+
+.vision strong {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Comparison Table ── */
+.compareTable {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-lg, 15px);
+  overflow: hidden;
+  margin-top: var(--sp-4, 1rem);
+}
+
+.compareRow {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr 1.5fr;
+  gap: 1px;
+}
+
+.compareHeader {
+  background: rgba(255, 255, 255, 0.08);
+  font-weight: 700;
+  font-size: var(--text-sm, 0.875rem);
+  color: #ffffff;
+}
+
+.compareHeader span {
+  padding: var(--sp-3, 0.75rem) var(--sp-4, 1rem);
+}
+
+.compareRow:not(.compareHeader) {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.compareRow:not(.compareHeader):hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.compareFeature {
+  font-size: var(--text-sm, 0.875rem);
+  font-weight: 600;
+  color: #ffffff;
+  padding: var(--sp-3, 0.75rem) var(--sp-4, 1rem);
+}
+
+.comparOld {
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--text-tertiary, #888);
+  padding: var(--sp-3, 0.75rem) var(--sp-4, 1rem);
+}
+
+.compareNew {
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--neon-cyan, #00d4ff);
+  padding: var(--sp-3, 0.75rem) var(--sp-4, 1rem);
+}
+
+/* ── Architecture Grid ── */
+.archGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--sp-4, 1rem);
+  margin-top: var(--sp-4, 1rem);
+}
+
+.archCard {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-lg, 15px);
+  padding: var(--sp-5, 1.25rem);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.archHeader {
+  margin-bottom: var(--sp-3, 0.75rem);
+}
+
+.archLayer {
+  font-family: var(--font-display, 'Noto Sans KR'), sans-serif;
+  font-size: var(--text-base, 1rem);
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 var(--sp-1, 0.25rem);
+}
+
+.archTech {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.7rem;
+  color: var(--neon-cyan, #00d4ff);
+  background: rgba(0, 212, 255, 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.archDesc {
+  font-size: var(--text-sm, 0.875rem);
+  line-height: 1.6;
+  color: var(--text-secondary, #ccc);
+  margin: 0;
+}
+
+/* ── UE Features Grid ── */
+.ueGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--sp-4, 1rem);
+  margin-top: var(--sp-4, 1rem);
+}
+
+.ueCard {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.06) 0%, rgba(118, 75, 162, 0.06) 100%);
+  border: 1px solid rgba(102, 126, 234, 0.15);
+  border-radius: var(--radius-lg, 15px);
+  padding: var(--sp-6, 1.5rem);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ueCard:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
+}
+
+.ueTitle {
+  font-family: var(--font-display, 'Noto Sans KR'), sans-serif;
+  font-size: var(--text-base, 1rem);
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 var(--sp-2, 0.5rem);
+}
+
+.ueDesc {
+  font-size: var(--text-sm, 0.875rem);
+  line-height: 1.6;
+  color: var(--text-secondary, #ccc);
+  margin: 0;
+}
+
+/* ── Timeline ── */
+.timeline {
+  margin-top: var(--sp-6, 1.5rem);
+}
+
+.phase {
+  display: flex;
+  gap: var(--sp-6, 1.5rem);
+}
+
+.phaseMarker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  width: 20px;
+}
+
+.phaseDot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  box-shadow: 0 0 10px rgba(102, 126, 234, 0.5);
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+
+.phaseLine {
+  width: 2px;
+  flex: 1;
+  background: rgba(102, 126, 234, 0.2);
+  min-height: 20px;
+}
+
+.phaseContent {
+  flex: 1;
+  padding-bottom: var(--sp-8, 2rem);
+}
+
+.phaseMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3, 0.75rem);
+  margin-bottom: var(--sp-2, 0.5rem);
+}
+
+.phaseLabel {
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--neon-indigo, #667eea);
+}
+
+.phasePeriod {
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--text-tertiary, #888);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 2px 10px;
+  border-radius: 10px;
+}
+
+.phaseTitle {
+  font-family: var(--font-display, 'Noto Sans KR'), sans-serif;
+  font-size: var(--text-lg, 1.125rem);
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 var(--sp-3, 0.75rem);
+}
+
+.phaseTasks {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
+  padding: var(--sp-4, 1rem) var(--sp-5, 1.25rem);
+}
+
+.phaseTasks li {
+  font-size: var(--text-sm, 0.875rem);
+  line-height: 1.6;
+  color: var(--text-secondary, #ccc);
+  padding: var(--sp-1, 0.25rem) 0;
+  padding-left: var(--sp-4, 1rem);
+  position: relative;
+}
+
+.phaseTasks li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 11px;
+  width: 5px;
+  height: 5px;
+  background: var(--neon-indigo, #667eea);
+  border-radius: 50%;
+  box-shadow: 0 0 6px rgba(102, 126, 234, 0.5);
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .page {
+    padding: var(--sp-4, 1rem) var(--sp-4, 1rem) var(--sp-10, 3rem);
+  }
+
+  .compareRow {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .compareHeader {
+    display: none;
+  }
+
+  .compareFeature,
+  .comparOld,
+  .compareNew {
+    padding: var(--sp-1, 0.25rem) var(--sp-4, 1rem);
+  }
+
+  .compareFeature {
+    padding-top: var(--sp-3, 0.75rem);
+  }
+
+  .compareNew {
+    padding-bottom: var(--sp-3, 0.75rem);
+  }
+
+  .archGrid,
+  .ueGrid {
+    grid-template-columns: 1fr;
+  }
+}

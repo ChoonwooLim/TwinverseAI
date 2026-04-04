@@ -13,6 +13,9 @@ import AdminBoards from "./pages/admin/AdminBoards";
 import AdminDocs from "./pages/admin/AdminDocs";
 import AdminSkills from "./pages/admin/AdminSkills";
 import AdminPlugins from "./pages/admin/AdminPlugins";
+import DeskAnalysis from "./pages/twinversedesk/DeskAnalysis";
+import DeskPlan from "./pages/twinversedesk/DeskPlan";
+import DeskLaunch from "./pages/twinversedesk/DeskLaunch";
 
 export default function App() {
   return (
@@ -24,6 +27,11 @@ export default function App() {
           <Route path="/about" element={<AboutPage />} />
           <Route path="/services" element={<ServicesPage />} />
           <Route path="/login" element={<LoginPage />} />
+
+          {/* TwinverseDesk */}
+          <Route path="/twinversedesk/analysis" element={<DeskAnalysis />} />
+          <Route path="/twinversedesk/plan" element={<DeskPlan />} />
+          <Route path="/twinversedesk/launch" element={<DeskLaunch />} />
 
           {/* Community */}
           <Route path="/community/:boardType" element={<BoardPage />} />

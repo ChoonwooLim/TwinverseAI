@@ -40,3 +40,6 @@ uploads/
 
 # Logs
 *.log
+
+# External projects
+deskrpg-master/

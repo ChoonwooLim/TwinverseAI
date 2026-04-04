@@ -1,0 +1,353 @@
+/* ═══════════════════════════════════════════════
+   DeskAnalysis — Dark Glass Neon
+   ═══════════════════════════════════════════════ */
+
+.page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: var(--sp-8, 2rem) var(--sp-6, 1.5rem) var(--sp-16, 5rem);
+}
+
+/* ── Page Header ── */
+.pageHeader {
+  padding-top: var(--sp-10, 3rem);
+  padding-bottom: var(--sp-8, 2.5rem);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: var(--sp-10, 3rem);
+}
+
+.overline {
+  display: block;
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--neon-cyan, #00d4ff);
+  margin-bottom: var(--sp-3, 0.75rem);
+  text-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
+}
+
+.title {
+  font-family: var(--font-display, 'Noto Sans KR'), sans-serif;
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 var(--sp-4, 1rem);
+  text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.subtitle {
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-base, 1rem);
+  line-height: 1.7;
+  color: var(--text-secondary, #ccc);
+  max-width: 60ch;
+  margin: 0;
+}
+
+/* ── Section ── */
+.section {
+  margin-bottom: var(--sp-12, 4rem);
+}
+
+.sectionTitle {
+  font-family: var(--font-display, 'Noto Sans KR'), sans-serif;
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 var(--sp-2, 0.5rem);
+  padding-bottom: var(--sp-3, 0.75rem);
+  border-bottom: 2px solid transparent;
+  background-image: linear-gradient(#ffffff, #ffffff), linear-gradient(90deg, #667eea, #764ba2);
+  background-size: 100% 100%, 100% 2px;
+  background-position: 0 0, 0 100%;
+  background-repeat: no-repeat;
+  -webkit-background-clip: text, padding-box;
+  background-clip: text, padding-box;
+}
+
+.sectionDesc {
+  font-size: var(--text-sm, 0.875rem);
+  line-height: 1.7;
+  color: var(--text-secondary, #ccc);
+  margin: var(--sp-2, 0.5rem) 0 var(--sp-6, 1.5rem);
+  max-width: 65ch;
+}
+
+/* ── Stats Grid ── */
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--sp-4, 1rem);
+  margin-top: var(--sp-6, 1.5rem);
+}
+
+.statCard {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-lg, 15px);
+  padding: var(--sp-6, 1.5rem) var(--sp-4, 1rem);
+  text-align: center;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.statCard:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
+}
+
+.statValue {
+  display: block;
+  font-family: var(--font-display, 'Noto Sans KR'), sans-serif;
+  font-size: 2rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.statUnit {
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--text-tertiary, #888);
+  margin-left: 2px;
+}
+
+.statLabel {
+  display: block;
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--text-secondary, #ccc);
+  margin-top: var(--sp-1, 0.25rem);
+}
+
+/* ── Tech Grid ── */
+.techGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--sp-4, 1rem);
+  margin-top: var(--sp-6, 1.5rem);
+}
+
+.techCard {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-lg, 15px);
+  padding: var(--sp-6, 1.5rem);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: transform 0.2s ease;
+}
+
+.techCard:hover {
+  transform: translateY(-3px);
+}
+
+.techName {
+  font-family: var(--font-display, 'Noto Sans KR'), sans-serif;
+  font-size: var(--text-lg, 1.125rem);
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 var(--sp-1, 0.25rem);
+}
+
+.techRole {
+  display: inline-block;
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: 600;
+  color: var(--neon-cyan, #00d4ff);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: var(--sp-3, 0.75rem);
+}
+
+.techDetail {
+  font-size: var(--text-sm, 0.875rem);
+  line-height: 1.6;
+  color: var(--text-secondary, #ccc);
+  margin: 0;
+}
+
+/* ── Feature Grid ── */
+.featureGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--sp-5, 1.25rem);
+  margin-top: var(--sp-6, 1.5rem);
+}
+
+.featureCard {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-lg, 15px);
+  padding: var(--sp-6, 1.5rem);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  position: relative;
+  overflow: hidden;
+}
+
+.featureCard::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #667eea, #764ba2, #667eea);
+  background-size: 200% 100%;
+  animation: gShift 3s ease-in-out infinite;
+}
+
+@keyframes gShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.featureCategory {
+  font-family: var(--font-display, 'Noto Sans KR'), sans-serif;
+  font-size: var(--text-lg, 1.125rem);
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 var(--sp-4, 1rem);
+}
+
+.featureList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.featureList li {
+  font-size: var(--text-sm, 0.875rem);
+  line-height: 1.6;
+  color: var(--text-secondary, #ccc);
+  padding: var(--sp-1, 0.25rem) 0;
+  padding-left: var(--sp-4, 1rem);
+  position: relative;
+}
+
+.featureList li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 11px;
+  width: 5px;
+  height: 5px;
+  background: var(--neon-indigo, #667eea);
+  border-radius: 50%;
+  box-shadow: 0 0 6px rgba(102, 126, 234, 0.5);
+}
+
+/* ── DB Table Grid ── */
+.tableGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--sp-2, 0.5rem);
+  margin-top: var(--sp-4, 1rem);
+}
+
+.tableRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3, 0.75rem);
+  padding: var(--sp-2, 0.5rem) var(--sp-4, 1rem);
+  border-radius: 8px;
+  transition: background 0.15s ease;
+}
+
+.tableRow:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.tableName {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--neon-cyan, #00d4ff);
+  background: rgba(0, 212, 255, 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.tableDesc {
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--text-secondary, #ccc);
+}
+
+/* ── Limitations Grid ── */
+.limitGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--sp-4, 1rem);
+  margin-top: var(--sp-4, 1rem);
+}
+
+.limitCard {
+  background: rgba(255, 80, 80, 0.05);
+  border: 1px solid rgba(255, 80, 80, 0.15);
+  border-radius: var(--radius-lg, 15px);
+  padding: var(--sp-5, 1.25rem);
+}
+
+.limitTitle {
+  font-family: var(--font-display, 'Noto Sans KR'), sans-serif;
+  font-size: var(--text-base, 1rem);
+  font-weight: 700;
+  color: #ff8080;
+  margin: 0 0 var(--sp-2, 0.5rem);
+}
+
+.limitDesc {
+  font-size: var(--text-sm, 0.875rem);
+  line-height: 1.6;
+  color: var(--text-secondary, #ccc);
+  margin: 0;
+}
+
+/* ── Conclusion ── */
+.conclusion {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-lg, 15px);
+  padding: var(--sp-8, 2rem);
+}
+
+.conclusionContent p {
+  font-size: var(--text-base, 1rem);
+  line-height: 1.8;
+  color: var(--text-secondary, #ccc);
+  margin: 0 0 var(--sp-4, 1rem);
+}
+
+.conclusionContent p:last-child {
+  margin-bottom: 0;
+}
+
+.conclusionContent strong {
+  color: #ffffff;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .page {
+    padding: var(--sp-4, 1rem) var(--sp-4, 1rem) var(--sp-10, 3rem);
+  }
+
+  .statsGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .techGrid,
+  .featureGrid,
+  .limitGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .tableGrid {
+    grid-template-columns: 1fr;
+  }
+}
