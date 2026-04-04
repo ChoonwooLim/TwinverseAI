@@ -1,27 +1,132 @@
-from fastapi import APIRouter, Depends
-from sqlmodel import Session, select, func
+# backend/routers/admin.py
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
+from sqlmodel import Session, select, func, col
 from database import get_session
-from models import User
+from models import User, Post, Comment
 from deps import require_admin
 
 router = APIRouter()
 
 
-@router.get("/dashboard")
-def admin_dashboard(admin: User = Depends(require_admin), session: Session = Depends(get_session)):
+# --- Stats ---
+
+@router.get("/stats")
+def admin_stats(admin: User = Depends(require_admin), session: Session = Depends(get_session)):
     total_users = session.exec(select(func.count(User.id))).one()
-    active_users = session.exec(select(func.count(User.id)).where(User.is_active == True)).one()
+    active_users = session.exec(
+        select(func.count(User.id)).where(User.is_active == True)
+    ).one()
+    total_posts = session.exec(select(func.count(Post.id))).one()
+    total_comments = session.exec(select(func.count(Comment.id))).one()
     return {
         "total_users": total_users,
         "active_users": active_users,
+        "total_posts": total_posts,
+        "total_comments": total_comments,
         "admin": admin.username,
     }
 
 
+# Keep legacy endpoint for backward compat
+@router.get("/dashboard")
+def admin_dashboard(admin: User = Depends(require_admin), session: Session = Depends(get_session)):
+    return admin_stats(admin, session)
+
+
+# --- User Management ---
+
 @router.get("/users")
 def list_users(admin: User = Depends(require_admin), session: Session = Depends(get_session)):
-    users = session.exec(select(User)).all()
+    users = session.exec(select(User).order_by(col(User.id))).all()
     return [
-        {"id": u.id, "username": u.username, "email": u.email, "role": u.role, "is_active": u.is_active}
+        {
+            "id": u.id,
+            "username": u.username,
+            "email": u.email,
+            "role": u.role,
+            "is_active": u.is_active,
+            "created_at": u.created_at.isoformat(),
+        }
         for u in users
     ]
+
+
+class RoleUpdate(BaseModel):
+    role: str  # "user" | "admin" | "superadmin"
+
+
+@router.put("/users/{user_id}/role")
+def update_user_role(
+    user_id: int,
+    body: RoleUpdate,
+    admin: User = Depends(require_admin),
+    session: Session = Depends(get_session),
+):
+    if body.role not in ("user", "admin", "superadmin"):
+        raise HTTPException(status_code=400, detail="Invalid role")
+    user = session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if body.role == "superadmin" and admin.role != "superadmin":
+        raise HTTPException(status_code=403, detail="Only superadmin can assign superadmin role")
+    user.role = body.role
+    session.add(user)
+    session.commit()
+    return {"id": user.id, "role": user.role}
+
+
+class ActiveUpdate(BaseModel):
+    is_active: bool
+
+
+@router.put("/users/{user_id}/active")
+def update_user_active(
+    user_id: int,
+    body: ActiveUpdate,
+    admin: User = Depends(require_admin),
+    session: Session = Depends(get_session),
+):
+    user = session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.is_active = body.is_active
+    session.add(user)
+    session.commit()
+    return {"id": user.id, "is_active": user.is_active}
+
+
+# --- Board Management (all posts across boards) ---
+
+@router.get("/posts")
+def list_all_posts(
+    page: int = Query(1, ge=1),
+    size: int = Query(20, ge=1, le=100),
+    admin: User = Depends(require_admin),
+    session: Session = Depends(get_session),
+):
+    offset = (page - 1) * size
+    total = session.exec(select(func.count(Post.id))).one()
+    posts = session.exec(
+        select(Post, User.username)
+        .join(User, col(Post.author_id) == col(User.id))
+        .order_by(col(Post.created_at).desc())
+        .offset(offset)
+        .limit(size)
+    ).all()
+    return {
+        "items": [
+            {
+                "id": p.id,
+                "board_type": p.board_type,
+                "title": p.title,
+                "author": username,
+                "view_count": p.view_count,
+                "created_at": p.created_at.isoformat(),
+            }
+            for p, username in posts
+        ],
+        "total": total,
+        "page": page,
+        "size": size,
+    }
