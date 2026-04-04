@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import styles from "./DeskRPGRun.module.css";
 
-const DESKRPG_URL = import.meta.env.VITE_DESKRPG_URL || "http://192.168.219.101:3100";
+const DESKRPG_URL = import.meta.env.VITE_DESKRPG_URL || "https://deskrpg.twinverse.org";
 
 export default function DeskRPGRun() {
   const [status, setStatus] = useState("checking");
@@ -96,7 +96,7 @@ export default function DeskRPGRun() {
           </div>
           <div className={styles.infoRow}>
             <span className={styles.infoLabel}>프로토콜</span>
-            <span className={styles.infoValue}>HTTP + WebSocket (Socket.IO)</span>
+            <span className={styles.infoValue}>HTTPS + WebSocket (Cloudflare Tunnel)</span>
           </div>
         </div>
       </section>
