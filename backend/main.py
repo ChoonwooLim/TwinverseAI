@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import database
 from database import create_db_and_tables
-from routers import auth, admin, docs, skills, plugins
+from routers import auth, admin, docs, skills, plugins, boards, comments, files
 
 def _seed_admin():
     """Ensure default admin account exists on startup."""
@@ -57,10 +57,18 @@ app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 app.include_router(docs.router, prefix="/api/docs", tags=["docs"])
 app.include_router(skills.router, prefix="/api/skills", tags=["skills"])
 app.include_router(plugins.router, prefix="/api/plugins", tags=["plugins"])
+app.include_router(boards.router, prefix="/api/boards", tags=["boards"])
+app.include_router(comments.router, prefix="/api/comments", tags=["comments"])
+app.include_router(files.router, prefix="/api/files", tags=["files"])
 
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
+
+# Serve uploaded files
+_uploads_dir = Path(__file__).resolve().parent.parent / "uploads"
+_uploads_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(_uploads_dir)), name="uploads")
 
 # Serve frontend static files in production (Docker build copies to /app/static)
 _static_dir = Path(__file__).resolve().parent / "static"
