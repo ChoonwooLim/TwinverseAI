@@ -129,6 +129,7 @@ cd c:\WORK\TwinverseAI && mkdir -p backend/routers backend/models backend/servic
 
 ```python
 import os
+from pathlib import Path
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 
@@ -136,12 +137,36 @@ load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+import database
 from database import create_db_and_tables
 from routers import auth, admin, docs, skills, plugins
+
+def _seed_admin():
+    """Ensure default admin account exists on startup."""
+    from sqlmodel import Session, select
+    from models import User
+    import bcrypt
+    username = os.getenv("SUPERADMIN_USERNAME", "admin")
+    password = os.getenv("SUPERADMIN_PASSWORD", "admin1234")
+    with Session(database.engine) as session:
+        existing = session.exec(select(User).where(User.username == username)).first()
+        if not existing:
+            hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+            user = User(
+                username=username,
+                email=f"{username}@twinverse.org",
+                hashed_password=hashed,
+                role="superadmin",
+            )
+            session.add(user)
+            session.commit()
+            print(f"[seed] SuperAdmin '{username}' created.")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     create_db_and_tables()
+    _seed_admin()
     yield
 
 app = FastAPI(title="TwinverseAI API", lifespan=lifespan)
@@ -166,6 +191,20 @@ app.include_router(plugins.router, prefix="/api/plugins", tags=["plugins"])
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
+
+# Serve frontend static files in production (Docker build copies to /app/static)
+_static_dir = Path(__file__).resolve().parent / "static"
+if _static_dir.exists():
+    from fastapi.responses import FileResponse
+
+    @app.get("/{full_path:path}")
+    def serve_spa(full_path: str):
+        file_path = _static_dir / full_path
+        if file_path.is_file():
+            return FileResponse(file_path)
+        return FileResponse(_static_dir / "index.html")
+
+    app.mount("/assets", StaticFiles(directory=_static_dir / "assets"), name="static-assets")
 ```
 
 ### backend/database.py
@@ -214,20 +253,18 @@ from .user import User
 ```python
 import os
 from datetime import datetime, timedelta
-from passlib.context import CryptContext
+import bcrypt
 from jose import jwt, JWTError
 
 SECRET_KEY = os.getenv("SECRET_KEY", "change-me-in-production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24시간
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+    return bcrypt.checkpw(plain.encode(), hashed.encode())
 
 def create_access_token(data: dict) -> str:
     to_encode = data.copy()
@@ -673,6 +710,7 @@ sqlmodel
 psycopg2-binary
 python-dotenv
 passlib[bcrypt]
+bcrypt==4.0.1
 python-jose[cryptography]
 ```
 
@@ -825,37 +863,52 @@ export default function ProtectedRoute({ children, requiredRole }) {
 
 ```jsx
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import api from "../services/api";
 
 export default function LoginPage() {
+  const [mode, setMode] = useState("login");
   const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  const handleLogin = async (e) => {
+  const resetForm = () => { setUsername(""); setEmail(""); setPassword(""); setError(""); };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     try {
-      const { data } = await api.post("/api/auth/login", { username, password });
+      const endpoint = mode === "login" ? "/api/auth/login" : "/api/auth/register";
+      const body = mode === "login" ? { username, password } : { username, email, password };
+      const { data } = await api.post(endpoint, body);
       localStorage.setItem("token", data.access_token);
       localStorage.setItem("user", JSON.stringify(data.user));
       navigate(data.user.role === "admin" || data.user.role === "superadmin" ? "/admin" : "/");
-    } catch {
-      setError("로그인에 실패했습니다.");
+    } catch (err) {
+      setError(err.response?.data?.detail || (mode === "login" ? "로그인에 실패했습니다." : "회원가입에 실패했습니다."));
     }
   };
 
+  const isLogin = mode === "login";
+  const inputStyle = { display: "block", width: "100%", marginBottom: 12, padding: 8 };
+  const tabStyle = (active) => ({ flex: 1, padding: 10, background: active ? "#0284c7" : "#e2e8f0", color: active ? "#fff" : "#333", border: "none", cursor: "pointer", fontWeight: active ? 600 : 400 });
+
   return (
     <div style={{ maxWidth: 400, margin: "100px auto", padding: 24 }}>
-      <h1>로그인</h1>
-      <form onSubmit={handleLogin}>
-        <input placeholder="아이디" value={username} onChange={(e) => setUsername(e.target.value)} style={{ display: "block", width: "100%", marginBottom: 12, padding: 8 }} />
-        <input type="password" placeholder="비밀번호" value={password} onChange={(e) => setPassword(e.target.value)} style={{ display: "block", width: "100%", marginBottom: 12, padding: 8 }} />
+      <div style={{ display: "flex", marginBottom: 24, borderRadius: 6, overflow: "hidden" }}>
+        <button onClick={() => { setMode("login"); resetForm(); }} style={tabStyle(isLogin)}>로그인</button>
+        <button onClick={() => { setMode("register"); resetForm(); }} style={tabStyle(!isLogin)}>회원가입</button>
+      </div>
+      <form onSubmit={handleSubmit}>
+        <input placeholder="아이디" value={username} onChange={(e) => setUsername(e.target.value)} style={inputStyle} />
+        {!isLogin && <input type="email" placeholder="이메일" value={email} onChange={(e) => setEmail(e.target.value)} style={inputStyle} />}
+        <input type="password" placeholder="비밀번호" value={password} onChange={(e) => setPassword(e.target.value)} style={inputStyle} />
         {error && <p style={{ color: "red" }}>{error}</p>}
-        <button type="submit" style={{ width: "100%", padding: 10 }}>로그인</button>
+        <button type="submit" style={{ width: "100%", padding: 10 }}>{isLogin ? "로그인" : "회원가입"}</button>
       </form>
+      <Link to="/" style={{ display: "block", marginTop: 16, textAlign: "center", color: "#64748b" }}>← 홈으로</Link>
     </div>
   );
 }
@@ -1368,31 +1421,20 @@ export default function App() {
 
 ```yaml
 # Orbitron 배포 설정
-services:
-  - name: backend
-    type: web
-    source: backend
-    build:
-      command: pip install -r requirements.txt
-    run:
-      command: uvicorn main:app --host 0.0.0.0 --port 8000
-    env:
-      - key: DATABASE_URL
-        sync: false
-      - key: SECRET_KEY
-        sync: false
-      - key: FRONTEND_URL
-        sync: false
-
-  - name: frontend
-    type: static
-    source: frontend
-    build:
-      command: npm install && npm run build
-      output: dist
-    env:
-      - key: VITE_API_URL
-        sync: false
+# 풀스택 단일 서비스: frontend 빌드 → backend에 static으로 복사 → uvicorn 실행
+build:
+  command: cd frontend && npm install && npm run build && cd ../backend && pip install -r requirements.txt && mkdir -p static && cp -r ../frontend/dist/* static/
+start:
+  command: cd backend && uvicorn main:app --host 0.0.0.0 --port 8000
+env:
+  - key: DATABASE_URL
+    sync: false
+  - key: SECRET_KEY
+    sync: false
+  - key: FRONTEND_URL
+    sync: false
+  - key: VITE_API_URL
+    sync: false
 ```
 
 ### Dockerfile (프로젝트 루트) — 필수
@@ -1430,32 +1472,6 @@ EXPOSE 8000
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
-### backend/main.py — 정적 파일 서빙 코드 추가
-
-`main.py`의 맨 아래에 아래 코드를 추가하여 Docker 환경에서 빌드된 React SPA를 서빙합니다:
-
-```python
-# Serve frontend static files in production (Docker build copies to /app/static)
-_static_dir = Path(__file__).resolve().parent / "static"
-if _static_dir.exists():
-    from fastapi.responses import FileResponse
-
-    @app.get("/{full_path:path}")
-    def serve_spa(full_path: str):
-        file_path = _static_dir / full_path
-        if file_path.is_file():
-            return FileResponse(file_path)
-        return FileResponse(_static_dir / "index.html")
-
-    app.mount("/assets", StaticFiles(directory=_static_dir / "assets"), name="static-assets")
-```
-
-그리고 `main.py` 상단 import에 추가:
-```python
-from pathlib import Path
-from fastapi.staticfiles import StaticFiles
-```
-
 ## 9단계: CLAUDE.md 생성
 
 ```markdown
@@ -1479,6 +1495,10 @@ from fastapi.staticfiles import StaticFiles
 - JWT 기반 (Bearer Token)
 - 역할: user / admin / superadmin
 - 어드민 대시보드: `/admin` (admin 이상 접근)
+
+## Git 규칙
+- 기본 브랜치는 반드시 `main` 사용 (master 금지 — Orbitron이 main을 기본으로 clone)
+- `git init` 후 `git branch -m master main` 또는 `git init -b main` 사용
 
 ## 배포
 - Orbitron 배포 서버 사용 (Linux)
