@@ -14,7 +14,7 @@ user-invocable: true
 ## 1단계: Git 초기화
 
 ```bash
-cd c:\WORK\TwinverseAI && git init
+cd c:\WORK\TwinverseAI && git init -b main
 ```
 
 ## 2단계: .gitignore 생성

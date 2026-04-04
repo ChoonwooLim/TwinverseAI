@@ -1,0 +1,64 @@
+{
+  "_comment": "MCP 서버 템플릿 — /project-start 스킬이 이 템플릿을 참고하여 settings.local.json에 자동 병합합니다.",
+  "mcpServers": {
+    "context7": {
+      "_description": "라이브러리 최신 문서 조회 (React, FastAPI, SQLModel 등)",
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp@latest"]
+    },
+    "github": {
+      "_description": "GitHub Issue, PR, 리포지토리 관리",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "__AUTO_FROM_GH_AUTH__"
+      }
+    },
+    "postgres": {
+      "_description": "PostgreSQL DB 직접 쿼리, 스키마 조회",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-postgres"],
+      "env": {
+        "DATABASE_URL": "__AUTO_FROM_BACKEND_ENV__"
+      }
+    },
+    "puppeteer": {
+      "_description": "브라우저 자동화, 스크린샷, E2E 테스트",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-puppeteer"]
+    },
+    "sequential-thinking": {
+      "_description": "복잡한 문제 단계별 추론 강화",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+    },
+    "memory": {
+      "_description": "지식 그래프 기반 장기 기억 저장",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"]
+    },
+    "brave-search": {
+      "_description": "웹 검색 (최신 정보, 문서, 에러 조회)",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+      "env": {
+        "BRAVE_API_KEY": "__USER_INPUT_REQUIRED__"
+      }
+    },
+    "filesystem": {
+      "_description": "확장 파일 시스템 조작 (검색, 이동, 복사 등)",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "__AUTO_PROJECT_ROOT__"]
+    },
+    "fetch": {
+      "_description": "외부 HTTP API 호출, 웹페이지 가져오기",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-fetch"]
+    },
+    "docker": {
+      "_description": "Docker 컨테이너 관리, 로그 조회, 이미지 빌드",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-docker"]
+    }
+  }
+}

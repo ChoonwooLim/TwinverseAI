@@ -19,6 +19,10 @@
 - 역할: user / admin / superadmin
 - 어드민 대시보드: `/admin` (admin 이상 접근)
 
+## Git 규칙
+- 기본 브랜치는 반드시 `main` 사용 (master 금지 — Orbitron이 main을 기본으로 clone)
+- `git init` 후 `git branch -m master main` 또는 `git init -b main` 사용
+
 ## 배포
 - Orbitron 배포 서버 사용 (Linux)
 - DB: Orbitron PostgreSQL 서버
