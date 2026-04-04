@@ -1,97 +1,74 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import s from "./HomePage.module.css";
-
-const DOC_MENU = [
-  { key: "dev-plan", label: "개발계획서", icon: "📋", desc: "프로젝트 마일스톤과 기능 목록", accent: s.cardAccent1 },
-  { key: "bugfix-log", label: "버그수정 로그", icon: "🐛", desc: "발견 및 수정된 버그 기록", accent: s.cardAccent2 },
-  { key: "upgrade-log", label: "업그레이드 로그", icon: "🚀", desc: "기능 추가 및 개선 이력", accent: s.cardAccent3 },
-  { key: "work-log", label: "작업일지", icon: "📝", desc: "일별 작업 내역 및 진행 상황", accent: s.cardAccent4 },
-];
-
-const TOOL_MENU = [
-  { path: "/skills", label: "AI 스킬", icon: "🧠", desc: "사용 가능한 Claude 스킬 목록 및 상세 설명" },
-  { path: "/plugins", label: "플러그인 (MCP)", icon: "🔌", desc: "설치된 MCP 플러그인 조회, 설정, 추가" },
-];
+import api from "../services/api";
+import styles from "./HomePage.module.css";
 
 export default function HomePage() {
-  const user = JSON.parse(localStorage.getItem("user") || "null");
+  const [notices, setNotices] = useState([]);
+  const [recentPosts, setRecentPosts] = useState([]);
+
+  useEffect(() => {
+    api.get("/api/boards/notice?size=3").then((r) => setNotices(r.data.items)).catch(() => {});
+    api.get("/api/boards/qna?size=5").then((r) => setRecentPosts(r.data.items)).catch(() => {});
+  }, []);
 
   return (
-    <div>
-      {/* ── Hero ── */}
-      <header className={s.hero}>
-        <div className={s.heroInner}>
-          <div>
-            <h1 className={`${s.heroTitle} ${s.animFadeUp}`}>TwinverseAI</h1>
-            <hr className={`${s.heroSeparator} ${s.animFadeUp} ${s.animDelay1}`} />
-            <p className={`${s.heroSubtitle} ${s.animFadeUp} ${s.animDelay2}`}>
-              Project Hub
-            </p>
-          </div>
-
-          <div className={`${s.heroAuth} ${s.animFadeUp} ${s.animDelay2}`}>
-            {user ? (
-              <>
-                <span className={s.greeting}>{user.username}님 환영합니다</span>
-                {(user.role === "admin" || user.role === "superadmin") && (
-                  <Link to="/admin" className={s.adminLink}>
-                    어드민 대시보드 &rarr;
-                  </Link>
-                )}
-              </>
-            ) : (
-              <Link to="/login" className={s.loginLink}>로그인</Link>
-            )}
-          </div>
+    <div className={styles.home}>
+      <section className={styles.hero}>
+        <h1 className={styles.heroTitle}>TwinverseAI</h1>
+        <p className={styles.heroSub}>차세대 AI 솔루션으로 비즈니스를 혁신하세요</p>
+        <div className={styles.heroCta}>
+          <Link to="/services" className={styles.primaryBtn}>서비스 알아보기</Link>
+          <Link to="/about" className={styles.secondaryBtn}>회사 소개</Link>
         </div>
-      </header>
+      </section>
 
-      <main className={s.main}>
-        {/* ── Project Documents ── */}
-        <section className={s.section}>
-          <h2 className={`${s.sectionTitle} ${s.animFadeUp} ${s.animDelay1}`}>
-            프로젝트 문서
-          </h2>
-          <div className={s.cardGrid}>
-            {DOC_MENU.map((doc, i) => (
-              <Link
-                key={doc.key}
-                to={`/docs/${doc.key}`}
-                className={`${s.card} ${doc.accent} ${s.animFadeUp} ${s[`animDelay${i + 1}`]}`}
-              >
-                <span className={s.cardIcon}>{doc.icon}</span>
-                <h3 className={s.cardTitle}>{doc.label}</h3>
-                <p className={s.cardDesc}>{doc.desc}</p>
-              </Link>
-            ))}
+      {notices.length > 0 && (
+        <section className={styles.section}>
+          <div className={styles.sectionHeader}>
+            <h2 className={styles.sectionTitle}>공지사항</h2>
+            <Link to="/community/notice" className={styles.moreLink}>더보기</Link>
           </div>
-        </section>
-
-        {/* ── AI Tools ── */}
-        <section className={s.section}>
-          <h2 className={`${s.sectionTitle} ${s.animFadeUp} ${s.animDelay3}`}>
-            AI 도구
-          </h2>
-          <div className={s.toolGrid}>
-            {TOOL_MENU.map((tool, i) => (
-              <Link
-                key={tool.path}
-                to={tool.path}
-                className={`${s.toolCard} ${s.animFadeUp} ${s[`animDelay${i + 5}`]}`}
-              >
-                <span className={s.toolIcon}>{tool.icon}</span>
-                <h3 className={s.toolTitle}>{tool.label}</h3>
-                <p className={s.toolDesc}>{tool.desc}</p>
-              </Link>
+          <ul className={styles.noticeList}>
+            {notices.map((n) => (
+              <li key={n.id}>
+                <Link to={`/community/notice/${n.id}`} className={styles.noticeItem}>
+                  <span className={styles.noticeTitle}>{n.title}</span>
+                  <span className={styles.noticeDate}>{new Date(n.created_at).toLocaleDateString("ko-KR")}</span>
+                </Link>
+              </li>
             ))}
-          </div>
+          </ul>
         </section>
-      </main>
+      )}
 
-      {/* ── Footer ── */}
-      <footer className={s.footer}>
-        <p className={s.footerText}>TwinverseAI &middot; Built with React + Vite</p>
-      </footer>
+      {recentPosts.length > 0 && (
+        <section className={styles.section}>
+          <div className={styles.sectionHeader}>
+            <h2 className={styles.sectionTitle}>최신 Q&A</h2>
+            <Link to="/community/qna" className={styles.moreLink}>더보기</Link>
+          </div>
+          <ul className={styles.postList}>
+            {recentPosts.map((p) => (
+              <li key={p.id}>
+                <Link to={`/community/qna/${p.id}`} className={styles.postItem}>
+                  <span>{p.title}</span>
+                  <span className={styles.postMeta}>{p.author} | {new Date(p.created_at).toLocaleDateString("ko-KR")}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>서비스</h2>
+        <div className={styles.serviceGrid}>
+          <div className={styles.serviceCard}><h3>AI 컨설팅</h3><p>비즈니스에 최적화된 AI 전략을 수립합니다</p></div>
+          <div className={styles.serviceCard}><h3>커스텀 AI 개발</h3><p>맞춤형 AI 모델과 솔루션을 개발합니다</p></div>
+          <div className={styles.serviceCard}><h3>AI 교육</h3><p>팀의 AI 역량을 강화하는 교육 프로그램</p></div>
+        </div>
+      </section>
     </div>
   );
 }
