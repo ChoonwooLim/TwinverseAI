@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import api from "../services/api";
 import styles from "./LoginPage.module.css";
@@ -11,6 +11,14 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  // 이미 로그인된 상태면 홈으로 리다이렉트
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      navigate("/", { replace: true });
+    }
+  }, [navigate]);
 
   const resetForm = () => {
     setUsername("");
