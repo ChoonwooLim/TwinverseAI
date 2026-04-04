@@ -1,0 +1,45 @@
+.footer {
+  border-top: 1px solid var(--color-border, #e5e5e5);
+  padding: 1.5rem 0;
+  margin-top: auto;
+}
+.inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+.company {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--color-text, #111);
+}
+.links {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+.links a {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary, #555);
+  text-decoration: none;
+}
+.links a:hover {
+  color: var(--color-text, #111);
+}
+.sep {
+  color: var(--color-border, #ddd);
+  font-size: 0.75rem;
+}
+.copy {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: var(--color-text-tertiary, #999);
+}
+@media (max-width: 768px) {
+  .inner { flex-direction: column; text-align: center; }
+  .copy { margin-left: 0; }
+}
