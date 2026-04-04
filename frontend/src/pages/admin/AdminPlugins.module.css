@@ -1,9 +1,156 @@
-.page { max-width: 900px; }
-.title { font-size: 1.5rem; font-weight: 700; margin: 0 0 1.5rem; }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
-.card { padding: 1.25rem; border: 1px solid var(--color-border, #e5e5e5); border-radius: 8px; }
-.cardName { font-size: 1rem; font-weight: 600; margin: 0 0 0.5rem; }
-.cardDesc { font-size: 0.85rem; color: var(--color-text-secondary, #555); margin: 0 0 0.5rem; line-height: 1.5; }
-.cardUsage { font-size: 0.8rem; color: var(--color-text-tertiary, #999); margin: 0 0 0.75rem; }
-.configured { font-size: 0.8rem; color: var(--color-success, #16a34a); font-weight: 500; }
-.notConfigured { font-size: 0.8rem; color: var(--color-danger, #dc2626); font-weight: 500; }
+/* ═══════════════════════════════════════════════
+   AdminPlugins — Architectural Futurism
+   Sharp card grid, no nesting
+   ═══════════════════════════════════════════════ */
+
+.page {
+  max-width: 1000px;
+}
+
+/* ── Page Header ── */
+
+.pageHeader {
+  padding: var(--sp-8, 2.5rem) 0 var(--sp-6, 1.75rem);
+  border-bottom: 2px solid var(--border-rule, #1a1715);
+  margin-bottom: var(--sp-8, 2.5rem);
+}
+
+.overline {
+  display: block;
+  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
+  font-size: var(--text-xs, 0.72rem);
+  font-weight: 600;
+  letter-spacing: var(--tracking-mega, 0.15em);
+  text-transform: uppercase;
+  color: var(--text-tertiary, #a39e98);
+  margin-bottom: var(--sp-2, 0.5rem);
+}
+
+.title {
+  font-family: var(--font-display, 'Syne'), sans-serif;
+  font-size: clamp(1.75rem, 3vw, 2.75rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--text-primary, #1a1715);
+  margin: 0;
+}
+
+/* ── Grid ── */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 1px;
+  background: var(--border-default, #e8e4df);
+  border: 1px solid var(--border-default, #e8e4df);
+}
+
+/* ── Card ── */
+
+.card {
+  padding: var(--sp-6, 1.75rem);
+  background: var(--surface-raised, #fff);
+  border-radius: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2, 0.5rem);
+  transition: background var(--dur-normal, 200ms);
+}
+
+.card:hover {
+  background: var(--ultra-50, #eceffe);
+}
+
+.cardStatusRule {
+  position: absolute;
+  top: 0;
+  left: var(--sp-6, 1.75rem);
+  width: 20px;
+  height: 3px;
+}
+
+.cardStatusRule.isConfigured {
+  background: #16a34a;
+}
+
+.cardStatusRule.notConfigured {
+  background: var(--terra-400, #c45d3e);
+}
+
+/* ── Card Content ── */
+
+.cardName {
+  font-family: var(--font-display, 'Syne'), sans-serif;
+  font-size: var(--text-base, 1rem);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-primary, #1a1715);
+  margin: var(--sp-3, 0.75rem) 0 0;
+}
+
+.cardDesc {
+  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
+  font-size: var(--text-sm, 0.875rem);
+  line-height: 1.6;
+  color: var(--text-secondary, #6b6560);
+  margin: 0;
+  flex: 1;
+}
+
+.cardUsage {
+  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
+  font-size: var(--text-xs, 0.72rem);
+  color: var(--text-tertiary, #a39e98);
+  letter-spacing: 0.02em;
+  margin: 0;
+}
+
+.cardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: var(--sp-3, 0.75rem);
+  border-top: 1px solid var(--border-subtle, #f0ece7);
+  margin-top: var(--sp-2, 0.5rem);
+}
+
+.configured {
+  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
+  font-size: var(--text-xs, 0.72rem);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #16a34a;
+}
+
+.notConfigured {
+  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
+  font-size: var(--text-xs, 0.72rem);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--terra-400, #c45d3e);
+}
+
+/* ── Action Button ── */
+
+.configBtn {
+  padding: 0.3rem 0.75rem;
+  border: 1px solid var(--border-default, #e8e4df);
+  border-radius: var(--radius-sm, 3px);
+  background: transparent;
+  cursor: pointer;
+  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
+  font-size: var(--text-xs, 0.72rem);
+  font-weight: 600;
+  color: var(--text-secondary, #6b6560);
+  letter-spacing: 0.04em;
+  transition: background var(--dur-fast, 120ms), border-color var(--dur-fast, 120ms), color var(--dur-fast, 120ms);
+}
+
+.configBtn:hover {
+  background: var(--ultra-50, #eceffe);
+  border-color: var(--ultra-500, #2d3bcc);
+  color: var(--ultra-500, #2d3bcc);
+}

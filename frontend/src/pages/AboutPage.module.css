@@ -1,7 +1,112 @@
-.about { max-width: 700px; }
-.title { font-size: 1.75rem; font-weight: 700; margin: 0 0 2rem; }
-.section { margin-bottom: 2rem; }
-.section h2 { font-size: 1.15rem; font-weight: 600; margin: 0 0 0.75rem; }
-.section p { font-size: 0.95rem; line-height: 1.7; color: var(--color-text-secondary, #444); margin: 0; }
-.timeline { list-style: none; padding: 0; margin: 0; }
-.timeline li { padding: 0.5rem 0; font-size: 0.95rem; border-bottom: 1px solid var(--color-border-light, #f0f0f0); }
+/* ═══════════════════════════════════════════════
+   AboutPage — Architectural Futurism
+   ═══════════════════════════════════════════════ */
+
+.about {
+  max-width: 740px;
+}
+
+/* ── Page Header ── */
+
+.pageHeader {
+  padding-top: var(--sp-12, 4rem);
+  padding-bottom: var(--sp-8, 2.5rem);
+  border-bottom: 2px solid var(--border-rule, #1a1715);
+  margin-bottom: 0;
+}
+
+.overline {
+  display: block;
+  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
+  font-size: var(--text-xs, 0.72rem);
+  font-weight: 600;
+  letter-spacing: var(--tracking-mega, 0.15em);
+  text-transform: uppercase;
+  color: var(--terra-400, #c45d3e);
+  margin-bottom: var(--sp-3, 0.75rem);
+}
+
+.title {
+  font-family: var(--font-display, 'Syne'), sans-serif;
+  font-size: clamp(2.5rem, 5vw, 4.5rem);
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  color: var(--text-primary, #1a1715);
+  margin: 0;
+}
+
+/* ── Sections ── */
+
+.section {
+  padding: var(--sp-10, 3rem) 0;
+  border-bottom: 1px solid var(--border-default, #e8e4df);
+}
+
+.section:last-child {
+  border-bottom: none;
+}
+
+.sectionNum {
+  display: block;
+  font-family: var(--font-display, 'Syne'), sans-serif;
+  font-size: var(--text-xs, 0.72rem);
+  font-weight: 700;
+  letter-spacing: var(--tracking-mega, 0.15em);
+  text-transform: uppercase;
+  color: var(--text-tertiary, #a39e98);
+  margin-bottom: var(--sp-3, 0.75rem);
+}
+
+.section h2 {
+  font-family: var(--font-display, 'Syne'), sans-serif;
+  font-size: var(--text-2xl, 1.5rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary, #1a1715);
+  margin: 0 0 var(--sp-4, 1rem);
+}
+
+.section p {
+  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
+  font-size: var(--text-base, 1rem);
+  line-height: 1.75;
+  color: var(--text-secondary, #6b6560);
+  margin: 0;
+  max-width: 62ch;
+}
+
+/* ── Timeline ── */
+
+.timeline {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.timeline li {
+  display: grid;
+  grid-template-columns: 5.5rem 1fr;
+  gap: var(--sp-4, 1rem);
+  padding: var(--sp-4, 1rem) 0;
+  border-bottom: 1px solid var(--border-subtle, #f0ece7);
+  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--text-secondary, #6b6560);
+  line-height: 1.6;
+  align-items: baseline;
+}
+
+.timeline li:last-child {
+  border-bottom: none;
+}
+
+.timeline li strong,
+.timeline li time {
+  font-family: var(--font-display, 'Syne'), sans-serif;
+  font-size: var(--text-xs, 0.72rem);
+  font-weight: 700;
+  letter-spacing: var(--tracking-wide, 0.08em);
+  text-transform: uppercase;
+  color: var(--text-primary, #1a1715);
+}

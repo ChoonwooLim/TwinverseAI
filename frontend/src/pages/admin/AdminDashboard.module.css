@@ -1,6 +1,99 @@
-.dashboard { max-width: 800px; }
-.title { font-size: 1.5rem; font-weight: 700; margin: 0 0 1.5rem; }
-.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; }
-.stat { padding: 1.25rem; border: 1px solid var(--color-border, #e5e5e5); border-radius: 8px; text-align: center; }
-.statValue { display: block; font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
-.statLabel { font-size: 0.85rem; color: var(--color-text-secondary, #666); }
+/* ═══════════════════════════════════════════════
+   AdminDashboard — Architectural Futurism
+   Stats as massive architectural numerals
+   ═══════════════════════════════════════════════ */
+
+.dashboard {
+  max-width: 900px;
+}
+
+/* ── Page Header ── */
+
+.pageHeader {
+  padding: var(--sp-8, 2.5rem) 0 var(--sp-6, 1.75rem);
+  border-bottom: 2px solid var(--border-rule, #1a1715);
+  margin-bottom: var(--sp-10, 3rem);
+}
+
+.overline {
+  display: block;
+  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
+  font-size: var(--text-xs, 0.72rem);
+  font-weight: 600;
+  letter-spacing: var(--tracking-mega, 0.15em);
+  text-transform: uppercase;
+  color: var(--text-tertiary, #a39e98);
+  margin-bottom: var(--sp-2, 0.5rem);
+}
+
+.title {
+  font-family: var(--font-display, 'Syne'), sans-serif;
+  font-size: clamp(1.75rem, 3vw, 2.75rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--text-primary, #1a1715);
+  margin: 0;
+}
+
+/* ── Stats Grid ── */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1px;
+  background: var(--border-default, #e8e4df);
+  border: 1px solid var(--border-default, #e8e4df);
+  margin-bottom: var(--sp-10, 3rem);
+}
+
+/* ── Stat Card ── */
+
+.stat {
+  padding: var(--sp-8, 2.5rem) var(--sp-6, 1.75rem);
+  background: var(--surface-raised, #fff);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.statValue {
+  display: block;
+  font-family: var(--font-display, 'Syne'), sans-serif;
+  font-size: clamp(3rem, 5vw, 5rem);
+  font-weight: 800;
+  line-height: 0.9;
+  letter-spacing: -0.05em;
+  color: var(--text-primary, #1a1715);
+  margin-bottom: var(--sp-3, 0.75rem);
+}
+
+.statLabel {
+  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
+  font-size: var(--text-xs, 0.72rem);
+  font-weight: 600;
+  letter-spacing: var(--tracking-mega, 0.15em);
+  text-transform: uppercase;
+  color: var(--text-tertiary, #a39e98);
+}
+
+.statRule {
+  position: absolute;
+  top: 0;
+  left: var(--sp-6, 1.75rem);
+  width: 24px;
+  height: 3px;
+  background: var(--ultra-500, #2d3bcc);
+}
+
+/* ── Section heading inside dashboard ── */
+
+.sectionTitle {
+  font-family: var(--font-display, 'Syne'), sans-serif;
+  font-size: var(--text-lg, 1.125rem);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-primary, #1a1715);
+  margin: 0 0 var(--sp-4, 1rem);
+  padding-bottom: var(--sp-3, 0.75rem);
+  border-bottom: 1px solid var(--border-default, #e8e4df);
+}

@@ -1,10 +1,136 @@
-.page { max-width: 1000px; }
-.title { font-size: 1.5rem; font-weight: 700; margin: 0 0 1.5rem; }
-.table { width: 100%; border-collapse: collapse; }
-.table th, .table td { padding: 0.6rem 0.75rem; text-align: left; border-bottom: 1px solid var(--color-border, #e5e5e5); font-size: 0.85rem; }
-.table th { font-weight: 600; color: var(--color-text-tertiary, #999); font-size: 0.8rem; }
-.select { padding: 0.25rem 0.5rem; border: 1px solid var(--color-border, #ddd); border-radius: 4px; font-size: 0.8rem; }
-.active { color: var(--color-success, #16a34a); font-weight: 500; }
-.inactive { color: var(--color-danger, #dc2626); font-weight: 500; }
-.toggleBtn { padding: 0.25rem 0.5rem; border: 1px solid var(--color-border, #ddd); border-radius: 4px; background: none; cursor: pointer; font-size: 0.8rem; }
-.toggleBtn:hover { background: var(--color-bg-hover, #f5f5f5); }
+/* ═══════════════════════════════════════════════
+   AdminUsers — Architectural Futurism
+   Structural table: bottom rules, no cell borders
+   ═══════════════════════════════════════════════ */
+
+.page {
+  max-width: 1100px;
+}
+
+/* ── Page Header ── */
+
+.pageHeader {
+  padding: var(--sp-8, 2.5rem) 0 var(--sp-6, 1.75rem);
+  border-bottom: 2px solid var(--border-rule, #1a1715);
+  margin-bottom: var(--sp-8, 2.5rem);
+}
+
+.overline {
+  display: block;
+  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
+  font-size: var(--text-xs, 0.72rem);
+  font-weight: 600;
+  letter-spacing: var(--tracking-mega, 0.15em);
+  text-transform: uppercase;
+  color: var(--text-tertiary, #a39e98);
+  margin-bottom: var(--sp-2, 0.5rem);
+}
+
+.title {
+  font-family: var(--font-display, 'Syne'), sans-serif;
+  font-size: clamp(1.75rem, 3vw, 2.75rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--text-primary, #1a1715);
+  margin: 0;
+}
+
+/* ── Table ── */
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th {
+  padding: var(--sp-3, 0.75rem) var(--sp-3, 0.75rem) var(--sp-2, 0.5rem);
+  text-align: left;
+  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: var(--tracking-mega, 0.15em);
+  text-transform: uppercase;
+  color: var(--text-tertiary, #a39e98);
+  border-bottom: 1px solid var(--border-rule, #1a1715);
+  padding-left: 0;
+}
+
+.table th:first-child {
+  padding-left: 0;
+}
+
+.table td {
+  padding: var(--sp-3, 0.75rem) var(--sp-3, 0.75rem);
+  text-align: left;
+  border-bottom: 1px solid var(--border-subtle, #f0ece7);
+  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--text-primary, #1a1715);
+  vertical-align: middle;
+}
+
+.table td:first-child {
+  padding-left: 0;
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+/* ── Inline Controls ── */
+
+.select {
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--border-default, #e8e4df);
+  border-radius: var(--radius-sm, 3px);
+  background: transparent;
+  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
+  font-size: var(--text-xs, 0.72rem);
+  font-weight: 500;
+  color: var(--text-primary, #1a1715);
+  cursor: pointer;
+  transition: border-color var(--dur-fast, 120ms);
+}
+
+.select:focus {
+  outline: none;
+  border-color: var(--ultra-500, #2d3bcc);
+}
+
+.active {
+  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
+  font-size: var(--text-xs, 0.72rem);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #16a34a;
+}
+
+.inactive {
+  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
+  font-size: var(--text-xs, 0.72rem);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--terra-400, #c45d3e);
+}
+
+.toggleBtn {
+  padding: 0.3rem 0.75rem;
+  border: 1px solid var(--border-default, #e8e4df);
+  border-radius: var(--radius-sm, 3px);
+  background: transparent;
+  cursor: pointer;
+  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
+  font-size: var(--text-xs, 0.72rem);
+  font-weight: 600;
+  color: var(--text-secondary, #6b6560);
+  letter-spacing: 0.04em;
+  transition: background var(--dur-fast, 120ms), border-color var(--dur-fast, 120ms), color var(--dur-fast, 120ms);
+}
+
+.toggleBtn:hover {
+  background: var(--ultra-50, #eceffe);
+  border-color: var(--ultra-500, #2d3bcc);
+  color: var(--ultra-500, #2d3bcc);
+}

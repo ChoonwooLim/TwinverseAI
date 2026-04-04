@@ -1,9 +1,125 @@
-.board { max-width: 900px; }
-.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
-.title { font-size: 1.5rem; font-weight: 700; margin: 0; }
-.writeBtn { padding: 0.5rem 1.25rem; border-radius: 6px; border: none; background: var(--color-primary, #2563eb); color: #fff; font-size: 0.9rem; font-weight: 500; cursor: pointer; }
-.writeBtn:hover { opacity: 0.9; }
-.loading, .empty { text-align: center; padding: 3rem; color: var(--color-text-tertiary, #999); }
-.pagination { display: flex; justify-content: center; gap: 0.25rem; margin-top: 2rem; }
-.pageBtn { padding: 0.4rem 0.75rem; border: 1px solid var(--color-border, #ddd); border-radius: 4px; background: none; cursor: pointer; font-size: 0.85rem; }
-.pageActive { background: var(--color-primary, #2563eb); color: #fff; border-color: var(--color-primary, #2563eb); }
+/* ═══════════════════════════════════════════════
+   BoardPage — Architectural Futurism
+   ═══════════════════════════════════════════════ */
+
+.board {
+  max-width: 900px;
+}
+
+/* ── Header ── */
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding: var(--sp-10, 3rem) 0 var(--sp-5, 1.25rem);
+  border-bottom: 2px solid var(--border-rule, #1a1715);
+  margin-bottom: 0;
+}
+
+.headerLeft {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2, 0.5rem);
+}
+
+.overline {
+  display: block;
+  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
+  font-size: var(--text-xs, 0.72rem);
+  font-weight: 600;
+  letter-spacing: var(--tracking-mega, 0.15em);
+  text-transform: uppercase;
+  color: var(--text-tertiary, #a39e98);
+}
+
+.title {
+  font-family: var(--font-display, 'Syne'), sans-serif;
+  font-size: clamp(1.75rem, 3vw, 2.5rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--text-primary, #1a1715);
+  line-height: 1;
+  margin: 0;
+}
+
+/* ── Write Button ── */
+
+.writeBtn {
+  padding: 0.75rem 1.75rem;
+  border-radius: var(--radius-sm, 3px);
+  border: 1.5px solid var(--text-primary, #1a1715);
+  background: var(--text-primary, #1a1715);
+  color: var(--surface-page, #f8f6f3);
+  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
+  font-size: var(--text-xs, 0.72rem);
+  font-weight: 700;
+  letter-spacing: var(--tracking-wide, 0.08em);
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--dur-fast, 120ms), border-color var(--dur-fast, 120ms);
+}
+
+.writeBtn:hover {
+  background: var(--ultra-500, #2d3bcc);
+  border-color: var(--ultra-500, #2d3bcc);
+}
+
+/* ── States ── */
+
+.loading,
+.empty {
+  padding: var(--sp-16, 5rem) 0;
+  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--text-tertiary, #a39e98);
+  letter-spacing: var(--tracking-wide, 0.08em);
+  text-transform: uppercase;
+  text-align: center;
+}
+
+/* ── Pagination ── */
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--sp-1, 0.25rem);
+  margin-top: var(--sp-8, 2.5rem);
+  padding-top: var(--sp-5, 1.25rem);
+  border-top: 1px solid var(--border-default, #e8e4df);
+}
+
+.pageBtn {
+  min-width: 2.25rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border-default, #e8e4df);
+  border-radius: var(--radius-sm, 3px);
+  background: transparent;
+  cursor: pointer;
+  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
+  font-size: var(--text-xs, 0.72rem);
+  font-weight: 600;
+  color: var(--text-secondary, #6b6560);
+  letter-spacing: 0.04em;
+  transition: background var(--dur-fast, 120ms), color var(--dur-fast, 120ms), border-color var(--dur-fast, 120ms);
+}
+
+.pageBtn:hover {
+  background: var(--ultra-50, #eceffe);
+  border-color: var(--ultra-500, #2d3bcc);
+  color: var(--ultra-500, #2d3bcc);
+}
+
+.pageActive {
+  background: var(--text-primary, #1a1715);
+  color: var(--surface-page, #f8f6f3);
+  border-color: var(--text-primary, #1a1715);
+}
+
+.pageActive:hover {
+  background: var(--ultra-500, #2d3bcc);
+  border-color: var(--ultra-500, #2d3bcc);
+  color: var(--surface-page, #f8f6f3);
+}

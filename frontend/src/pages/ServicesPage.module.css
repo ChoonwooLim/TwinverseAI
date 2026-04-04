@@ -1,9 +1,138 @@
-.services { max-width: 900px; }
-.title { font-size: 1.75rem; font-weight: 700; margin: 0 0 0.75rem; }
-.intro { font-size: 1rem; color: var(--color-text-secondary, #555); margin: 0 0 2rem; }
-.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.25rem; }
-.card { padding: 1.5rem; border: 1px solid var(--color-border, #e5e5e5); border-radius: 8px; }
-.cardTitle { font-size: 1.1rem; font-weight: 600; margin: 0 0 0.5rem; }
-.cardDesc { font-size: 0.9rem; color: var(--color-text-secondary, #555); margin: 0 0 1rem; line-height: 1.6; }
-.features { padding-left: 1.25rem; margin: 0; }
-.features li { font-size: 0.85rem; padding: 0.15rem 0; color: var(--color-text-secondary, #555); }
+/* ═══════════════════════════════════════════════
+   ServicesPage — Architectural Futurism
+   ═══════════════════════════════════════════════ */
+
+.services {
+  max-width: 1100px;
+}
+
+/* ── Page Header ── */
+
+.pageHeader {
+  padding-top: var(--sp-12, 4rem);
+  padding-bottom: var(--sp-8, 2.5rem);
+  border-bottom: 2px solid var(--border-rule, #1a1715);
+}
+
+.overline {
+  display: block;
+  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
+  font-size: var(--text-xs, 0.72rem);
+  font-weight: 600;
+  letter-spacing: var(--tracking-mega, 0.15em);
+  text-transform: uppercase;
+  color: var(--terra-400, #c45d3e);
+  margin-bottom: var(--sp-3, 0.75rem);
+}
+
+.title {
+  font-family: var(--font-display, 'Syne'), sans-serif;
+  font-size: clamp(2.5rem, 5vw, 4.5rem);
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  color: var(--text-primary, #1a1715);
+  margin: 0 0 var(--sp-4, 1rem);
+}
+
+.intro {
+  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
+  font-size: var(--text-lg, 1.125rem);
+  line-height: 1.65;
+  color: var(--text-secondary, #6b6560);
+  max-width: 56ch;
+  margin: 0;
+}
+
+/* ── Grid ── */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1px;
+  border: 1px solid var(--border-default, #e8e4df);
+  background: var(--border-default, #e8e4df);
+  margin-top: var(--sp-10, 3rem);
+}
+
+/* ── Card ── */
+
+.card {
+  padding: var(--sp-8, 2.5rem) var(--sp-6, 1.75rem);
+  background: var(--surface-raised, #fff);
+  border-radius: 0;
+  position: relative;
+  overflow: hidden;
+  transition: background var(--dur-normal, 200ms);
+}
+
+.card:hover {
+  background: var(--ultra-50, #eceffe);
+}
+
+.cardIndex {
+  display: block;
+  font-family: var(--font-display, 'Syne'), sans-serif;
+  font-size: var(--text-xs, 0.72rem);
+  font-weight: 700;
+  letter-spacing: var(--tracking-mega, 0.15em);
+  text-transform: uppercase;
+  color: var(--text-tertiary, #a39e98);
+  margin-bottom: var(--sp-4, 1rem);
+}
+
+.cardTitle {
+  font-family: var(--font-display, 'Syne'), sans-serif;
+  font-size: var(--text-xl, 1.25rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary, #1a1715);
+  margin: 0 0 var(--sp-3, 0.75rem);
+}
+
+.cardRule {
+  width: 32px;
+  height: 2px;
+  background: var(--terra-400, #c45d3e);
+  border: none;
+  margin: 0 0 var(--sp-4, 1rem);
+}
+
+.cardDesc {
+  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
+  font-size: var(--text-sm, 0.875rem);
+  line-height: 1.7;
+  color: var(--text-secondary, #6b6560);
+  margin: 0 0 var(--sp-5, 1.25rem);
+}
+
+.features {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  border-top: 1px solid var(--border-subtle, #f0ece7);
+  padding-top: var(--sp-4, 1rem);
+}
+
+.features li {
+  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
+  font-size: var(--text-xs, 0.72rem);
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  color: var(--text-secondary, #6b6560);
+  padding: var(--sp-1, 0.25rem) 0;
+  padding-left: var(--sp-3, 0.75rem);
+  position: relative;
+}
+
+.features li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 4px;
+  background: var(--ultra-500, #2d3bcc);
+  border-radius: 0;
+}

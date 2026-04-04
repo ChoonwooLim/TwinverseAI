@@ -1,8 +1,159 @@
-.page { max-width: 800px; }
-.title { font-size: 1.5rem; font-weight: 700; margin: 0 0 1.5rem; }
-.list { list-style: none; padding: 0; }
-.item { border-bottom: 1px solid var(--color-border-light, #f0f0f0); }
-.skillBtn { display: flex; flex-direction: column; width: 100%; padding: 0.75rem 0; background: none; border: none; cursor: pointer; text-align: left; }
-.skillBtn strong { font-size: 0.95rem; }
-.desc { font-size: 0.85rem; color: var(--color-text-secondary, #666); margin-top: 0.25rem; }
-.detail { padding: 1rem; background: var(--color-bg-subtle, #fafafa); border-radius: 6px; margin-bottom: 0.75rem; font-size: 0.9rem; line-height: 1.6; }
+/* ═══════════════════════════════════════════════
+   AdminSkills — Architectural Futurism
+   Accordion list, structural dividers
+   ═══════════════════════════════════════════════ */
+
+.page {
+  max-width: 820px;
+}
+
+/* ── Page Header ── */
+
+.pageHeader {
+  padding: var(--sp-8, 2.5rem) 0 var(--sp-6, 1.75rem);
+  border-bottom: 2px solid var(--border-rule, #1a1715);
+  margin-bottom: var(--sp-8, 2.5rem);
+}
+
+.overline {
+  display: block;
+  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
+  font-size: var(--text-xs, 0.72rem);
+  font-weight: 600;
+  letter-spacing: var(--tracking-mega, 0.15em);
+  text-transform: uppercase;
+  color: var(--text-tertiary, #a39e98);
+  margin-bottom: var(--sp-2, 0.5rem);
+}
+
+.title {
+  font-family: var(--font-display, 'Syne'), sans-serif;
+  font-size: clamp(1.75rem, 3vw, 2.75rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--text-primary, #1a1715);
+  margin: 0;
+}
+
+/* ── Skill List ── */
+
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.item {
+  border-bottom: 1px solid var(--border-default, #e8e4df);
+}
+
+.item:last-child {
+  border-bottom: none;
+}
+
+/* ── Skill Toggle Button ── */
+
+.skillBtn {
+  display: flex;
+  width: 100%;
+  padding: var(--sp-4, 1rem) 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  align-items: flex-start;
+  gap: var(--sp-4, 1rem);
+  transition: background var(--dur-fast, 120ms);
+}
+
+.skillBtn:hover {
+  background: none;
+}
+
+.skillBtn:hover .skillName {
+  color: var(--ultra-500, #2d3bcc);
+}
+
+.skillIndex {
+  font-family: var(--font-display, 'Syne'), sans-serif;
+  font-size: var(--text-xs, 0.72rem);
+  font-weight: 700;
+  letter-spacing: var(--tracking-wide, 0.08em);
+  color: var(--text-tertiary, #a39e98);
+  min-width: 2.5rem;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+.skillBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.skillName {
+  display: block;
+  font-family: var(--font-display, 'Syne'), sans-serif;
+  font-size: var(--text-base, 1rem);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-primary, #1a1715);
+  margin-bottom: var(--sp-1, 0.25rem);
+  transition: color var(--dur-fast, 120ms);
+}
+
+.skillShort {
+  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--text-secondary, #6b6560);
+  line-height: 1.5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 55ch;
+}
+
+.skillChevron {
+  font-size: var(--text-xs, 0.72rem);
+  color: var(--text-tertiary, #a39e98);
+  flex-shrink: 0;
+  padding-top: 4px;
+  transition: transform var(--dur-fast, 120ms);
+}
+
+.skillChevronOpen {
+  transform: rotate(180deg);
+}
+
+/* ── Detail Drawer ── */
+
+.detail {
+  padding: var(--sp-4, 1rem) 0 var(--sp-5, 1.25rem);
+  padding-left: calc(2.5rem + var(--sp-4, 1rem));
+  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
+  font-size: var(--text-sm, 0.875rem);
+  line-height: 1.7;
+  color: var(--text-secondary, #6b6560);
+  background: transparent;
+  border-top: 1px solid var(--border-subtle, #f0ece7);
+}
+
+.detail p {
+  margin: 0;
+}
+
+.detail code {
+  font-size: 0.88em;
+  background: var(--border-subtle, #f0ece7);
+  padding: 0.1em 0.35em;
+  border-radius: var(--radius-sm, 3px);
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  color: var(--ultra-500, #2d3bcc);
+}
+
+.desc {
+  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--text-secondary, #6b6560);
+  margin-top: var(--sp-1, 0.25rem);
+  line-height: 1.6;
+}
