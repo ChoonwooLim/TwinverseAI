@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════
-   PostPage — Architectural Futurism
+   PostPage — Dark Glass Neon
    ═══════════════════════════════════════════════ */
 
 .page {
@@ -16,19 +16,19 @@
   padding: 0;
   background: none;
   border: none;
-  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
-  font-size: var(--text-xs, 0.72rem);
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 700;
   letter-spacing: var(--tracking-wide, 0.08em);
   text-transform: uppercase;
-  color: var(--text-tertiary, #a39e98);
+  color: var(--text-tertiary, #888);
   cursor: pointer;
   text-decoration: none;
   transition: color var(--dur-fast, 120ms);
 }
 
 .backBtn:hover {
-  color: var(--text-primary, #1a1715);
+  color: var(--neon-indigo, #667eea);
 }
 
 .backArrow {
@@ -44,56 +44,55 @@
 
 .postHeader {
   padding-bottom: var(--sp-6, 1.75rem);
-  border-bottom: 2px solid var(--border-rule, #1a1715);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
   margin-bottom: var(--sp-8, 2.5rem);
 }
 
 .pageTitle {
-  font-family: var(--font-display, 'Syne'), sans-serif;
+  font-family: var(--font-display, 'Noto Sans KR'), sans-serif;
   font-size: clamp(1.75rem, 3.5vw, 3rem);
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  line-height: 1.05;
-  color: var(--text-primary, #1a1715);
+  font-weight: 700;
+  line-height: 1.1;
+  color: #ffffff;
   margin: 0 0 var(--sp-4, 1rem);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .postMeta {
   display: flex;
   align-items: center;
   gap: var(--sp-4, 1rem);
-  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
-  font-size: var(--text-xs, 0.72rem);
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 500;
   letter-spacing: var(--tracking-wide, 0.08em);
   text-transform: uppercase;
-  color: var(--text-tertiary, #a39e98);
+  color: var(--text-tertiary, #888);
 }
 
 .postMeta span + span::before {
   content: '/';
   margin-right: var(--sp-4, 1rem);
-  color: var(--border-default, #e8e4df);
+  color: rgba(255, 255, 255, 0.15);
 }
 
 /* ── Content ── */
 
 .content {
-  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
+  font-family: var(--font-body, 'Inter'), sans-serif;
   font-size: var(--text-base, 1rem);
   line-height: 1.8;
-  color: var(--text-secondary, #6b6560);
+  color: var(--text-secondary, #ccc);
 }
 
 .content h2,
 .content h3 {
-  font-family: var(--font-display, 'Syne'), sans-serif;
-  color: var(--text-primary, #1a1715);
-  letter-spacing: -0.02em;
+  font-family: var(--font-display, 'Noto Sans KR'), sans-serif;
+  color: #ffffff;
 }
 
 .content a {
-  color: var(--ultra-500, #2d3bcc);
+  color: var(--neon-indigo, #667eea);
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
 }
@@ -102,9 +101,9 @@
 
 .loading {
   padding: var(--sp-16, 5rem) 0;
-  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
+  font-family: var(--font-body, 'Inter'), sans-serif;
   font-size: var(--text-sm, 0.875rem);
-  color: var(--text-tertiary, #a39e98);
+  color: var(--text-tertiary, #888);
   letter-spacing: var(--tracking-wide, 0.08em);
   text-transform: uppercase;
   text-align: center;

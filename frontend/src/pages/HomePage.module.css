@@ -1,6 +1,6 @@
-/* ═══════════════════════════════════════════════
-   HomePage — Architectural Futurism
-   ═══════════════════════════════════════════════ */
+/* ═════════��═════════════════════════════════════
+   HomePage — Dark Glass Neon
+   ═══════════════════���═══════════════════════════ */
 
 .home {
   max-width: 1100px;
@@ -11,42 +11,47 @@
 
 .hero {
   padding: var(--sp-16, 6rem) 0 var(--sp-12, 4.5rem);
-  border-bottom: 2px solid var(--border-rule, #1a1715);
+  border-bottom: 1px solid var(--border-default, rgba(255,255,255,0.1));
   position: relative;
 }
 
 .heroOverline {
   display: block;
-  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
-  font-size: var(--text-xs, 0.72rem);
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 600;
   letter-spacing: var(--tracking-mega, 0.15em);
   text-transform: uppercase;
-  color: var(--terra-400, #c45d3e);
+  color: var(--neon-cyan, #00d4ff);
   margin-bottom: var(--sp-4, 1rem);
+  text-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
 }
 
 .heroTitle {
-  font-family: var(--font-display, 'Syne'), sans-serif;
-  font-size: clamp(3.5rem, 9vw, 8rem);
-  font-weight: 800;
-  line-height: 0.92;
+  font-family: var(--font-display, 'Noto Sans KR'), sans-serif;
+  font-size: clamp(3rem, 8vw, 6rem);
+  font-weight: 700;
+  line-height: 1;
   letter-spacing: -0.03em;
-  color: var(--text-primary, #1a1715);
+  color: #ffffff;
   margin: 0 0 var(--sp-6, 1.5rem);
   max-width: 14ch;
+  text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.5);
 }
 
 .heroTitle em {
   font-style: normal;
-  color: var(--ultra-500, #2d3bcc);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .heroSub {
-  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
-  font-size: var(--text-lg, 1.125rem);
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-lg, 1.2rem);
   line-height: 1.65;
-  color: var(--text-secondary, #6b6560);
+  color: var(--text-secondary, #ccc);
   max-width: 52ch;
   margin: 0 0 var(--sp-8, 2rem);
 }
@@ -61,53 +66,50 @@
 .primaryBtn {
   display: inline-block;
   padding: 0.85rem 2rem;
-  background: var(--text-primary, #1a1715);
-  color: var(--surface-page, #f8f6f3);
-  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #ffffff;
+  font-family: var(--font-body, 'Inter'), sans-serif;
   font-size: var(--text-sm, 0.875rem);
   font-weight: 600;
-  letter-spacing: var(--tracking-wide, 0.08em);
-  text-transform: uppercase;
   text-decoration: none;
-  border: 1.5px solid var(--text-primary, #1a1715);
-  border-radius: var(--radius-sm, 3px);
+  border: none;
+  border-radius: var(--radius-sm, 5px);
   cursor: pointer;
-  transition: background var(--dur-fast, 120ms), color var(--dur-fast, 120ms);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .primaryBtn:hover {
-  background: var(--ultra-500, #2d3bcc);
-  border-color: var(--ultra-500, #2d3bcc);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
 }
 
 .secondaryBtn {
   display: inline-block;
   padding: 0.85rem 2rem;
   background: transparent;
-  color: var(--text-primary, #1a1715);
-  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
+  color: var(--neon-indigo, #667eea);
+  font-family: var(--font-body, 'Inter'), sans-serif;
   font-size: var(--text-sm, 0.875rem);
   font-weight: 600;
-  letter-spacing: var(--tracking-wide, 0.08em);
-  text-transform: uppercase;
   text-decoration: none;
-  border: 1px solid var(--text-primary, #1a1715);
-  border-radius: var(--radius-sm, 3px);
+  border: 2px solid var(--neon-indigo, #667eea);
+  border-radius: var(--radius-sm, 5px);
   cursor: pointer;
-  transition: background var(--dur-fast, 120ms);
+  transition: all 0.3s ease;
 }
 
 .secondaryBtn:hover {
-  background: var(--ultra-50, #eceffe);
-  border-color: var(--ultra-500, #2d3bcc);
-  color: var(--ultra-500, #2d3bcc);
+  background: var(--neon-indigo, #667eea);
+  color: #ffffff;
+  transform: translateY(-2px);
 }
 
 /* ── Section common ── */
 
 .section {
   padding: var(--sp-10, 3rem) 0;
-  border-bottom: 1px solid var(--border-default, #e8e4df);
+  border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,0.06));
 }
 
 .sectionHeader {
@@ -118,32 +120,30 @@
 }
 
 .sectionTitle {
-  font-family: var(--font-display, 'Syne'), sans-serif;
-  font-size: var(--text-xl, 1.25rem);
+  font-family: var(--font-display, 'Noto Sans KR'), sans-serif;
+  font-size: var(--text-xl, 1.4rem);
   font-weight: 700;
-  color: var(--text-primary, #1a1715);
+  color: #ffffff;
   margin: 0;
-  letter-spacing: -0.01em;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .sectionOverline {
   display: block;
-  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
-  font-size: var(--text-xs, 0.72rem);
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 600;
   letter-spacing: var(--tracking-mega, 0.15em);
   text-transform: uppercase;
-  color: var(--text-tertiary, #a39e98);
+  color: var(--text-tertiary, #888);
   margin-bottom: var(--sp-2, 0.5rem);
 }
 
 .moreLink {
-  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
-  font-size: var(--text-xs, 0.72rem);
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 600;
-  letter-spacing: var(--tracking-wide, 0.08em);
-  text-transform: uppercase;
-  color: var(--ultra-500, #2d3bcc);
+  color: var(--neon-indigo, #667eea);
   text-decoration: none;
   border-bottom: 1px solid currentColor;
   padding-bottom: 1px;
@@ -151,7 +151,7 @@
 }
 
 .moreLink:hover {
-  color: var(--ultra-600, #232fa3);
+  color: var(--neon-cyan, #00d4ff);
 }
 
 /* ── Notice / Post List ── */
@@ -169,9 +169,9 @@
   justify-content: space-between;
   align-items: baseline;
   padding: var(--sp-3, 0.75rem) 0;
-  border-bottom: 1px solid var(--border-subtle, #f0ece7);
+  border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,0.06));
   text-decoration: none;
-  color: var(--text-primary, #1a1715);
+  color: var(--text-secondary, #ccc);
   transition: color var(--dur-fast, 120ms);
   gap: var(--sp-4, 1rem);
 }
@@ -183,11 +183,11 @@
 
 .noticeItem:hover,
 .postItem:hover {
-  color: var(--ultra-500, #2d3bcc);
+  color: var(--neon-cyan, #00d4ff);
 }
 
 .noticeTitle {
-  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
+  font-family: var(--font-body, 'Inter'), sans-serif;
   font-weight: 500;
   font-size: var(--text-sm, 0.875rem);
   flex: 1;
@@ -195,9 +195,9 @@
 
 .noticeDate,
 .postMeta {
-  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
-  font-size: var(--text-xs, 0.72rem);
-  color: var(--text-tertiary, #a39e98);
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--text-tertiary, #888);
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -207,36 +207,36 @@
 .serviceGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: var(--sp-4, 1rem);
+  gap: var(--sp-5, 1.25rem);
 }
 
 .serviceCard {
   padding: var(--sp-6, 1.5rem);
-  border: 1px solid var(--border-default, #e8e4df);
-  border-radius: 0;
-  background: var(--surface-raised, #fff);
-  transition: transform var(--dur-normal, 200ms) var(--ease-out-expo, ease),
-              box-shadow var(--dur-normal, 200ms) var(--ease-out-expo, ease);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-lg, 15px);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .serviceCard:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--shadow-hover, 0 8px 32px rgba(26, 23, 21, 0.1));
+  transform: translateY(-5px);
+  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2);
 }
 
 .serviceCard h3 {
-  font-family: var(--font-display, 'Syne'), sans-serif;
+  font-family: var(--font-display, 'Noto Sans KR'), sans-serif;
   font-size: var(--text-base, 1rem);
-  font-weight: 700;
-  color: var(--text-primary, #1a1715);
+  font-weight: 600;
+  color: #ffffff;
   margin: 0 0 var(--sp-2, 0.5rem);
-  letter-spacing: -0.01em;
 }
 
 .serviceCard p {
-  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
+  font-family: var(--font-body, 'Inter'), sans-serif;
   font-size: var(--text-sm, 0.875rem);
-  color: var(--text-secondary, #6b6560);
+  color: var(--text-secondary, #ccc);
   line-height: 1.6;
   margin: 0;
 }

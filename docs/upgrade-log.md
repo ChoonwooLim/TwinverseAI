@@ -8,3 +8,7 @@
 | 2026-04-04 | 프로덕션급 UI 디자인 적용 (6개 페이지 + CSS 디자인 시스템) | feat | frontend/src/pages/, frontend/src/styles/ |
 | 2026-04-04 | 프로젝트 문서 시스템 + 스킬 뷰어 + 플러그인 관리 | feat | docs/, routers/docs.py, routers/skills.py, routers/plugins.py |
 | 2026-04-04 | 멀티스테이지 Dockerfile + SPA 정적파일 서빙 | infra | Dockerfile, backend/main.py |
+| 2026-04-04 | 로그인 회원가입 탭 + 자동 admin 생성 + bcrypt | feat | frontend/src/pages/LoginPage.jsx, backend/main.py |
+| 2026-04-04 | 게시판 시스템 (Post, Comment, File 모델 + CRUD API) | feat | backend/models/, backend/routers/ |
+| 2026-04-04 | 포탈 레이아웃 + 16종 페이지/컴포넌트 구현 | feat | frontend/src/components/, frontend/src/pages/ |
+| 2026-04-04 | Dark Glass Neon 디자인 전면 적용 (twinverse.org 스타일) | style | frontend/src/styles/, 22개 CSS 모듈 |

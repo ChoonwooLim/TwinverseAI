@@ -1,95 +1,94 @@
-/* ─── PostForm — Architectural Futurism ──────────────────────────────────── */
+/* ─── PostForm — Dark Glass Neon ──────────────────────────────────── */
 
 .form {
   display: flex;
   flex-direction: column;
   gap: var(--sp-5, 1.25rem);
   max-width: 800px;
-  font-family: var(--font-body, 'Plus Jakarta Sans', sans-serif);
+  font-family: var(--font-body, 'Inter', sans-serif);
 }
 
-/* ── Field label (optional utility class for consuming JSX) ──────────────── */
 .label {
   display: block;
-  font-family: var(--font-display, 'Syne', sans-serif);
-  font-size: 0.65rem;
+  font-family: var(--font-body, 'Inter', sans-serif);
+  font-size: 0.68rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: var(--tracking-mega, 0.15em);
-  color: var(--text-tertiary, #a39e98);
+  color: var(--text-tertiary, #888);
   margin-bottom: var(--sp-2, 0.5rem);
 }
 
-/* ── Shared input foundation ─────────────────────────────────────────────── */
+/* ── Inputs ── */
 .input,
 .textarea {
   width: 100%;
   box-sizing: border-box;
-  background: var(--surface-raised, #fff);
-  color: var(--text-primary, #1a1715);
-  font-family: var(--font-body, 'Plus Jakarta Sans', sans-serif);
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  font-family: var(--font-body, 'Inter', sans-serif);
   font-size: 0.95rem;
   outline: none;
-  transition: border-color var(--dur-fast, 100ms) var(--ease-out-expo, ease);
+  transition: border-color var(--dur-fast, 100ms);
 }
 
-/* ── Text input — bottom-border only style ───────────────────────────────── */
 .input {
-  padding: var(--sp-3, 0.75rem) 0;
-  border: none;
-  border-bottom: 2px solid var(--border-default, #e8e4df);
-  border-radius: 0;
-  background: transparent;
+  padding: var(--sp-3, 0.75rem) var(--sp-4, 1rem);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-md, 10px);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .input::placeholder {
-  color: var(--text-tertiary, #a39e98);
+  color: var(--text-tertiary, #888);
 }
 
 .input:focus {
-  border-bottom-color: var(--ultra-500, #2d3bcc);
+  border-color: var(--neon-indigo, #667eea);
 }
 
-/* ── Textarea — thin full border ─────────────────────────────────────────── */
 .textarea {
   padding: var(--sp-3, 0.75rem) var(--sp-4, 1rem);
-  border: 1px solid var(--border-default, #e8e4df);
-  border-radius: 0;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-md, 10px);
   resize: vertical;
   min-height: 220px;
   line-height: 1.65;
 }
 
 .textarea::placeholder {
-  color: var(--text-tertiary, #a39e98);
+  color: var(--text-tertiary, #888);
 }
 
 .textarea:focus {
-  border-color: var(--ultra-500, #2d3bcc);
+  border-color: var(--neon-indigo, #667eea);
 }
 
-/* ── Submit button — ultramarine solid ───────────────────────────────────── */
+/* ── Submit ── */
 .submitBtn {
   align-self: flex-start;
   padding: var(--sp-3, 0.75rem) var(--sp-7, 1.75rem);
-  border-radius: var(--radius-sm, 3px);
-  font-family: var(--font-display, 'Syne', sans-serif);
-  font-size: 0.72rem;
+  border-radius: var(--radius-sm, 5px);
+  font-family: var(--font-body, 'Inter', sans-serif);
+  font-size: 0.78rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: var(--tracking-wide, 0.08em);
   cursor: pointer;
   border: none;
-  background: var(--ultra-500, #2d3bcc);
-  color: #fff;
-  transition: opacity var(--dur-fast, 100ms) var(--ease-out-expo, ease);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .submitBtn:hover {
-  opacity: 0.88;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
 }
 
 .submitBtn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+  transform: none;
 }

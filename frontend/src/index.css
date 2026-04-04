@@ -1,32 +1,17 @@
 /* Component variable aliases — bridge to design system */
 :root {
   --color-bg:             var(--surface-page);
-  --color-bg-hover:       var(--cream-200);
-  --color-bg-subtle:      var(--cream-50);
+  --color-bg-hover:       var(--glass-bg-hover);
+  --color-bg-subtle:      var(--dark-700);
   --color-text:           var(--text-primary);
   --color-text-secondary: var(--text-secondary);
   --color-text-tertiary:  var(--text-tertiary);
-  --color-primary:        var(--ultra-500);
-  --color-primary-bg:     var(--ultra-50);
+  --color-primary:        var(--neon-indigo);
+  --color-primary-bg:     rgba(102, 126, 234, 0.15);
   --color-border:         var(--border-default);
   --color-border-light:   var(--border-subtle);
   --color-danger:         var(--color-danger);
   --color-success:        var(--color-success);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-bg:             var(--surface-page);
-    --color-bg-hover:       #222120;
-    --color-bg-subtle:      #1a1918;
-    --color-text:           var(--text-primary);
-    --color-text-secondary: var(--text-secondary);
-    --color-text-tertiary:  var(--text-tertiary);
-    --color-primary:        var(--ultra-200);
-    --color-primary-bg:     rgba(168, 177, 248, 0.1);
-    --color-border:         var(--border-default);
-    --color-border-light:   var(--border-subtle);
-  }
 }
 
 body { margin: 0; }

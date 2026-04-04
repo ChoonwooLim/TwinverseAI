@@ -34,3 +34,41 @@
 - CLAUDE.md + /init 스킬에 Dockerfile 필수 생성 규칙 반영
 
 ---
+
+### 작업 요약 (세션 2)
+
+| 카테고리 | 작업 내용 | 상태 |
+|----------|----------|------|
+| feat | 로그인 회원가입 탭 + 자동 admin 생성 + bcrypt | 완료 |
+| feat | 게시판 시스템 (Post, Comment, FileRecord 모델 + CRUD API) | 완료 |
+| feat | 레이아웃 컴포넌트 (TopBar, Sidebar, Footer, MainLayout) | 완료 |
+| feat | 게시판 컴포넌트 (PostList, PostDetail, PostForm, CommentSection, FileUpload) | 완료 |
+| feat | 공개 페이지 (HomePage, AboutPage, ServicesPage) | 완료 |
+| feat | 커뮤니티 페이지 (BoardPage, PostPage) | 완료 |
+| feat | 어드민 페이지 (Dashboard, Users, Boards, Docs, Skills, Plugins) | 완료 |
+| feat | App.jsx 포탈 레이아웃 + 라우팅 전면 재구성 | 완료 |
+| fix | 로그인 후 다시 로그인 화면 표시되는 버그 수정 | 완료 |
+| fix | JWT sub 클레임 문자열 변환 (python-jose 호환) | 완료 |
+| style | Architectural Futurism 디자인 적용 (board, pages, design system) | 완료 |
+| style | Dark Glass Neon 디자인으로 전면 변경 (twinverse.org 스타일 매칭) | 완료 |
+| docs | /init 스킬 전면 업데이트 (현재 포탈 전체 코드 반영) | 완료 |
+
+### 세부 내용 (세션 2)
+
+- 로그인 페이지에 회원가입 탭 추가, bcrypt 직접 사용
+- 앱 시작 시 자동 admin 계정 생성 (admin/admin1234)
+- Post, Comment, FileRecord 모델 + boards, comments, files 라우터 구현
+- 어드민 라우터 확장 (통계, 사용자 관리, 게시판 관리)
+- TopBar (glassmorphism), Sidebar, Footer, MainLayout 레이아웃 구현
+- 게시판 컴포넌트 5종 + 커뮤니티 페이지 2종 + 공개 페이지 3종 + 어드민 페이지 6종 구현
+- JWT sub 클레임을 문자열로 변환하여 python-jose 호환 버그 수정
+- 로그인 후 redirect loop 버그 수정 (401 인터셉터 로직 개선)
+- **디자인 전면 변경**: Architectural Futurism → Dark Glass Neon (twinverse.org 스타일)
+  - 22개 CSS 파일 전면 재작성
+  - 폰트: Syne + Plus Jakarta Sans → Noto Sans KR + Inter
+  - 컬러: 크림/울트라마린 → 다크 배경(#0a0e27) + 네온 액센트(#667eea, #00d4ff)
+  - 글래스모피즘: backdrop-filter blur, rgba 반투명 표면
+  - 카드: 15px border-radius, glow shadow hover
+  - 그라디언트 버튼: #667eea → #764ba2
+
+---

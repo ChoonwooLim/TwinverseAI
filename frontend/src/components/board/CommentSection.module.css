@@ -1,24 +1,22 @@
-/* ─── CommentSection — Architectural Futurism ────────────────────────────── */
+/* ─── CommentSection — Dark Glass Neon ────────────────────────────── */
 
 .section {
   margin-top: var(--sp-12, 3rem);
   padding-top: var(--sp-8, 2rem);
-  border-top: 2px solid var(--ink-500, #1a1715);
-  font-family: var(--font-body, 'Plus Jakarta Sans', sans-serif);
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  font-family: var(--font-body, 'Inter', sans-serif);
 }
 
-/* ── Section heading ─────────────────────────────────────────────────────── */
 .title {
-  font-family: var(--font-display, 'Syne', sans-serif);
-  font-size: 0.65rem;
+  font-family: var(--font-body, 'Inter', sans-serif);
+  font-size: 0.68rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: var(--tracking-mega, 0.15em);
-  color: var(--text-tertiary, #a39e98);
+  color: var(--text-tertiary, #888);
   margin: 0 0 var(--sp-6, 1.5rem);
 }
 
-/* ── Comment list ────────────────────────────────────────────────────────── */
 .list {
   list-style: none;
   padding: 0;
@@ -27,14 +25,13 @@
 
 .item {
   padding: var(--sp-5, 1.25rem) 0;
-  border-bottom: 1px solid var(--border-subtle, #f0ece7);
+  border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,0.06));
 }
 
 .item:first-child {
-  border-top: 1px solid var(--border-subtle, #f0ece7);
+  border-top: 1px solid var(--border-subtle, rgba(255,255,255,0.06));
 }
 
-/* ── Comment header row ──────────────────────────────────────────────────── */
 .commentHeader {
   display: flex;
   align-items: baseline;
@@ -43,17 +40,15 @@
 }
 
 .author {
-  font-family: var(--font-display, 'Syne', sans-serif);
+  font-family: var(--font-display, 'Noto Sans KR', sans-serif);
   font-size: 0.78rem;
   font-weight: 700;
-  color: var(--text-primary, #1a1715);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  color: #ffffff;
 }
 
 .date {
   font-size: 0.72rem;
-  color: var(--text-tertiary, #a39e98);
+  color: var(--text-tertiary, #888);
   font-variant-numeric: tabular-nums;
 }
 
@@ -63,12 +58,12 @@
   border: none;
   padding: 0 var(--sp-1, 0.25rem);
   cursor: pointer;
-  font-family: var(--font-display, 'Syne', sans-serif);
-  font-size: 0.65rem;
+  font-family: var(--font-body, 'Inter', sans-serif);
+  font-size: 0.68rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: var(--tracking-wide, 0.08em);
-  color: var(--terra-400, #c45d3e);
+  color: #ef4444;
   opacity: 0.7;
   transition: opacity var(--dur-fast, 100ms);
 }
@@ -77,15 +72,14 @@
   opacity: 1;
 }
 
-/* ── Comment body ────────────────────────────────────────────────────────── */
 .commentText {
   margin: 0;
   font-size: 0.88rem;
   line-height: 1.65;
-  color: var(--text-primary, #1a1715);
+  color: var(--text-secondary, #ccc);
 }
 
-/* ── Reply form ──────────────────────────────────────────────────────────── */
+/* ── Reply form ── */
 .form {
   display: flex;
   flex-direction: column;
@@ -96,47 +90,50 @@
   width: 100%;
   box-sizing: border-box;
   padding: var(--sp-3, 0.75rem) var(--sp-4, 1rem);
-  border: 1px solid var(--border-default, #e8e4df);
-  border-radius: 0;
-  font-family: var(--font-body, 'Plus Jakarta Sans', sans-serif);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-md, 10px);
+  font-family: var(--font-body, 'Inter', sans-serif);
   font-size: 0.88rem;
   line-height: 1.6;
-  color: var(--text-primary, #1a1715);
-  background: var(--surface-raised, #fff);
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
   resize: vertical;
   outline: none;
-  transition: border-color var(--dur-fast, 100ms) var(--ease-out-expo, ease);
+  transition: border-color var(--dur-fast, 100ms);
 }
 
 .textarea::placeholder {
-  color: var(--text-tertiary, #a39e98);
+  color: var(--text-tertiary, #888);
 }
 
 .textarea:focus {
-  border-color: var(--ultra-500, #2d3bcc);
+  border-color: var(--neon-indigo, #667eea);
 }
 
 .submitBtn {
   align-self: flex-end;
   padding: var(--sp-2, 0.5rem) var(--sp-6, 1.5rem);
-  border-radius: var(--radius-sm, 3px);
-  font-family: var(--font-display, 'Syne', sans-serif);
-  font-size: 0.65rem;
+  border-radius: var(--radius-sm, 5px);
+  font-family: var(--font-body, 'Inter', sans-serif);
+  font-size: 0.68rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: var(--tracking-wide, 0.08em);
   border: none;
-  background: var(--ultra-500, #2d3bcc);
-  color: #fff;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #ffffff;
   cursor: pointer;
-  transition: opacity var(--dur-fast, 100ms) var(--ease-out-expo, ease);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .submitBtn:hover {
-  opacity: 0.88;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
 }
 
 .submitBtn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+  transform: none;
 }

@@ -1,13 +1,12 @@
-/* ─── FileUpload — Architectural Futurism ────────────────────────────────── */
+/* ─── FileUpload — Dark Glass Neon ────────────────────────────────── */
 
 .upload {
   display: flex;
   flex-direction: column;
   gap: var(--sp-4, 1rem);
-  font-family: var(--font-body, 'Plus Jakarta Sans', sans-serif);
+  font-family: var(--font-body, 'Inter', sans-serif);
 }
 
-/* ── Drop zone / add button ──────────────────────────────────────────────── */
 .addBtn {
   display: flex;
   align-items: center;
@@ -15,34 +14,29 @@
   gap: var(--sp-2, 0.5rem);
   align-self: stretch;
   padding: var(--sp-6, 1.5rem) var(--sp-5, 1.25rem);
-  border: 1.5px dashed var(--border-default, #e8e4df);
-  border-radius: 0;
+  border: 1.5px dashed rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-lg, 15px);
   background: none;
   cursor: pointer;
-  font-family: var(--font-display, 'Syne', sans-serif);
-  font-size: 0.65rem;
+  font-family: var(--font-body, 'Inter', sans-serif);
+  font-size: 0.68rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: var(--tracking-mega, 0.15em);
-  color: var(--text-tertiary, #a39e98);
-  transition:
-    border-color var(--dur-fast, 100ms) var(--ease-out-expo, ease),
-    color var(--dur-fast, 100ms) var(--ease-out-expo, ease),
-    background var(--dur-fast, 100ms) var(--ease-out-expo, ease);
+  color: var(--text-tertiary, #888);
+  transition: all 0.3s ease;
 }
 
 .addBtn:hover {
-  border-color: var(--ultra-500, #2d3bcc);
-  color: var(--ultra-500, #2d3bcc);
-  background: var(--ultra-50, #eceffe);
+  border-color: var(--neon-indigo, #667eea);
+  color: var(--neon-indigo, #667eea);
+  background: rgba(102, 126, 234, 0.08);
 }
 
-/* ── Hidden native file input ────────────────────────────────────────────── */
 .hidden {
   display: none;
 }
 
-/* ── Queued file list ────────────────────────────────────────────────────── */
 .fileList {
   list-style: none;
   padding: 0;
@@ -50,7 +44,9 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  border: 1px solid var(--border-default, #e8e4df);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-md, 10px);
+  overflow: hidden;
 }
 
 .fileItem {
@@ -58,8 +54,8 @@
   align-items: center;
   gap: var(--sp-3, 0.75rem);
   padding: var(--sp-3, 0.75rem) var(--sp-4, 1rem);
-  background: var(--surface-raised, #fff);
-  border-bottom: 1px solid var(--border-subtle, #f0ece7);
+  background: rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,0.06));
   font-size: 0.82rem;
 }
 
@@ -68,39 +64,36 @@
 }
 
 .fileItem:nth-child(even) {
-  background: var(--cream-200, #f0ece7);
+  background: rgba(255, 255, 255, 0.03);
 }
 
-/* ── File name ───────────────────────────────────────────────────────────── */
 .fileName {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--text-primary, #1a1715);
+  color: var(--text-secondary, #ccc);
   font-size: 0.82rem;
 }
 
-/* ── File size ───────────────────────────────────────────────────────────── */
 .fileSize {
-  color: var(--text-tertiary, #a39e98);
+  color: var(--text-tertiary, #888);
   font-size: 0.72rem;
   font-variant-numeric: tabular-nums;
   flex-shrink: 0;
 }
 
-/* ── Remove button ───────────────────────────────────────────────────────── */
 .removeBtn {
   flex-shrink: 0;
   background: none;
   border: none;
   cursor: pointer;
-  font-family: var(--font-display, 'Syne', sans-serif);
-  font-size: 0.65rem;
+  font-family: var(--font-body, 'Inter', sans-serif);
+  font-size: 0.68rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--terra-400, #c45d3e);
+  color: #ef4444;
   opacity: 0.7;
   padding: 0;
   transition: opacity var(--dur-fast, 100ms);

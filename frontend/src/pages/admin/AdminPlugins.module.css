@@ -1,6 +1,5 @@
 /* ═══════════════════════════════════════════════
-   AdminPlugins — Architectural Futurism
-   Sharp card grid, no nesting
+   AdminPlugins — Dark Glass Neon
    ═══════════════════════════════════════════════ */
 
 .page {
@@ -11,27 +10,26 @@
 
 .pageHeader {
   padding: var(--sp-8, 2.5rem) 0 var(--sp-6, 1.75rem);
-  border-bottom: 2px solid var(--border-rule, #1a1715);
+  border-bottom: 1px solid var(--border-default, rgba(255,255,255,0.1));
   margin-bottom: var(--sp-8, 2.5rem);
 }
 
 .overline {
   display: block;
-  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
-  font-size: var(--text-xs, 0.72rem);
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 600;
   letter-spacing: var(--tracking-mega, 0.15em);
   text-transform: uppercase;
-  color: var(--text-tertiary, #a39e98);
+  color: var(--text-tertiary, #888);
   margin-bottom: var(--sp-2, 0.5rem);
 }
 
 .title {
-  font-family: var(--font-display, 'Syne'), sans-serif;
+  font-family: var(--font-display, 'Noto Sans KR'), sans-serif;
   font-size: clamp(1.75rem, 3vw, 2.75rem);
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  color: var(--text-primary, #1a1715);
+  font-weight: 700;
+  color: #ffffff;
   margin: 0;
 }
 
@@ -40,69 +38,70 @@
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
-  gap: 1px;
-  background: var(--border-default, #e8e4df);
-  border: 1px solid var(--border-default, #e8e4df);
+  gap: var(--sp-5, 1.25rem);
 }
 
 /* ── Card ── */
 
 .card {
   padding: var(--sp-6, 1.75rem);
-  background: var(--surface-raised, #fff);
-  border-radius: 0;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-lg, 15px);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--sp-2, 0.5rem);
-  transition: background var(--dur-normal, 200ms);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  overflow: hidden;
 }
 
 .card:hover {
-  background: var(--ultra-50, #eceffe);
+  transform: translateY(-3px);
+  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2);
 }
 
 .cardStatusRule {
   position: absolute;
   top: 0;
-  left: var(--sp-6, 1.75rem);
-  width: 20px;
+  left: 0;
+  right: 0;
   height: 3px;
 }
 
 .cardStatusRule.isConfigured {
-  background: #16a34a;
+  background: linear-gradient(90deg, #16a34a, #64ffda);
 }
 
 .cardStatusRule.notConfigured {
-  background: var(--terra-400, #c45d3e);
+  background: linear-gradient(90deg, #ef4444, #f59e0b);
 }
 
 /* ── Card Content ── */
 
 .cardName {
-  font-family: var(--font-display, 'Syne'), sans-serif;
+  font-family: var(--font-display, 'Noto Sans KR'), sans-serif;
   font-size: var(--text-base, 1rem);
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  color: var(--text-primary, #1a1715);
+  font-weight: 600;
+  color: #ffffff;
   margin: var(--sp-3, 0.75rem) 0 0;
 }
 
 .cardDesc {
-  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
+  font-family: var(--font-body, 'Inter'), sans-serif;
   font-size: var(--text-sm, 0.875rem);
   line-height: 1.6;
-  color: var(--text-secondary, #6b6560);
+  color: var(--text-secondary, #ccc);
   margin: 0;
   flex: 1;
 }
 
 .cardUsage {
-  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
-  font-size: var(--text-xs, 0.72rem);
-  color: var(--text-tertiary, #a39e98);
-  letter-spacing: 0.02em;
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--text-tertiary, #888);
   margin: 0;
 }
 
@@ -111,46 +110,46 @@
   align-items: center;
   justify-content: space-between;
   padding-top: var(--sp-3, 0.75rem);
-  border-top: 1px solid var(--border-subtle, #f0ece7);
+  border-top: 1px solid var(--border-subtle, rgba(255,255,255,0.06));
   margin-top: var(--sp-2, 0.5rem);
 }
 
 .configured {
-  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
-  font-size: var(--text-xs, 0.72rem);
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: #16a34a;
+  text-shadow: 0 0 8px rgba(22, 163, 74, 0.3);
 }
 
 .notConfigured {
-  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
-  font-size: var(--text-xs, 0.72rem);
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--terra-400, #c45d3e);
+  color: #ef4444;
 }
 
 /* ── Action Button ── */
 
 .configBtn {
   padding: 0.3rem 0.75rem;
-  border: 1px solid var(--border-default, #e8e4df);
-  border-radius: var(--radius-sm, 3px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-sm, 5px);
   background: transparent;
   cursor: pointer;
-  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
-  font-size: var(--text-xs, 0.72rem);
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 600;
-  color: var(--text-secondary, #6b6560);
-  letter-spacing: 0.04em;
-  transition: background var(--dur-fast, 120ms), border-color var(--dur-fast, 120ms), color var(--dur-fast, 120ms);
+  color: var(--text-secondary, #ccc);
+  transition: all 0.3s ease;
 }
 
 .configBtn:hover {
-  background: var(--ultra-50, #eceffe);
-  border-color: var(--ultra-500, #2d3bcc);
-  color: var(--ultra-500, #2d3bcc);
+  background: rgba(102, 126, 234, 0.15);
+  border-color: var(--neon-indigo, #667eea);
+  color: var(--neon-indigo, #667eea);
 }
