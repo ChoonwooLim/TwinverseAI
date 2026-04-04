@@ -1,17 +1,16 @@
 import { useState, useEffect } from "react";
 import styles from "./DeskRPGRun.module.css";
 
-const DESKRPG_URL = import.meta.env.VITE_DESKRPG_URL || "https://twinverseai.twinverse.org/deskrpg-app";
+const DESKRPG_URL = import.meta.env.VITE_DESKRPG_URL || "http://192.168.219.101:3100";
 
 export default function DeskRPGRun() {
-  const [status, setStatus] = useState("checking"); // checking | online | offline
-  const [fullscreen, setFullscreen] = useState(false);
+  const [status, setStatus] = useState("checking");
 
   useEffect(() => {
     let cancelled = false;
     const check = async () => {
       try {
-        const res = await fetch(DESKRPG_URL, { method: "HEAD", mode: "no-cors" });
+        await fetch(DESKRPG_URL, { method: "HEAD", mode: "no-cors" });
         if (!cancelled) setStatus("online");
       } catch {
         if (!cancelled) setStatus("offline");
@@ -22,33 +21,9 @@ export default function DeskRPGRun() {
     return () => { cancelled = true; clearInterval(interval); };
   }, []);
 
-  const handleFullscreen = () => {
-    setFullscreen(true);
+  const handleLaunch = () => {
+    window.open(DESKRPG_URL, "_blank", "noopener");
   };
-
-  const handleNewTab = () => {
-    window.open(DESKRPG_URL, "_blank");
-  };
-
-  if (fullscreen) {
-    return (
-      <div className={styles.fullscreen}>
-        <div className={styles.fullscreenBar}>
-          <span className={styles.fullscreenTitle}>DeskRPG</span>
-          <div className={styles.fullscreenActions}>
-            <button onClick={handleNewTab} className={styles.barBtn}>새 탭에서 열기</button>
-            <button onClick={() => setFullscreen(false)} className={styles.barBtn}>닫기</button>
-          </div>
-        </div>
-        <iframe
-          src={DESKRPG_URL}
-          className={styles.fullscreenFrame}
-          title="DeskRPG"
-          allow="microphone; camera; fullscreen"
-        />
-      </div>
-    );
-  }
 
   return (
     <div className={styles.page}>
@@ -60,57 +35,47 @@ export default function DeskRPGRun() {
         </p>
       </header>
 
-      {status === "online" ? (
-        <>
-          <section className={styles.toolbar}>
-            <div className={styles.statusBadge}>
-              <span className={`${styles.statusDot} ${styles.statusOnline}`} />
-              서버 연결됨
-            </div>
-            <div className={styles.toolbarActions}>
-              <button onClick={handleFullscreen} className={styles.actionBtn}>전체화면</button>
-              <button onClick={handleNewTab} className={styles.actionBtnOutline}>새 탭에서 열기</button>
-            </div>
-          </section>
-          <section className={styles.embedSection}>
-            <iframe
-              src={DESKRPG_URL}
-              className={styles.embedFrame}
-              title="DeskRPG"
-              allow="microphone; camera; fullscreen"
-            />
-          </section>
-        </>
-      ) : (
-        <section className={styles.embedSection}>
-          <div className={styles.placeholder}>
-            <div className={styles.iconWrap}>
-              {status === "checking" ? (
-                <div className={styles.spinner} />
-              ) : (
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polygon points="5 3 19 12 5 21 5 3" />
-                </svg>
-              )}
-            </div>
-            <h2 className={styles.placeholderTitle}>
-              {status === "checking" ? "서버 연결 확인 중..." : "DeskRPG 서버에 연결할 수 없습니다"}
-            </h2>
-            <p className={styles.placeholderDesc}>
-              {status === "checking"
-                ? "DeskRPG 서버 상태를 확인하고 있습니다."
-                : "서버가 실행 중인지 확인해 주세요. 15초마다 자동으로 재시도합니다."}
-            </p>
-            {status === "offline" && (
-              <code className={styles.cmdHint}>Orbitron 서버에서: npx deskrpg start -p 3100 -d</code>
-            )}
-            <div className={styles.statusBadge}>
-              <span className={`${styles.statusDot} ${status === "checking" ? styles.statusChecking : ""}`} />
-              {status === "checking" ? "확인 중" : "서버 미연결"}
+      <section className={styles.launchSection}>
+        <div className={styles.launchCard}>
+          <div className={styles.launchVisual}>
+            <div className={styles.mockScreen}>
+              <div className={styles.mockHeader}>
+                <span /><span /><span />
+              </div>
+              <div className={styles.mockBody}>
+                <div className={styles.mock3d}>
+                  <div className={styles.mockFloor} />
+                  <div className={styles.mockDesk} />
+                  <div className={styles.mockChar} />
+                  <div className={styles.mockNpc} />
+                </div>
+              </div>
             </div>
           </div>
-        </section>
-      )}
+          <div className={styles.launchInfo}>
+            <div className={styles.statusBadge}>
+              <span className={`${styles.statusDot} ${status === "online" ? styles.statusOnline : status === "checking" ? styles.statusChecking : ""}`} />
+              {status === "online" ? "서버 실행 중" : status === "checking" ? "확인 중..." : "서버 미연결"}
+            </div>
+            <h2 className={styles.launchTitle}>가상 오피스에 입장하기</h2>
+            <p className={styles.launchDesc}>
+              DeskRPG가 새 탭에서 열립니다. 2D 픽셀아트 가상 오피스에서 AI 동료들과 함께 일하세요.
+            </p>
+            <button
+              onClick={handleLaunch}
+              className={styles.launchBtn}
+              disabled={status !== "online"}
+            >
+              {status === "online" ? "DeskRPG 실행하기" : status === "checking" ? "서버 확인 중..." : "서버 미연결"}
+            </button>
+            {status === "offline" && (
+              <p className={styles.offlineHint}>
+                서버가 실행되지 않고 있습니다. 15초마다 자동으로 재확인합니다.
+              </p>
+            )}
+          </div>
+        </div>
+      </section>
 
       <section className={styles.infoSection}>
         <h3 className={styles.infoTitle}>접속 정보</h3>
@@ -132,6 +97,36 @@ export default function DeskRPGRun() {
           <div className={styles.infoRow}>
             <span className={styles.infoLabel}>프로토콜</span>
             <span className={styles.infoValue}>HTTP + WebSocket (Socket.IO)</span>
+          </div>
+        </div>
+      </section>
+
+      <section className={styles.guideSection}>
+        <h3 className={styles.infoTitle}>사용 가이드</h3>
+        <div className={styles.guideGrid}>
+          <div className={styles.guideStep}>
+            <span className={styles.guideNum}>1</span>
+            <div>
+              <strong>"DeskRPG 실행하기"</strong> 버튼을 클릭하면 새 탭에서 DeskRPG가 열립니다.
+            </div>
+          </div>
+          <div className={styles.guideStep}>
+            <span className={styles.guideNum}>2</span>
+            <div>
+              <strong>회원가입/로그인</strong> 후 가상 오피스에 입장합니다.
+            </div>
+          </div>
+          <div className={styles.guideStep}>
+            <span className={styles.guideNum}>3</span>
+            <div>
+              <strong>캐릭터를 커스터마이징</strong>하고 오피스 맵을 탐색하세요.
+            </div>
+          </div>
+          <div className={styles.guideStep}>
+            <span className={styles.guideNum}>4</span>
+            <div>
+              <strong>AI NPC</strong>에게 업무를 위임하거나 AI 회의실에서 브레인스토밍하세요.
+            </div>
           </div>
         </div>
       </section>
