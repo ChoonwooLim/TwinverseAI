@@ -1,23 +1,68 @@
+/* =========================================================
+   MainLayout — Architectural Futurism
+   Shell: full-viewport flex column, structured body zone,
+   generous rhythmic padding in content
+   ========================================================= */
+
+/* ---- Root shell ---- */
 .layout {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  background: var(--surface-page, #f8f6f3);
 }
+
+/* ---- Body: sidebar + content row ---- */
 .body {
   flex: 1;
   display: flex;
+  flex-direction: row;
+  /* Max-width constraint: centered, architectural proportions */
   max-width: 1200px;
   width: 100%;
   margin: 0 auto;
+  /* Body fills full width below max */
+  align-items: stretch;
 }
+
+/* ---- Content zone ---- */
 .content {
   flex: 1;
-  padding: 1.5rem 2rem;
-  min-width: 0;
+  min-width: 0; /* Prevent flex overflow */
+  /* Asymmetric padding: generous top, measured sides */
+  padding: var(--sp-10, 2.5rem) var(--sp-8, 2rem) var(--sp-16, 4rem) var(--sp-8, 2rem);
 }
+
+/* ---- Full-width variant (no sidebar, max-width lifted) ---- */
 .full {
   max-width: 100%;
 }
+
+.full .body {
+  max-width: 100%;
+}
+
+/* ---- Narrow content variant (for forms, focused views) ---- */
+.narrow .content {
+  max-width: 720px;
+}
+
+/* ---- Section divider: structural horizontal rule ---- */
+.sectionRule {
+  display: block;
+  height: 1px;
+  background: var(--border-default, #e8e4df);
+  margin: var(--sp-10, 2.5rem) 0;
+}
+
+/* ---- Mobile ---- */
 @media (max-width: 768px) {
-  .content { padding: 1rem; }
+  .body {
+    flex-direction: column;
+  }
+
+  .content {
+    /* Tighter on mobile, but still asymmetric */
+    padding: var(--sp-6, 1.5rem) var(--sp-4, 1rem) var(--sp-10, 2.5rem);
+  }
 }

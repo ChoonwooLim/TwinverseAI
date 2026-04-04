@@ -1,14 +1,142 @@
-.section { margin-top: 2rem; border-top: 1px solid var(--color-border, #e5e5e5); padding-top: 1.5rem; }
-.title { font-size: 1rem; font-weight: 600; margin: 0 0 1rem; }
-.list { list-style: none; padding: 0; margin: 0 0 1.5rem; }
-.item { padding: 0.75rem 0; border-bottom: 1px solid var(--color-border-light, #f0f0f0); }
-.commentHeader { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.25rem; }
-.author { font-size: 0.85rem; }
-.date { font-size: 0.8rem; color: var(--color-text-tertiary, #999); }
-.deleteBtn { font-size: 0.75rem; color: var(--color-danger, #dc2626); background: none; border: none; cursor: pointer; margin-left: auto; }
-.commentText { margin: 0; font-size: 0.9rem; line-height: 1.5; }
-.form { display: flex; flex-direction: column; gap: 0.5rem; }
-.textarea { padding: 0.75rem; border: 1px solid var(--color-border, #ddd); border-radius: 6px; font-size: 0.9rem; resize: vertical; font-family: inherit; outline: none; }
-.textarea:focus { border-color: var(--color-primary, #2563eb); }
-.submitBtn { align-self: flex-end; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.85rem; font-weight: 500; border: none; background: var(--color-primary, #2563eb); color: #fff; cursor: pointer; }
-.submitBtn:disabled { opacity: 0.5; }
+/* ─── CommentSection — Architectural Futurism ────────────────────────────── */
+
+.section {
+  margin-top: var(--sp-12, 3rem);
+  padding-top: var(--sp-8, 2rem);
+  border-top: 2px solid var(--ink-500, #1a1715);
+  font-family: var(--font-body, 'Plus Jakarta Sans', sans-serif);
+}
+
+/* ── Section heading ─────────────────────────────────────────────────────── */
+.title {
+  font-family: var(--font-display, 'Syne', sans-serif);
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-mega, 0.15em);
+  color: var(--text-tertiary, #a39e98);
+  margin: 0 0 var(--sp-6, 1.5rem);
+}
+
+/* ── Comment list ────────────────────────────────────────────────────────── */
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--sp-8, 2rem);
+}
+
+.item {
+  padding: var(--sp-5, 1.25rem) 0;
+  border-bottom: 1px solid var(--border-subtle, #f0ece7);
+}
+
+.item:first-child {
+  border-top: 1px solid var(--border-subtle, #f0ece7);
+}
+
+/* ── Comment header row ──────────────────────────────────────────────────── */
+.commentHeader {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3, 0.75rem);
+  margin-bottom: var(--sp-2, 0.5rem);
+}
+
+.author {
+  font-family: var(--font-display, 'Syne', sans-serif);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-primary, #1a1715);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.date {
+  font-size: 0.72rem;
+  color: var(--text-tertiary, #a39e98);
+  font-variant-numeric: tabular-nums;
+}
+
+.deleteBtn {
+  margin-left: auto;
+  background: none;
+  border: none;
+  padding: 0 var(--sp-1, 0.25rem);
+  cursor: pointer;
+  font-family: var(--font-display, 'Syne', sans-serif);
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide, 0.08em);
+  color: var(--terra-400, #c45d3e);
+  opacity: 0.7;
+  transition: opacity var(--dur-fast, 100ms);
+}
+
+.deleteBtn:hover {
+  opacity: 1;
+}
+
+/* ── Comment body ────────────────────────────────────────────────────────── */
+.commentText {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.65;
+  color: var(--text-primary, #1a1715);
+}
+
+/* ── Reply form ──────────────────────────────────────────────────────────── */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3, 0.75rem);
+}
+
+.textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--sp-3, 0.75rem) var(--sp-4, 1rem);
+  border: 1px solid var(--border-default, #e8e4df);
+  border-radius: 0;
+  font-family: var(--font-body, 'Plus Jakarta Sans', sans-serif);
+  font-size: 0.88rem;
+  line-height: 1.6;
+  color: var(--text-primary, #1a1715);
+  background: var(--surface-raised, #fff);
+  resize: vertical;
+  outline: none;
+  transition: border-color var(--dur-fast, 100ms) var(--ease-out-expo, ease);
+}
+
+.textarea::placeholder {
+  color: var(--text-tertiary, #a39e98);
+}
+
+.textarea:focus {
+  border-color: var(--ultra-500, #2d3bcc);
+}
+
+.submitBtn {
+  align-self: flex-end;
+  padding: var(--sp-2, 0.5rem) var(--sp-6, 1.5rem);
+  border-radius: var(--radius-sm, 3px);
+  font-family: var(--font-display, 'Syne', sans-serif);
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide, 0.08em);
+  border: none;
+  background: var(--ultra-500, #2d3bcc);
+  color: #fff;
+  cursor: pointer;
+  transition: opacity var(--dur-fast, 100ms) var(--ease-out-expo, ease);
+}
+
+.submitBtn:hover {
+  opacity: 0.88;
+}
+
+.submitBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

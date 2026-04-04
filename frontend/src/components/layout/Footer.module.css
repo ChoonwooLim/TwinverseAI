@@ -1,45 +1,111 @@
+/* =========================================================
+   Footer — Architectural Futurism
+   Typographic, quiet, structural top rule as defining element
+   ========================================================= */
+
 .footer {
-  border-top: 1px solid var(--color-border, #e5e5e5);
-  padding: 1.5rem 0;
+  /* Structural rule — the architectural gesture */
+  border-top: 2px solid var(--text-primary, #1a1715);
+  /* Generous top padding: space is a design decision */
+  padding-top: var(--sp-12, 3rem);
+  padding-bottom: var(--sp-8, 2rem);
   margin-top: auto;
+  background: var(--surface-page, #f8f6f3);
 }
+
 .inner {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 1.5rem;
+  /* Asymmetric horizontal padding — matches topbar */
+  padding: 0 var(--sp-6, 1.5rem);
+}
+
+/* ---- Primary row: company + links ---- */
+.row {
   display: flex;
-  align-items: center;
-  gap: 1.5rem;
+  align-items: baseline;
+  gap: var(--sp-10, 2.5rem);
   flex-wrap: wrap;
+  margin-bottom: var(--sp-8, 2rem);
 }
+
+/* Company name in Syne — architectural wordmark */
 .company {
-  font-weight: 600;
-  font-size: 0.9rem;
-  color: var(--color-text, #111);
+  font-family: var(--font-display, 'Syne'), sans-serif;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: var(--tracking-wide, 0.08em);
+  text-transform: uppercase;
+  color: var(--text-primary, #1a1715);
+  text-decoration: none;
+  /* Terracotta accent: left rule matching logo */
+  border-left: 3px solid var(--terra-400, #c45d3e);
+  padding-left: var(--sp-3, 0.75rem);
+  flex-shrink: 0;
 }
+
+/* ---- Link groups ---- */
 .links {
   display: flex;
-  gap: 0.5rem;
-  align-items: center;
+  gap: var(--sp-6, 1.5rem);
+  align-items: baseline;
+  flex-wrap: wrap;
 }
+
 .links a {
-  font-size: 0.8rem;
-  color: var(--color-text-secondary, #555);
+  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: var(--tracking-wide, 0.08em);
+  text-transform: uppercase;
+  color: var(--text-tertiary, #a39e98);
   text-decoration: none;
+  transition: color var(--dur-fast, 120ms) var(--ease-out-expo, ease);
 }
+
 .links a:hover {
-  color: var(--color-text, #111);
+  color: var(--text-primary, #1a1715);
 }
-.sep {
-  color: var(--color-border, #ddd);
-  font-size: 0.75rem;
+
+/* ---- Bottom row: copyright — quiet and small ---- */
+.bottom {
+  /* Thin structural line separating copy from links */
+  border-top: 1px solid var(--border-subtle, #f0ece7);
+  padding-top: var(--sp-4, 1rem);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--sp-3, 0.75rem);
 }
+
 .copy {
-  margin-left: auto;
-  font-size: 0.75rem;
-  color: var(--color-text-tertiary, #999);
+  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
+  font-size: 0.68rem;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  color: var(--text-tertiary, #a39e98);
 }
+
+.tagline {
+  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
+  font-size: 0.68rem;
+  font-weight: 400;
+  font-style: italic;
+  color: var(--text-tertiary, #a39e98);
+}
+
+/* ---- Mobile ---- */
 @media (max-width: 768px) {
-  .inner { flex-direction: column; text-align: center; }
-  .copy { margin-left: 0; }
+  .row {
+    flex-direction: column;
+    gap: var(--sp-6, 1.5rem);
+    align-items: flex-start;
+  }
+
+  .bottom {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-2, 0.5rem);
+  }
 }

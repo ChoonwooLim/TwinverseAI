@@ -1,17 +1,143 @@
-.table { width: 100%; border-collapse: collapse; }
-.table th, .table td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--color-border, #e5e5e5); }
-.table th { font-size: 0.8rem; font-weight: 600; color: var(--color-text-tertiary, #999); text-transform: uppercase; letter-spacing: 0.03em; }
-.thTitle { width: auto; }
-.thMeta { width: 100px; text-align: center !important; }
-.meta { text-align: center !important; font-size: 0.85rem; color: var(--color-text-secondary, #666); }
-.postLink { text-decoration: none; color: var(--color-text, #111); font-weight: 500; }
-.postLink:hover { color: var(--color-primary, #2563eb); }
-.pin { color: var(--color-danger, #dc2626); font-weight: 600; margin-right: 0.4rem; font-size: 0.85rem; }
-.pinned { background: var(--color-bg-subtle, #fafafa); }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; }
-.card { border: 1px solid var(--color-border, #e5e5e5); border-radius: 8px; overflow: hidden; text-decoration: none; color: var(--color-text, #111); transition: box-shadow 0.15s; }
-.card:hover { box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); }
-.thumb { width: 100%; aspect-ratio: 4/3; object-fit: cover; display: block; background: var(--color-bg-subtle, #f5f5f5); }
-.cardBody { padding: 0.75rem; }
-.cardTitle { font-size: 0.9rem; font-weight: 500; margin: 0 0 0.25rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cardMeta { font-size: 0.8rem; color: var(--color-text-secondary, #666); }
+/* ─── PostList — Architectural Futurism ──────────────────────────────────── */
+
+/* ── Table view ─────────────────────────────────────────────────────────── */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-body, 'Plus Jakarta Sans', sans-serif);
+}
+
+.table thead tr {
+  border-bottom: 2px solid var(--ink-500, #1a1715);
+}
+
+.table th {
+  padding: var(--sp-3, 0.75rem) var(--sp-4, 1rem);
+  text-align: left;
+  font-family: var(--font-display, 'Syne', sans-serif);
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-tertiary, #a39e98);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-mega, 0.15em);
+  white-space: nowrap;
+}
+
+.table tbody tr {
+  border-bottom: 1px solid var(--border-subtle, #f0ece7);
+  transition: background var(--dur-fast, 100ms) var(--ease-out-expo, ease);
+}
+
+.table tbody tr:nth-child(even) {
+  background: var(--cream-200, #f0ece7);
+}
+
+.table tbody tr:hover {
+  background: var(--ultra-50, #eceffe);
+}
+
+.table td {
+  padding: var(--sp-3, 0.75rem) var(--sp-4, 1rem);
+  vertical-align: middle;
+}
+
+.thTitle {
+  width: auto;
+}
+
+.thMeta {
+  width: 96px;
+  text-align: center !important;
+}
+
+.meta {
+  text-align: center !important;
+  font-size: 0.8rem;
+  color: var(--text-secondary, #6b6560);
+  font-variant-numeric: tabular-nums;
+}
+
+.postLink {
+  text-decoration: none;
+  color: var(--text-primary, #1a1715);
+  font-weight: 500;
+  font-size: 0.9rem;
+  transition: color var(--dur-fast, 100ms) var(--ease-out-expo, ease);
+}
+
+.postLink:hover {
+  color: var(--ultra-500, #2d3bcc);
+}
+
+.pin {
+  display: inline-block;
+  color: var(--terra-400, #c45d3e);
+  font-weight: 700;
+  margin-right: var(--sp-2, 0.5rem);
+  font-size: 0.75rem;
+  letter-spacing: var(--tracking-wide, 0.08em);
+  text-transform: uppercase;
+}
+
+.pinned {
+  background: var(--cream-200, #f0ece7) !important;
+}
+
+.pinned:hover {
+  background: var(--ultra-50, #eceffe) !important;
+}
+
+/* ── Gallery grid view ───────────────────────────────────────────────────── */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--sp-5, 1.25rem);
+}
+
+.card {
+  display: block;
+  text-decoration: none;
+  color: var(--text-primary, #1a1715);
+  background: var(--surface-raised, #fff);
+  border: 1px solid var(--border-default, #e8e4df);
+  border-radius: 0;
+  overflow: hidden;
+  transition:
+    box-shadow var(--dur-normal, 200ms) var(--ease-out-expo, ease),
+    transform var(--dur-normal, 200ms) var(--ease-out-expo, ease);
+}
+
+.card:hover {
+  box-shadow: var(--shadow-hover, 0 8px 24px rgba(26, 23, 21, 0.1));
+  transform: translateY(-3px);
+}
+
+.thumb {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  display: block;
+  background: var(--cream-200, #f0ece7);
+}
+
+.cardBody {
+  padding: var(--sp-4, 1rem);
+  border-top: 1px solid var(--border-default, #e8e4df);
+}
+
+.cardTitle {
+  font-family: var(--font-display, 'Syne', sans-serif);
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin: 0 0 var(--sp-2, 0.5rem);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary, #1a1715);
+}
+
+.cardMeta {
+  font-size: 0.75rem;
+  color: var(--text-secondary, #6b6560);
+  letter-spacing: 0.02em;
+}

@@ -1,9 +1,111 @@
-.upload { display: flex; flex-direction: column; gap: 0.5rem; }
-.addBtn { align-self: flex-start; padding: 0.5rem 1rem; border: 1px dashed var(--color-border, #ccc); border-radius: 6px; background: none; cursor: pointer; font-size: 0.85rem; color: var(--color-text-secondary, #555); transition: border-color 0.15s; }
-.addBtn:hover { border-color: var(--color-primary, #2563eb); color: var(--color-primary, #2563eb); }
-.hidden { display: none; }
-.fileList { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.25rem; }
-.fileItem { display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.75rem; background: var(--color-bg-subtle, #fafafa); border-radius: 4px; font-size: 0.85rem; }
-.fileName { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.fileSize { color: var(--color-text-tertiary, #999); font-size: 0.8rem; }
-.removeBtn { background: none; border: none; cursor: pointer; color: var(--color-danger, #dc2626); font-size: 0.8rem; font-weight: 600; }
+/* ─── FileUpload — Architectural Futurism ────────────────────────────────── */
+
+.upload {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4, 1rem);
+  font-family: var(--font-body, 'Plus Jakarta Sans', sans-serif);
+}
+
+/* ── Drop zone / add button ──────────────────────────────────────────────── */
+.addBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2, 0.5rem);
+  align-self: stretch;
+  padding: var(--sp-6, 1.5rem) var(--sp-5, 1.25rem);
+  border: 1.5px dashed var(--border-default, #e8e4df);
+  border-radius: 0;
+  background: none;
+  cursor: pointer;
+  font-family: var(--font-display, 'Syne', sans-serif);
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-mega, 0.15em);
+  color: var(--text-tertiary, #a39e98);
+  transition:
+    border-color var(--dur-fast, 100ms) var(--ease-out-expo, ease),
+    color var(--dur-fast, 100ms) var(--ease-out-expo, ease),
+    background var(--dur-fast, 100ms) var(--ease-out-expo, ease);
+}
+
+.addBtn:hover {
+  border-color: var(--ultra-500, #2d3bcc);
+  color: var(--ultra-500, #2d3bcc);
+  background: var(--ultra-50, #eceffe);
+}
+
+/* ── Hidden native file input ────────────────────────────────────────────── */
+.hidden {
+  display: none;
+}
+
+/* ── Queued file list ────────────────────────────────────────────────────── */
+.fileList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid var(--border-default, #e8e4df);
+}
+
+.fileItem {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3, 0.75rem);
+  padding: var(--sp-3, 0.75rem) var(--sp-4, 1rem);
+  background: var(--surface-raised, #fff);
+  border-bottom: 1px solid var(--border-subtle, #f0ece7);
+  font-size: 0.82rem;
+}
+
+.fileItem:last-child {
+  border-bottom: none;
+}
+
+.fileItem:nth-child(even) {
+  background: var(--cream-200, #f0ece7);
+}
+
+/* ── File name ───────────────────────────────────────────────────────────── */
+.fileName {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary, #1a1715);
+  font-size: 0.82rem;
+}
+
+/* ── File size ───────────────────────────────────────────────────────────── */
+.fileSize {
+  color: var(--text-tertiary, #a39e98);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+/* ── Remove button ───────────────────────────────────────────────────────── */
+.removeBtn {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-display, 'Syne', sans-serif);
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--terra-400, #c45d3e);
+  opacity: 0.7;
+  padding: 0;
+  transition: opacity var(--dur-fast, 100ms);
+}
+
+.removeBtn:hover {
+  opacity: 1;
+}

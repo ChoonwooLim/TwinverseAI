@@ -1,19 +1,164 @@
-.detail { max-width: 800px; }
-.header { margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--color-border, #e5e5e5); }
-.title { font-size: 1.5rem; font-weight: 700; margin: 0 0 0.75rem; }
-.meta { display: flex; gap: 1rem; font-size: 0.85rem; color: var(--color-text-secondary, #666); }
-.content { line-height: 1.7; font-size: 0.95rem; margin-bottom: 2rem; }
-.content img { max-width: 100%; border-radius: 6px; }
-.video { margin-bottom: 1.5rem; }
-.iframe { width: 100%; aspect-ratio: 16/9; border: none; border-radius: 8px; }
-.videoPlayer { width: 100%; max-height: 500px; border-radius: 8px; }
-.files { margin-bottom: 1.5rem; padding: 1rem; background: var(--color-bg-subtle, #fafafa); border-radius: 8px; }
-.filesTitle { font-size: 0.9rem; font-weight: 600; margin: 0 0 0.75rem; }
-.fileList { display: flex; flex-wrap: wrap; gap: 0.75rem; }
-.image { max-width: 300px; max-height: 200px; object-fit: cover; border-radius: 6px; cursor: pointer; }
-.fileLink { font-size: 0.85rem; color: var(--color-primary, #2563eb); }
-.actions { display: flex; gap: 0.5rem; margin-top: 1.5rem; }
-.editBtn, .deleteBtn { padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.85rem; font-weight: 500; cursor: pointer; border: 1px solid var(--color-border, #ddd); background: none; transition: background 0.15s; }
-.editBtn:hover { background: var(--color-bg-hover, #f5f5f5); }
-.deleteBtn { color: var(--color-danger, #dc2626); border-color: var(--color-danger, #dc2626); }
-.deleteBtn:hover { background: #fef2f2; }
+/* ─── PostDetail — Architectural Futurism ────────────────────────────────── */
+
+.detail {
+  max-width: 800px;
+  font-family: var(--font-body, 'Plus Jakarta Sans', sans-serif);
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+.header {
+  margin-bottom: var(--sp-8, 2rem);
+  padding-bottom: var(--sp-6, 1.5rem);
+  border-bottom: 2px solid var(--ink-500, #1a1715);
+}
+
+.title {
+  font-family: var(--font-display, 'Syne', sans-serif);
+  font-size: clamp(1.5rem, 3vw, 2.25rem);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--text-primary, #1a1715);
+  margin: 0 0 var(--sp-4, 1rem);
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-5, 1.25rem);
+  font-size: 0.75rem;
+  color: var(--text-secondary, #6b6560);
+  font-family: var(--font-display, 'Syne', sans-serif);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide, 0.08em);
+}
+
+/* ── Body content ────────────────────────────────────────────────────────── */
+.content {
+  line-height: 1.75;
+  font-size: 0.95rem;
+  color: var(--text-primary, #1a1715);
+  margin-bottom: var(--sp-10, 2.5rem);
+}
+
+.content img {
+  max-width: 100%;
+  display: block;
+  border-radius: 0;
+}
+
+/* ── Embedded video ──────────────────────────────────────────────────────── */
+.video {
+  margin-bottom: var(--sp-8, 2rem);
+}
+
+.iframe {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: none;
+  display: block;
+}
+
+.videoPlayer {
+  width: 100%;
+  max-height: 500px;
+  display: block;
+  background: var(--ink-500, #1a1715);
+}
+
+/* ── Attachments block ───────────────────────────────────────────────────── */
+.files {
+  margin-bottom: var(--sp-8, 2rem);
+  padding: var(--sp-5, 1.25rem);
+  background: var(--cream-200, #f0ece7);
+  border-left: 3px solid var(--ultra-500, #2d3bcc);
+}
+
+.filesTitle {
+  font-family: var(--font-display, 'Syne', sans-serif);
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-mega, 0.15em);
+  color: var(--text-tertiary, #a39e98);
+  margin: 0 0 var(--sp-4, 1rem);
+}
+
+.fileList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3, 0.75rem);
+}
+
+.image {
+  max-width: 280px;
+  max-height: 190px;
+  object-fit: cover;
+  display: block;
+  cursor: pointer;
+  border: 1px solid var(--border-default, #e8e4df);
+  transition: opacity var(--dur-fast, 100ms) var(--ease-out-expo, ease);
+}
+
+.image:hover {
+  opacity: 0.85;
+}
+
+.fileLink {
+  font-size: 0.82rem;
+  color: var(--ultra-500, #2d3bcc);
+  text-decoration: none;
+  border-bottom: 1px solid var(--ultra-500, #2d3bcc);
+  padding-bottom: 1px;
+  transition: opacity var(--dur-fast, 100ms);
+}
+
+.fileLink:hover {
+  opacity: 0.7;
+}
+
+/* ── Action bar ──────────────────────────────────────────────────────────── */
+.actions {
+  display: flex;
+  gap: var(--sp-3, 0.75rem);
+  margin-top: var(--sp-8, 2rem);
+  padding-top: var(--sp-6, 1.5rem);
+  border-top: 1px solid var(--border-default, #e8e4df);
+}
+
+.editBtn,
+.deleteBtn {
+  padding: var(--sp-2, 0.5rem) var(--sp-5, 1.25rem);
+  border-radius: var(--radius-sm, 3px);
+  font-family: var(--font-display, 'Syne', sans-serif);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide, 0.08em);
+  cursor: pointer;
+  transition:
+    background var(--dur-fast, 100ms) var(--ease-out-expo, ease),
+    color var(--dur-fast, 100ms) var(--ease-out-expo, ease);
+}
+
+.editBtn {
+  background: transparent;
+  color: var(--text-primary, #1a1715);
+  border: 1px solid var(--border-default, #e8e4df);
+}
+
+.editBtn:hover {
+  background: var(--cream-200, #f0ece7);
+  border-color: var(--text-secondary, #6b6560);
+}
+
+.deleteBtn {
+  background: transparent;
+  color: var(--terra-400, #c45d3e);
+  border: 1px solid var(--terra-400, #c45d3e);
+}
+
+.deleteBtn:hover {
+  background: var(--terra-400, #c45d3e);
+  color: #fff;
+}

@@ -1,40 +1,107 @@
+/* =========================================================
+   Sidebar — Architectural Futurism
+   Clean vertical column: no right border, tonal separation,
+   structural left-rule for active state
+   ========================================================= */
+
 .sidebar {
-  width: 220px;
+  width: 240px;
   flex-shrink: 0;
-  padding: 1.5rem 0;
-  border-right: 1px solid var(--color-border, #e5e5e5);
+  /* Tonal separation: raised surface vs page bg — no border needed */
+  background: var(--surface-raised, #fff);
+  padding: var(--sp-8, 2rem) 0 var(--sp-8, 2rem);
+  /* Asymmetric: top padding generously architectural */
 }
+
+/* Section header */
 .title {
-  font-size: 0.8rem;
-  font-weight: 600;
+  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: var(--tracking-mega, 0.15em);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--color-text-tertiary, #999);
-  padding: 0 1.25rem;
-  margin-bottom: 0.5rem;
+  color: var(--text-tertiary, #a39e98);
+  padding: 0 var(--sp-6, 1.5rem);
+  margin-bottom: var(--sp-3, 0.75rem);
+  margin-top: var(--sp-6, 1.5rem);
 }
+
+/* First title in sidebar — no extra top margin */
+.title:first-child {
+  margin-top: 0;
+}
+
+/* Structural thin separator above each section group */
+.title + .nav {
+  border-top: none;
+}
+
+/* Separator line between groups */
+.separator {
+  display: block;
+  height: 1px;
+  background: var(--border-subtle, #f0ece7);
+  margin: var(--sp-4, 1rem) var(--sp-6, 1.5rem);
+}
+
+/* ---- Nav list ---- */
 .nav {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 0;
 }
+
+/* ---- Links ---- */
 .link {
-  display: block;
-  padding: 0.5rem 1.25rem;
-  text-decoration: none;
-  font-size: 0.9rem;
-  color: var(--color-text-secondary, #555);
-  transition: background 0.15s, color 0.15s;
-}
-.link:hover {
-  background: var(--color-bg-hover, #f5f5f5);
-  color: var(--color-text, #111);
-}
-.active {
-  color: var(--color-primary, #2563eb);
-  background: var(--color-primary-bg, #eff6ff);
+  font-family: var(--font-body, 'Plus Jakarta Sans'), sans-serif;
+  font-size: 0.82rem;
   font-weight: 500;
+  color: var(--text-secondary, #6b6560);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  /* Asymmetric: more right padding, left accommodates border */
+  padding: var(--sp-2, 0.5rem) var(--sp-6, 1.5rem) var(--sp-2, 0.5rem) calc(var(--sp-6, 1.5rem) - 2px);
+  border-left: 2px solid transparent;
+  /* No bg hover — left-rule only */
+  transition: color var(--dur-fast, 120ms) var(--ease-out-expo, ease),
+              border-color var(--dur-fast, 120ms) var(--ease-out-expo, ease);
+  line-height: 1.4;
 }
+
+.link:hover {
+  color: var(--text-primary, #1a1715);
+  border-left-color: var(--border-default, #e8e4df);
+}
+
+/* Active: ultramarine left rule, no background */
+.active {
+  color: var(--text-primary, #1a1715);
+  font-weight: 600;
+  border-left-color: var(--ultra-500, #2d3bcc);
+}
+
+.active:hover {
+  border-left-color: var(--ultra-500, #2d3bcc);
+}
+
+/* ---- Icon support (optional) ---- */
+.linkIcon {
+  width: 14px;
+  height: 14px;
+  margin-right: var(--sp-3, 0.75rem);
+  flex-shrink: 0;
+  opacity: 0.5;
+}
+
+.active .linkIcon,
+.link:hover .linkIcon {
+  opacity: 1;
+}
+
+/* ---- Mobile: hidden ---- */
 @media (max-width: 768px) {
-  .sidebar { display: none; }
+  .sidebar {
+    display: none;
+  }
 }

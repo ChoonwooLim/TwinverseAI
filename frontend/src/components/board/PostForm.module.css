@@ -1,8 +1,95 @@
-.form { display: flex; flex-direction: column; gap: 1rem; max-width: 800px; }
-.input { padding: 0.75rem 1rem; border: 1px solid var(--color-border, #ddd); border-radius: 6px; font-size: 0.95rem; outline: none; transition: border-color 0.15s; }
-.input:focus { border-color: var(--color-primary, #2563eb); }
-.textarea { padding: 0.75rem 1rem; border: 1px solid var(--color-border, #ddd); border-radius: 6px; font-size: 0.95rem; resize: vertical; min-height: 200px; outline: none; font-family: inherit; transition: border-color 0.15s; }
-.textarea:focus { border-color: var(--color-primary, #2563eb); }
-.submitBtn { align-self: flex-start; padding: 0.6rem 1.5rem; border-radius: 6px; font-size: 0.9rem; font-weight: 600; cursor: pointer; border: none; background: var(--color-primary, #2563eb); color: #fff; transition: opacity 0.15s; }
-.submitBtn:hover { opacity: 0.9; }
-.submitBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+/* ─── PostForm — Architectural Futurism ──────────────────────────────────── */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5, 1.25rem);
+  max-width: 800px;
+  font-family: var(--font-body, 'Plus Jakarta Sans', sans-serif);
+}
+
+/* ── Field label (optional utility class for consuming JSX) ──────────────── */
+.label {
+  display: block;
+  font-family: var(--font-display, 'Syne', sans-serif);
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-mega, 0.15em);
+  color: var(--text-tertiary, #a39e98);
+  margin-bottom: var(--sp-2, 0.5rem);
+}
+
+/* ── Shared input foundation ─────────────────────────────────────────────── */
+.input,
+.textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--surface-raised, #fff);
+  color: var(--text-primary, #1a1715);
+  font-family: var(--font-body, 'Plus Jakarta Sans', sans-serif);
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color var(--dur-fast, 100ms) var(--ease-out-expo, ease);
+}
+
+/* ── Text input — bottom-border only style ───────────────────────────────── */
+.input {
+  padding: var(--sp-3, 0.75rem) 0;
+  border: none;
+  border-bottom: 2px solid var(--border-default, #e8e4df);
+  border-radius: 0;
+  background: transparent;
+}
+
+.input::placeholder {
+  color: var(--text-tertiary, #a39e98);
+}
+
+.input:focus {
+  border-bottom-color: var(--ultra-500, #2d3bcc);
+}
+
+/* ── Textarea — thin full border ─────────────────────────────────────────── */
+.textarea {
+  padding: var(--sp-3, 0.75rem) var(--sp-4, 1rem);
+  border: 1px solid var(--border-default, #e8e4df);
+  border-radius: 0;
+  resize: vertical;
+  min-height: 220px;
+  line-height: 1.65;
+}
+
+.textarea::placeholder {
+  color: var(--text-tertiary, #a39e98);
+}
+
+.textarea:focus {
+  border-color: var(--ultra-500, #2d3bcc);
+}
+
+/* ── Submit button — ultramarine solid ───────────────────────────────────── */
+.submitBtn {
+  align-self: flex-start;
+  padding: var(--sp-3, 0.75rem) var(--sp-7, 1.75rem);
+  border-radius: var(--radius-sm, 3px);
+  font-family: var(--font-display, 'Syne', sans-serif);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide, 0.08em);
+  cursor: pointer;
+  border: none;
+  background: var(--ultra-500, #2d3bcc);
+  color: #fff;
+  transition: opacity var(--dur-fast, 100ms) var(--ease-out-expo, ease);
+}
+
+.submitBtn:hover {
+  opacity: 0.88;
+}
+
+.submitBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
