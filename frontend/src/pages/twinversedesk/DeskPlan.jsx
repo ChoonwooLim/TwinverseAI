@@ -12,7 +12,7 @@ const PHASES = [
       "React 클라이언트 — UE5 스트림 뷰어 통합",
       "기본 3D 가상 오피스 레벨 제작 (로비, 회의실, 라운지)",
       "사용자 인증 & 조직 관리 시스템",
-      "PostgreSQL 스키마 설계 (DeskRPG 27테이블 → 최적화된 구조)",
+      "PostgreSQL 스키마 설계 (TVDesk 27테이블 → 최적화된 구조)",
     ],
   },
   {
@@ -35,7 +35,7 @@ const PHASES = [
     period: "M5 – M7",
     status: "planned",
     tasks: [
-      "Dedicated Server 기반 멀티플레이어 (DeskRPG Socket.IO 대체)",
+      "Dedicated Server 기반 멀티플레이어 (TVDesk Socket.IO 대체)",
       "위치/회전/애니메이션 동기화 (클라이언트 예측 + 서버 보정)",
       "근접 기반 공간 음성 채팅 (Spatial Audio)",
       "WebRTC 비디오 통화 (화면 공유 포함)",
@@ -155,7 +155,7 @@ export default function DeskPlan() {
         <span className={styles.overline}>TwinverseDesk Development Plan</span>
         <h1 className={styles.title}>TwinverseDesk 개발계획</h1>
         <p className={styles.subtitle}>
-          DeskRPG의 혁신적 콘셉트를 계승하면서 Unreal Engine 5 기반 3D 가상 오피스로 진화시키는
+          TVDesk의 혁신적 콘셉트를 계승하면서 Unreal Engine 5 기반 3D 가상 오피스로 진화시키는
           차세대 플랫폼 개발 로드맵입니다.
         </p>
       </header>

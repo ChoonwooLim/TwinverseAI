@@ -91,10 +91,10 @@ export default function DeskAnalysis() {
   return (
     <div className={styles.page}>
       <header className={styles.pageHeader}>
-        <span className={styles.overline}>DeskRPG Analysis Report</span>
-        <h1 className={styles.title}>DeskRPG 분석 보고서</h1>
+        <span className={styles.overline}>TVDesk Analysis Report</span>
+        <h1 className={styles.title}>TVDesk 분석 보고서</h1>
         <p className={styles.subtitle}>
-          DeskRPG 오픈소스 프로젝트의 아키텍처, 기능, 기술 스택을 체계적으로 분석하여
+          TVDesk 오픈소스 프로젝트의 아키텍처, 기능, 기술 스택을 체계적으로 분석하여
           TwinverseDesk 개발을 위한 기반 자료를 제공합니다.
         </p>
       </header>
@@ -148,7 +148,7 @@ export default function DeskAnalysis() {
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>데이터베이스 구조</h2>
         <p className={styles.sectionDesc}>
-          DeskRPG는 27개의 데이터 테이블을 사용하며, Drizzle ORM으로 PostgreSQL과 SQLite를 동시 지원합니다.
+          TVDesk는 27개의 데이터 테이블을 사용하며, Drizzle ORM으로 PostgreSQL과 SQLite를 동시 지원합니다.
           주요 테이블 구조는 다음과 같습니다.
         </p>
         <div className={styles.tableGrid}>
@@ -168,7 +168,7 @@ export default function DeskAnalysis() {
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>한계점 및 개선 필요사항</h2>
         <p className={styles.sectionDesc}>
-          DeskRPG는 혁신적인 콘셉트를 가지고 있으나 아래의 기술적 한계가 확인되었습니다.
+          TVDesk는 혁신적인 콘셉트를 가지고 있으나 아래의 기술적 한계가 확인되었습니다.
           TwinverseDesk는 이 한계점들을 근본적으로 해결합니다.
         </p>
         <div className={styles.limitGrid}>
@@ -186,7 +186,7 @@ export default function DeskAnalysis() {
         <h2 className={styles.sectionTitle}>분석 결론</h2>
         <div className={styles.conclusionContent}>
           <p>
-            DeskRPG는 <strong>가상 오피스 + AI + 게임화</strong>라는 혁신적 콘셉트를 가진 프로젝트입니다.
+            TVDesk는 <strong>가상 오피스 + AI + 게임화</strong>라는 혁신적 콘셉트를 가진 프로젝트입니다.
             264개의 소스 파일, 63,800줄의 코드, 27개의 DB 테이블로 구성된 대규모 풀스택 애플리케이션이며,
             실시간 멀티플레이어, AI 에이전트 통합, 캐릭터 커스터마이징 등 고도화된 기능을 구현하고 있습니다.
           </p>

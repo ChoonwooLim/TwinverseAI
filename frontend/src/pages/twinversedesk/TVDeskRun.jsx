@@ -1,16 +1,16 @@
 import { useState, useEffect } from "react";
-import styles from "./DeskRPGRun.module.css";
+import styles from "./TVDeskRun.module.css";
 
-const DESKRPG_URL = import.meta.env.VITE_DESKRPG_URL || "https://deskrpg.twinverse.org";
+const TVDESK_URL = import.meta.env.VITE_TVDESK_URL || "https://deskrpg.twinverse.org";
 
-export default function DeskRPGRun() {
+export default function TVDeskRun() {
   const [status, setStatus] = useState("checking");
 
   useEffect(() => {
     let cancelled = false;
     const check = async () => {
       try {
-        await fetch(DESKRPG_URL, { method: "HEAD", mode: "no-cors" });
+        await fetch(TVDESK_URL, { method: "HEAD", mode: "no-cors" });
         if (!cancelled) setStatus("online");
       } catch {
         if (!cancelled) setStatus("offline");
@@ -22,16 +22,16 @@ export default function DeskRPGRun() {
   }, []);
 
   const handleLaunch = () => {
-    window.open(DESKRPG_URL, "_blank", "noopener");
+    window.open(TVDESK_URL, "_blank", "noopener");
   };
 
   return (
     <div className={styles.page}>
       <header className={styles.pageHeader}>
-        <span className={styles.overline}>DeskRPG Live</span>
-        <h1 className={styles.title}>DeskRPG 실행</h1>
+        <span className={styles.overline}>TVDesk Live</span>
+        <h1 className={styles.title}>TVDesk 실행</h1>
         <p className={styles.subtitle}>
-          DeskRPG 가상 오피스에 접속합니다. Orbitron PostgreSQL에 연결되어 있습니다.
+          TVDesk 가상 오피스에 접속합니다. Orbitron PostgreSQL에 연결되어 있습니다.
         </p>
       </header>
 
@@ -59,14 +59,14 @@ export default function DeskRPGRun() {
             </div>
             <h2 className={styles.launchTitle}>가상 오피스에 입장하기</h2>
             <p className={styles.launchDesc}>
-              DeskRPG가 새 탭에서 열립니다. 2D 픽셀아트 가상 오피스에서 AI 동료들과 함께 일하세요.
+              TVDesk가 새 탭에서 열립니다. 2D 픽셀아트 가상 오피스에서 AI 동료들과 함께 일하세요.
             </p>
             <button
               onClick={handleLaunch}
               className={styles.launchBtn}
               disabled={status !== "online"}
             >
-              {status === "online" ? "DeskRPG 실행하기" : status === "checking" ? "서버 확인 중..." : "서버 미연결"}
+              {status === "online" ? "TVDesk 실행하기" : status === "checking" ? "서버 확인 중..." : "서버 미연결"}
             </button>
             {status === "offline" && (
               <p className={styles.offlineHint}>
@@ -88,7 +88,7 @@ export default function DeskRPGRun() {
           </div>
           <div className={styles.infoRow}>
             <span className={styles.infoLabel}>서버 URL</span>
-            <span className={styles.infoValue}>{DESKRPG_URL}</span>
+            <span className={styles.infoValue}>{TVDESK_URL}</span>
           </div>
           <div className={styles.infoRow}>
             <span className={styles.infoLabel}>데이터베이스</span>
@@ -107,7 +107,7 @@ export default function DeskRPGRun() {
           <div className={styles.guideStep}>
             <span className={styles.guideNum}>1</span>
             <div>
-              <strong>"DeskRPG 실행하기"</strong> 버튼을 클릭하면 새 탭에서 DeskRPG가 열립니다.
+              <strong>"TVDesk 실행하기"</strong> 버튼을 클릭하면 새 탭에서 TVDesk가 열립니다.
             </div>
           </div>
           <div className={styles.guideStep}>
