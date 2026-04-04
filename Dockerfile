@@ -21,6 +21,14 @@ COPY backend/ ./
 # Copy frontend build output
 COPY --from=frontend-build /app/frontend/dist /app/static
 
+# Copy docs (for doc viewer API)
+COPY docs/ /app/docs/
+
+# Create uploads directory
+RUN mkdir -p /app/uploads
+
+VOLUME ["/app/uploads"]
+
 # Expose port
 EXPOSE 8000
 
