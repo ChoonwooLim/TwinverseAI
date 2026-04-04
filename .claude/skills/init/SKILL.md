@@ -1395,6 +1395,67 @@ services:
         sync: false
 ```
 
+### Dockerfile (프로젝트 루트) — 필수
+
+**반드시 생성해야 합니다.** Orbitron 자동 생성 Dockerfile은 깨지므로 절대 의존하면 안 됩니다.
+
+```dockerfile
+# Stage 1: Build frontend
+FROM node:20-alpine AS frontend-build
+WORKDIR /app/frontend
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+COPY frontend/ ./
+ENV VITE_API_URL=""
+RUN npm run build
+
+# Stage 2: Production image
+FROM python:3.12-slim
+WORKDIR /app
+
+# Install backend dependencies
+COPY backend/requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy backend code
+COPY backend/ ./
+
+# Copy frontend build output
+COPY --from=frontend-build /app/frontend/dist /app/static
+
+# Expose port
+EXPOSE 8000
+
+# Run
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+### backend/main.py — 정적 파일 서빙 코드 추가
+
+`main.py`의 맨 아래에 아래 코드를 추가하여 Docker 환경에서 빌드된 React SPA를 서빙합니다:
+
+```python
+# Serve frontend static files in production (Docker build copies to /app/static)
+_static_dir = Path(__file__).resolve().parent / "static"
+if _static_dir.exists():
+    from fastapi.responses import FileResponse
+
+    @app.get("/{full_path:path}")
+    def serve_spa(full_path: str):
+        file_path = _static_dir / full_path
+        if file_path.is_file():
+            return FileResponse(file_path)
+        return FileResponse(_static_dir / "index.html")
+
+    app.mount("/assets", StaticFiles(directory=_static_dir / "assets"), name="static-assets")
+```
+
+그리고 `main.py` 상단 import에 추가:
+```python
+from pathlib import Path
+from fastapi.staticfiles import StaticFiles
+```
+
 ## 9단계: CLAUDE.md 생성
 
 ```markdown
@@ -1423,6 +1484,8 @@ services:
 - Orbitron 배포 서버 사용 (Linux)
 - DB: Orbitron PostgreSQL 서버
 - Windows에서는 커밋/푸시만 수행, 배포는 Orbitron에서 진행
+- **반드시 프로젝트 루트에 Dockerfile 포함** (Orbitron 자동 생성 Dockerfile은 깨지므로 절대 의존 금지)
+- Dockerfile은 멀티스테이지 빌드: Node(프론트엔드 빌드) → Python(백엔드 + 정적파일 서빙)
 
 ## 커밋 메시지 규칙
 - `feat:` 새 기능 / `fix:` 버그 수정 / `style:` UI / `refactor:` 리팩토링 / `docs:` 문서 / `infra:` 인프라

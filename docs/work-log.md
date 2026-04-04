@@ -13,6 +13,8 @@
 | infra | GitHub 리포지토리 생성 + gh CLI 설정 | 완료 |
 | infra | Git 기본 브랜치 main으로 변경 | 완료 |
 | docs | CLAUDE.md Git 규칙 추가 | 완료 |
+| infra | Dockerfile 추가 + 프론트엔드 정적파일 서빙 | 완료 |
+| infra | Dockerfile 필수 규칙 CLAUDE.md + /init 스킬에 반영 | 완료 |
 
 ### 세부 내용
 
@@ -27,5 +29,8 @@
 - Git 기본 브랜치 master → main 변경 (Orbitron 배포 호환)
 - CLAUDE.md에 Git 규칙 추가 (기본 브랜치 main 필수)
 - /init 스킬에 `git init -b main` 반영
+- 멀티스테이지 Dockerfile 추가 (Orbitron 자동 생성 Dockerfile 파싱 오류 해결)
+- backend/main.py에 SPA 정적파일 서빙 코드 추가
+- CLAUDE.md + /init 스킬에 Dockerfile 필수 생성 규칙 반영
 
 ---

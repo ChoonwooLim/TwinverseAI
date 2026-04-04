@@ -27,6 +27,8 @@
 - Orbitron 배포 서버 사용 (Linux)
 - DB: Orbitron PostgreSQL 서버
 - Windows에서는 커밋/푸시만 수행, 배포는 Orbitron에서 진행
+- **반드시 프로젝트 루트에 Dockerfile 포함** (Orbitron 자동 생성 Dockerfile은 깨지므로 절대 의존 금지)
+- Dockerfile은 멀티스테이지 빌드: Node(프론트엔드 빌드) → Python(백엔드 + 정적파일 서빙)
 
 ## 커밋 메시지 규칙
 - `feat:` 새 기능 / `fix:` 버그 수정 / `style:` UI / `refactor:` 리팩토링 / `docs:` 문서 / `infra:` 인프라
