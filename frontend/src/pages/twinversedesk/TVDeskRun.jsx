@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import styles from "./TVDeskRun.module.css";
 
-const TVDESK_URL = import.meta.env.VITE_TVDESK_URL || "https://deskrpg.twinverse.org";
+const TVDESK_URL = import.meta.env.VITE_TVDESK_URL || "https://tvdesk.twinverse.org";
 
 export default function TVDeskRun() {
   const [status, setStatus] = useState("checking");
