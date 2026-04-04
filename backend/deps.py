@@ -15,7 +15,8 @@ def get_current_user(
     payload = decode_access_token(credentials.credentials)
     if not payload:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
-    user = session.exec(select(User).where(User.id == payload.get("sub"))).first()
+    user_id = int(payload.get("sub"))
+    user = session.exec(select(User).where(User.id == user_id)).first()
     if not user or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
     return user
@@ -30,7 +31,8 @@ def get_optional_user(
     payload = decode_access_token(credentials.credentials)
     if not payload:
         return None
-    user = session.exec(select(User).where(User.id == payload.get("sub"))).first()
+    user_id = int(payload.get("sub"))
+    user = session.exec(select(User).where(User.id == user_id)).first()
     if not user or not user.is_active:
         return None
     return user
