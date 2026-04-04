@@ -13,6 +13,7 @@ const DESK_ITEMS = [
   { label: "DeskRPG 분석 보고서", path: "/twinversedesk/analysis" },
   { label: "TwinverseDesk 개발계획", path: "/twinversedesk/plan" },
   { label: "TwinverseDesk 실행하기", path: "/twinversedesk/launch" },
+  { label: "DeskRPG 실행", path: "/twinversedesk/deskrpg" },
 ];
 
 export default function TopBar() {

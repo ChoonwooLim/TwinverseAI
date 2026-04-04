@@ -16,6 +16,7 @@ import AdminPlugins from "./pages/admin/AdminPlugins";
 import DeskAnalysis from "./pages/twinversedesk/DeskAnalysis";
 import DeskPlan from "./pages/twinversedesk/DeskPlan";
 import DeskLaunch from "./pages/twinversedesk/DeskLaunch";
+import DeskRPGRun from "./pages/twinversedesk/DeskRPGRun";
 
 export default function App() {
   return (
@@ -32,6 +33,7 @@ export default function App() {
           <Route path="/twinversedesk/analysis" element={<DeskAnalysis />} />
           <Route path="/twinversedesk/plan" element={<DeskPlan />} />
           <Route path="/twinversedesk/launch" element={<DeskLaunch />} />
+          <Route path="/twinversedesk/deskrpg" element={<DeskRPGRun />} />
 
           {/* Community */}
           <Route path="/community/:boardType" element={<BoardPage />} />
