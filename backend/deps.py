@@ -21,6 +21,21 @@ def get_current_user(
     return user
 
 
+def get_optional_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(HTTPBearer(auto_error=False)),
+    session: Session = Depends(get_session),
+) -> User | None:
+    if not credentials:
+        return None
+    payload = decode_access_token(credentials.credentials)
+    if not payload:
+        return None
+    user = session.exec(select(User).where(User.id == payload.get("sub"))).first()
+    if not user or not user.is_active:
+        return None
+    return user
+
+
 def require_admin(user: User = Depends(get_current_user)) -> User:
     if user.role not in ("admin", "superadmin"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
