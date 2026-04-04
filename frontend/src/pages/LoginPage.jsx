@@ -4,23 +4,45 @@ import api from "../services/api";
 import styles from "./LoginPage.module.css";
 
 export default function LoginPage() {
+  const [mode, setMode] = useState("login");
   const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogin = async (e) => {
+  const resetForm = () => {
+    setUsername("");
+    setEmail("");
+    setPassword("");
+    setError("");
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setLoading(true);
     try {
-      const { data } = await api.post("/api/auth/login", { username, password });
+      const endpoint = mode === "login" ? "/api/auth/login" : "/api/auth/register";
+      const body = mode === "login"
+        ? { username, password }
+        : { username, email, password };
+      const { data } = await api.post(endpoint, body);
       localStorage.setItem("token", data.access_token);
       localStorage.setItem("user", JSON.stringify(data.user));
       navigate(data.user.role === "admin" || data.user.role === "superadmin" ? "/admin" : "/");
-    } catch {
-      setError("로그인에 실패했습니다.");
+    } catch (err) {
+      const msg = err.response?.data?.detail;
+      setError(mode === "login"
+        ? msg || "로그인에 실패했습니다."
+        : msg || "회원가입에 실패했습니다.");
+    } finally {
+      setLoading(false);
     }
   };
+
+  const isLogin = mode === "login";
 
   return (
     <div className={styles.page}>
@@ -39,10 +61,28 @@ export default function LoginPage() {
       {/* ── Form Panel ── */}
       <div className={styles.formPanel}>
         <div className={styles.formContainer}>
-          <h1 className={styles.formHeading}>Sign in</h1>
-          <p className={styles.formSubheading}>Enter your credentials to continue.</p>
+          <div className={styles.tabRow}>
+            <button
+              className={`${styles.tab} ${isLogin ? styles.tabActive : ""}`}
+              onClick={() => { setMode("login"); resetForm(); }}
+              type="button"
+            >
+              Sign in
+            </button>
+            <button
+              className={`${styles.tab} ${!isLogin ? styles.tabActive : ""}`}
+              onClick={() => { setMode("register"); resetForm(); }}
+              type="button"
+            >
+              Register
+            </button>
+          </div>
 
-          <form className={styles.form} onSubmit={handleLogin}>
+          <p className={styles.formSubheading}>
+            {isLogin ? "Enter your credentials to continue." : "Create a new account."}
+          </p>
+
+          <form className={styles.form} onSubmit={handleSubmit}>
             <div className={styles.inputGroup}>
               <input
                 className={`${styles.input} ${username ? styles.inputFilled : ""}`}
@@ -57,6 +97,22 @@ export default function LoginPage() {
               </label>
             </div>
 
+            {!isLogin && (
+              <div className={styles.inputGroup}>
+                <input
+                  className={`${styles.input} ${email ? styles.inputFilled : ""}`}
+                  type="email"
+                  id="login-email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
+                />
+                <label className={styles.label} htmlFor="login-email">
+                  Email
+                </label>
+              </div>
+            )}
+
             <div className={styles.inputGroup}>
               <input
                 className={`${styles.input} ${password ? styles.inputFilled : ""}`}
@@ -64,7 +120,7 @@ export default function LoginPage() {
                 id="login-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                autoComplete="current-password"
+                autoComplete={isLogin ? "current-password" : "new-password"}
               />
               <label className={styles.label} htmlFor="login-password">
                 Password
@@ -73,8 +129,8 @@ export default function LoginPage() {
 
             {error && <p className={styles.error}>{error}</p>}
 
-            <button className={styles.submit} type="submit">
-              Sign in
+            <button className={styles.submit} type="submit" disabled={loading}>
+              {loading ? "..." : isLogin ? "Sign in" : "Create account"}
             </button>
           </form>
 
