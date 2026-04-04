@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import styles from "./DeskRPGRun.module.css";
 
-const DESKRPG_URL = import.meta.env.VITE_DESKRPG_URL || "http://192.168.219.101:3100";
+const DESKRPG_URL = import.meta.env.VITE_DESKRPG_URL || "https://twinverseai.twinverse.org/deskrpg-app";
 
 export default function DeskRPGRun() {
   const [status, setStatus] = useState("checking"); // checking | online | offline
@@ -102,7 +102,7 @@ export default function DeskRPGRun() {
                 : "서버가 실행 중인지 확인해 주세요. 15초마다 자동으로 재시도합니다."}
             </p>
             {status === "offline" && (
-              <code className={styles.cmdHint}>npx deskrpg start -p 3100</code>
+              <code className={styles.cmdHint}>Orbitron 서버에서: npx deskrpg start -p 3100 -d</code>
             )}
             <div className={styles.statusBadge}>
               <span className={`${styles.statusDot} ${status === "checking" ? styles.statusChecking : ""}`} />
