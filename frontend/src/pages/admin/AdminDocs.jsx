@@ -1,18 +1,21 @@
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import api from "../../services/api";
 import styles from "./AdminDocs.module.css";
 
+const DOC_TITLES = {
+  "dev-plan": "개발계획",
+  "bugfix-log": "버그수정 로그",
+  "upgrade-log": "업그레이드 로그",
+  "work-log": "작업일지",
+};
+
 export default function AdminDocs() {
   const { docKey } = useParams();
-  const [docs, setDocs] = useState([]);
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    api.get("/api/docs/list").then((r) => setDocs(r.data)).catch(() => {});
-  }, []);
 
   useEffect(() => {
     if (!docKey) return;
@@ -27,19 +30,24 @@ export default function AdminDocs() {
     return (
       <div className={styles.page}>
         <h1 className={styles.title}>프로젝트 문서</h1>
-        <ul className={styles.list}>
-          {docs.map((d) => (
-            <li key={d.key}><Link to={`/admin/docs/${d.key}`} className={styles.docLink}>{d.filename}</Link></li>
-          ))}
-        </ul>
+        <p className={styles.hint}>왼쪽 사이드바에서 문서를 선택하세요.</p>
       </div>
     );
   }
 
   return (
     <div className={styles.page}>
-      <Link to="/admin/docs" className={styles.backLink}>문서 목록</Link>
-      {loading ? <p>로딩 중...</p> : <div className={styles.content}><ReactMarkdown>{content}</ReactMarkdown></div>}
+      <div className={styles.docHeader}>
+        <span className={styles.overline}>Project Documentation</span>
+        <h1 className={styles.title}>{DOC_TITLES[docKey] || docKey}</h1>
+      </div>
+      {loading ? (
+        <p className={styles.hint}>로딩 중...</p>
+      ) : (
+        <div className={styles.content}>
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+        </div>
+      )}
     </div>
   );
 }

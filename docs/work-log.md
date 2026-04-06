@@ -137,4 +137,20 @@
 - 메뉴명 "TVDesk 개발계획" → "TwinverseDesk 개발계획", "TVDesk 실행하기" → "TwinverseDesk 실행하기" 변경
 - TVDesk 외부 접속 불가 — Cloudflare Tunnel 중복 프로세스 정리로 해결
 
+### 작업 요약 (세션 2)
+
+| 카테고리 | 작업 내용 | 상태 |
+|----------|----------|------|
+| feat | 어드민 사이드바 프로젝트 문서 서브메뉴 구현 | 완료 |
+| feat | AdminDocs 마크다운 뷰어 리팩토링 (remark-gfm, DOC_TITLES) | 완료 |
+| docs | /init 스킬 업데이트 (Sidebar groups 패턴, AdminDocs 템플릿, remark-gfm 의존성) | 완료 |
+
+### 세부 내용 (세션 2)
+
+- Sidebar.jsx에 `groups` 패턴 추가 — admin 섹션에 "프로젝트 문서" 서브메뉴 그룹 (개발계획, 버그수정 로그, 업그레이드 로그, 작업일지)
+- AdminDocs.jsx 전면 리팩토링 — 리스트 뷰 제거, 사이드바 기반 docKey 라우팅, ReactMarkdown + remark-gfm으로 GFM 테이블 렌더링
+- AdminDocs.module.css에 마크다운 prose 스타일 추가 (table, blockquote, hr, code, pre 등)
+- remark-gfm 패키지 의존성 추가 (package.json)
+- /init 스킬(SKILL.md)에 Sidebar groups 패턴, AdminDocs 컴포넌트 템플릿, remark-gfm 의존성 반영
+
 ---

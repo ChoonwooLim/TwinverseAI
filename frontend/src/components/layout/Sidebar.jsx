@@ -17,9 +17,19 @@ const SIDEBAR_CONFIG = {
       { label: "대시보드", path: "/admin" },
       { label: "사용자 관리", path: "/admin/users" },
       { label: "게시판 관리", path: "/admin/boards" },
-      { label: "프로젝트 문서", path: "/admin/docs" },
       { label: "AI 스킬", path: "/admin/skills" },
       { label: "플러그인", path: "/admin/plugins" },
+    ],
+    groups: [
+      {
+        title: "프로젝트 문서",
+        items: [
+          { label: "개발계획", path: "/admin/docs/dev-plan" },
+          { label: "버그수정 로그", path: "/admin/docs/bugfix-log" },
+          { label: "업그레이드 로그", path: "/admin/docs/upgrade-log" },
+          { label: "작업일지", path: "/admin/docs/work-log" },
+        ],
+      },
     ],
   },
 };
@@ -39,6 +49,18 @@ export default function Sidebar({ section }) {
           </Link>
         ))}
       </nav>
+      {config.groups?.map((group) => (
+        <div key={group.title}>
+          <h3 className={styles.title}>{group.title}</h3>
+          <nav className={styles.nav}>
+            {group.items.map((item) => (
+              <Link key={item.path} to={item.path} className={`${styles.link} ${location.pathname === item.path ? styles.active : ""}`}>
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+        </div>
+      ))}
     </aside>
   );
 }

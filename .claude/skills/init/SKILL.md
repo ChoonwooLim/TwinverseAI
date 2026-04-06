@@ -1334,7 +1334,8 @@ def remove_plugin(plugin_key: str):
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-markdown": "^10.1.0",
-    "react-router-dom": "^7.14.0"
+    "react-router-dom": "^7.14.0",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
@@ -1601,9 +1602,19 @@ const SIDEBAR_CONFIG = {
       { label: "대시보드", path: "/admin" },
       { label: "사용자 관리", path: "/admin/users" },
       { label: "게시판 관리", path: "/admin/boards" },
-      { label: "프로젝트 문서", path: "/admin/docs" },
       { label: "AI 스킬", path: "/admin/skills" },
       { label: "플러그인", path: "/admin/plugins" },
+    ],
+    groups: [
+      {
+        title: "프로젝트 문서",
+        items: [
+          { label: "개발계획", path: "/admin/docs/dev-plan" },
+          { label: "버그수정 로그", path: "/admin/docs/bugfix-log" },
+          { label: "업그레이드 로그", path: "/admin/docs/upgrade-log" },
+          { label: "작업일지", path: "/admin/docs/work-log" },
+        ],
+      },
     ],
   },
 };
@@ -1623,6 +1634,18 @@ export default function Sidebar({ section }) {
           </Link>
         ))}
       </nav>
+      {config.groups?.map((group) => (
+        <div key={group.title}>
+          <h3 className={styles.title}>{group.title}</h3>
+          <nav className={styles.nav}>
+            {group.items.map((item) => (
+              <Link key={item.path} to={item.path} className={`${styles.link} ${location.pathname === item.path ? styles.active : ""}`}>
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+        </div>
+      ))}
     </aside>
   );
 }
@@ -1936,7 +1959,72 @@ export default function ServicesPage() {
 }
 ```
 
-나머지 페이지 (community/BoardPage, community/PostPage, admin/* 6개) 도 동일하게 현재 코드베이스의 코드를 그대로 생성합니다.
+### frontend/src/pages/admin/AdminDocs.jsx
+
+⚠️ **중요**: `remark-gfm` 패키지 필수 설치 (`npm install remark-gfm`). 사이드바 서브메뉴에서 docKey를 받아 해당 문서를 렌더링합니다.
+
+```jsx
+import { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import api from "../../services/api";
+import styles from "./AdminDocs.module.css";
+
+const DOC_TITLES = {
+  "dev-plan": "개발계획",
+  "bugfix-log": "버그수정 로그",
+  "upgrade-log": "업그레이드 로그",
+  "work-log": "작업일지",
+};
+
+export default function AdminDocs() {
+  const { docKey } = useParams();
+  const [content, setContent] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!docKey) return;
+    setLoading(true);
+    api.get(`/api/docs/${docKey}`)
+      .then((r) => setContent(r.data.content))
+      .catch(() => setContent("문서를 불러올 수 없습니다."))
+      .finally(() => setLoading(false));
+  }, [docKey]);
+
+  if (!docKey) {
+    return (
+      <div className={styles.page}>
+        <h1 className={styles.title}>프로젝트 문서</h1>
+        <p className={styles.hint}>왼쪽 사이드바에서 문서를 선택하세요.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className={styles.page}>
+      <div className={styles.docHeader}>
+        <span className={styles.overline}>Project Documentation</span>
+        <h1 className={styles.title}>{DOC_TITLES[docKey] || docKey}</h1>
+      </div>
+      {loading ? (
+        <p className={styles.hint}>로딩 중...</p>
+      ) : (
+        <div className={styles.content}>
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+### frontend/src/pages/admin/AdminDocs.module.css
+
+**현재 코드베이스의 `frontend/src/pages/admin/AdminDocs.module.css` 전체를 복사하여 생성합니다.**
+주요 스타일: `.page`, `.docHeader`, `.hint`, `.overline`, `.title`, `.content` (마크다운 prose 스타일 — h1~h3, code, pre, table, blockquote, hr, ul/ol 포함)
+
+나머지 페이지 (community/BoardPage, community/PostPage, admin/* 나머지) 도 동일하게 현재 코드베이스의 코드를 그대로 생성합니다.
 
 ---
 
