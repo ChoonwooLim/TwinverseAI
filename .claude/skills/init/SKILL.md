@@ -1602,8 +1602,14 @@ const SIDEBAR_CONFIG = {
       { label: "대시보드", path: "/admin" },
       { label: "사용자 관리", path: "/admin/users" },
       { label: "게시판 관리", path: "/admin/boards" },
-      { label: "AI 스킬", path: "/admin/skills" },
-      { label: "플러그인", path: "/admin/plugins" },
+      {
+        label: "Claude Code",
+        path: "/admin/skills",
+        children: [
+          { label: "AI 스킬", path: "/admin/skills" },
+          { label: "플러그인", path: "/admin/plugins" },
+        ],
+      },
       {
         label: "프로젝트 문서",
         path: "/admin/docs",
