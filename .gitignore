@@ -35,8 +35,9 @@ frontend/dist/
 Thumbs.db
 desktop.ini
 
-# Uploads (로컬 fallback)
-uploads/
+# Uploads (사용자 업로드는 무시, 샘플 갤러리 이미지는 추적)
+uploads/*
+!uploads/gallery-*.jpg
 
 # Logs
 *.log
