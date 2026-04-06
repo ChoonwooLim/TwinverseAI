@@ -114,3 +114,27 @@
 - 멀티유저 동작 확인 (Windows + Linux 동시 접속, 캐릭터 표시, 채널 채팅 동작)
 
 ---
+
+## 2026-04-06
+
+### 작업 요약
+
+| 카테고리 | 작업 내용 | 상태 |
+|----------|----------|------|
+| feat | TwinverseDesk 개발계획 전면 업그레이드 (KPI, Phase 확장, UE5 기술 추가) | 완료 |
+| style | TVDesk 실행하기 → TwinverseDesk 실행하기 메뉴명 변경 | 완료 |
+| fix | Cloudflare Tunnel 충돌 해결 (중복 프로세스 정리) | 완료 |
+
+### 세부 내용
+
+- TwinverseDesk 개발계획 페이지 전면 업그레이드
+  - KPI 성능 목표 섹션 신규 추가 (동시접속 200+, 60 FPS, 지연 <50ms 등 6개 지표)
+  - Phase 1 상태를 "진행 중"으로 변경 (펄스 애니메이션 추가)
+  - 5개 Phase 내용 대폭 확장 (OAuth SSO, AI 코드 리뷰어 NPC, 마켓플레이스 등)
+  - 비교표 15개 항목 (기존 12개 → 인증/업무관리/지식베이스 추가)
+  - 아키텍처 7개 레이어 (기존 6개 → 인프라 레이어 추가)
+  - UE5 핵심 기술 8개 (기존 6개 → Mass Entity ECS, Niagara VFX 추가)
+- 메뉴명 "TVDesk 개발계획" → "TwinverseDesk 개발계획", "TVDesk 실행하기" → "TwinverseDesk 실행하기" 변경
+- TVDesk 외부 접속 불가 — Cloudflare Tunnel 중복 프로세스 정리로 해결
+
+---
