@@ -3,7 +3,10 @@ from fastapi import APIRouter, HTTPException
 
 router = APIRouter()
 
-DOCS_DIR = Path(__file__).resolve().parent.parent.parent / "docs"
+import os as _os
+
+# Docker: /app/docs/  |  Local dev: ../../docs (project root)
+DOCS_DIR = Path(_os.getenv("DOCS_DIR", Path(__file__).resolve().parent.parent.parent / "docs"))
 
 DOC_FILES = {
     "dev-plan": "dev-plan.md",
