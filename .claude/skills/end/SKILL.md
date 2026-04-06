@@ -86,6 +86,56 @@ cd c:\WORK\TwinverseAI && git log --since="midnight" --format="%h %ai %s" --reve
 4. **미커밋 변경사항 포함**: git status의 미커밋 변경사항도 분석하여 포함한다
 5. **없는 파일은 건너뛰기**: docs/ 디렉토리나 특정 문서 파일이 없으면 해당 업데이트를 건너뛴다
 
+## 2.5단계: AI 스킬 & 플러그인 목록 자동 동기화
+
+`frontend/src/data/` 의 JSON 파일을 실제 설치된 스킬/플러그인과 동기화합니다.
+
+### 2.5-1. 스킬 동기화 (skills.json)
+
+1. `.claude/skills/` 디렉토리의 모든 SKILL.md 파일을 스캔합니다.
+2. 각 SKILL.md의 frontmatter(name, description)를 파싱합니다.
+3. `frontend/src/data/skills.json`을 읽습니다.
+4. 기존 JSON에 없는 새 스킬이 발견되면 **"자동 발견"** 카테고리에 추가합니다:
+   - `name`: 디렉토리명
+   - `command`: `/{name}`
+   - `desc`: frontmatter의 description
+   - `features`: ["자동 감지된 스킬입니다. 상세 기능은 추후 업데이트됩니다."]
+   - `usage`: `/` + name + ` 명령으로 실행합니다.`
+5. 기존에 있던 스킬이 삭제된 경우에는 JSON에서 제거하지 않습니다.
+6. 변경사항이 있으면 JSON 파일을 업데이트합니다.
+
+### 2.5-2. 플러그인 동기화 (plugins.json)
+
+1. `.claude/settings.json`과 `.claude/settings.local.json`을 읽습니다.
+2. `enabledPlugins` 배열과 `mcpServers` 객체를 파싱합니다.
+3. `frontend/src/data/plugins.json`을 읽습니다.
+4. 기존 JSON에 없는 새 플러그인/MCP 서버가 발견되면 해당 카테고리에 추가합니다:
+   - **enabledPlugins** → "공식 플러그인" 카테고리에 추가
+     - `name`: 플러그인 키 (@ 앞부분)
+     - `displayName`: name의 첫 글자 대문자화
+     - `source`: 전체 플러그인 식별자
+     - `desc`: "자동 감지된 플러그인입니다."
+     - `features`: ["자동 감지됨. 상세 기능은 추후 업데이트됩니다."]
+     - `usage`: "자동 활성화."
+     - `requiresKey`: false
+   - **mcpServers** → "MCP 서버" 카테고리에 추가
+     - `name`: 서버 키
+     - `displayName`: name의 첫 글자 대문자화
+     - `source`: args에서 패키지명 추출 (예: `@modelcontextprotocol/server-xxx`)
+     - `desc`: "자동 감지된 MCP 서버입니다."
+     - `features`: ["자동 감지됨. 상세 기능은 추후 업데이트됩니다."]
+     - `usage`: env가 있으면 "환경변수 필요", 없으면 "자동 활성화."
+     - `requiresKey`: env 객체가 있으면 true
+     - `keyName`: env의 첫 번째 키
+5. 변경사항이 있으면 JSON 파일을 업데이트합니다.
+
+### 동기화 규칙
+
+1. **기존 데이터 보존**: 이미 존재하는 스킬/플러그인의 수동 작성된 상세 내용은 절대 덮어쓰지 않는다
+2. **추가만 수행**: 새로 발견된 항목만 기본 템플릿으로 추가한다
+3. **변경 없으면 건너뛰기**: JSON 파일에 변경사항이 없으면 파일을 수정하지 않는다
+4. **JSON 없으면 건너뛰기**: `frontend/src/data/` 디렉토리나 JSON 파일이 없으면 이 단계를 건너뛴다
+
 ## 3단계: Git 커밋 & 푸시
 
 미커밋 변경사항(코드 + 문서 업데이트 포함)이 있으면 스테이징 → 커밋 → 푸시합니다.
@@ -136,6 +186,10 @@ cd c:\WORK\TwinverseAI && git push origin main
 - bugfix-log.md: (업데이트 / 변경 없음)
 - upgrade-log.md: (업데이트 / 변경 없음)
 - dev-plan.md: (업데이트 / 변경 없음)
+
+### 스킬/플러그인 동기화
+- skills.json: (N개 새 스킬 추가 / 변경 없음)
+- plugins.json: (N개 새 플러그인 추가 / 변경 없음)
 
 ### Git 상태
 - 커밋: N건
