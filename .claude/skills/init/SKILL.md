@@ -141,6 +141,7 @@ c:\WORK\TwinverseAI\
 │   ├── upgrade-log.md
 │   └── work-log.md
 ├── Dockerfile
+├── .dockerignore
 ├── Orbitron.yaml
 ├── .gitignore
 └── CLAUDE.md
@@ -172,9 +173,47 @@ python-multipart
 
 ### backend/.env.example
 
+⚠️ **중요: .env 형식 규칙** — dotenv 파싱 오류 방지
+- 각 줄은 반드시 `KEY=value` 형식 (공백, 접두어 금지)
+- `Internal DATABASE_URL=...` ← ❌ 파싱 실패 (키가 "Internal"이 됨)
+- `DATABASE_URL=...` ← ✅ 올바른 형식
+- 주석은 `#`으로 시작, 메모/비밀번호 등 비환경변수 내용 금지
+
 ```env
-DATABASE_URL=postgresql://user:password@localhost:5432/twinverseai
-SECRET_KEY=change-me-in-production
+# ============================================================
+# {{PROJECT_NAME}} Backend — 환경변수
+# ============================================================
+# 이 파일은 로컬 개발용입니다. .gitignore에 포함됩니다.
+# Docker 배포 시에는 Dockerfile ENV 또는 Orbitron 대시보드에서 설정합니다.
+#
+# ⚠️ 형식 규칙:
+#   KEY=value (앞에 접두어/설명 붙이지 말 것)
+#   주석은 # 사용, 비환경변수 메모 금지
+
+# ── 데이터베이스 ──
+# Docker 내부 (배포용): postgresql://user:pass@container-name:port/db
+# 외부 접속 (로컬 개발용): postgresql://user:pass@server-ip:port/db
+DATABASE_URL=postgresql://user:password@localhost:5432/{{PROJECT_NAME_LOWER}}
+
+# ── JWT 인증 ──
+SECRET_KEY=change-me-in-production-min-32-chars
+
+# ── CORS ──
+FRONTEND_URL=http://localhost:5173
+
+# ── 관리자 계정 (앱 시작 시 자동 생성) ──
+SUPERADMIN_USERNAME=admin
+SUPERADMIN_PASSWORD=admin1234
+```
+
+### backend/.env
+
+로컬 개발용 실제 .env를 생성합니다 (.gitignore에 포함됨):
+
+```env
+# {{PROJECT_NAME}} — 로컬 개발용
+DATABASE_URL=postgresql://user:password@localhost:5432/{{PROJECT_NAME_LOWER}}
+SECRET_KEY={{PROJECT_NAME_LOWER}}-jwt-secret-key-2026
 FRONTEND_URL=http://localhost:5173
 SUPERADMIN_USERNAME=admin
 SUPERADMIN_PASSWORD=admin1234
@@ -2134,9 +2173,56 @@ Syne (display) + Plus Jakarta Sans (body) 폰트, warm cream 팔레트, ultramar
 
 ---
 
-## 11단계: Dockerfile & Orbitron 설정
+## 11단계: Dockerfile & Docker 설정
+
+### .dockerignore
+
+⚠️ **필수**: `.env`가 Docker 이미지에 복사되면 로컬용 DATABASE_URL(External)이 적용되어 **컨테이너 내부 DB 연결 실패**의 원인이 됩니다.
+
+```dockerignore
+# Git
+.git
+.gitignore
+
+# Environment (시크릿 — Docker 이미지에 포함 금지)
+.env
+backend/.env
+.env.local
+.env.*.local
+
+# Node
+node_modules
+frontend/node_modules
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Python
+__pycache__
+*.pyc
+.pytest_cache
+
+# Build artifacts
+frontend/dist
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude
+.claude
+```
 
 ### Dockerfile
+
+⚠️ **핵심 주의사항**:
+1. `.dockerignore`로 `.env` 차단 필수 (로컬 DB URL이 Docker에 침투 방지)
+2. `ENV`로 기본 환경변수 설정 (Orbitron 대시보드에서 override 가능)
+3. `COPY backend/ ./`는 `.dockerignore` 덕분에 `.env`를 복사하지 않음
+4. `docs/`는 Docker 이미지에 포함 (DB seed용)
 
 ```dockerfile
 # Stage 1: Build frontend
@@ -2156,14 +2242,23 @@ WORKDIR /app
 COPY backend/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy backend code
+# Copy backend code (.env는 .dockerignore로 제외됨)
 COPY backend/ ./
 
 # Copy frontend build output
 COPY --from=frontend-build /app/frontend/dist /app/static
 
-# Copy docs (for doc viewer API)
+# Copy docs (for doc viewer API — DB seed용)
 COPY docs/ /app/docs/
+ENV DOCS_DIR=/app/docs
+
+# Default environment variables
+# ⚠️ DATABASE_URL은 반드시 Docker 내부(Internal) 주소 사용
+# Orbitron 대시보드에서 override 가능
+ENV DATABASE_URL=postgresql://orbitron_user:orbitron_db_pass@orbitron-{{PROJECT_NAME_LOWER}}-db:3718/orbitron_db
+ENV SECRET_KEY={{PROJECT_NAME_LOWER}}-jwt-secret-key-2026
+ENV FRONTEND_URL=https://{{PROJECT_NAME_LOWER}}.twinverse.org
+ENV UPLOAD_DIR=/app/uploads
 
 # Create uploads directory
 RUN mkdir -p /app/uploads
@@ -2180,19 +2275,98 @@ CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 ### Orbitron.yaml
 
 ```yaml
+# ============================================================
+# {{PROJECT_NAME}} — Orbitron 배포 설정
+# ============================================================
+#
+# 배포 방식: Dockerfile 멀티스테이지 빌드 (자동 감지)
+#   Stage 1: Node 20 → frontend 빌드 (npm ci + vite build)
+#   Stage 2: Python 3.12 → backend + static 서빙 (uvicorn)
+#
+# 중요: Orbitron 자동 Dockerfile 생성을 사용하지 않음
+#       프로젝트 루트의 Dockerfile을 직접 사용
+# ============================================================
+
 build:
-  command: cd frontend && npm install && npm run build && cd ../backend && pip install -r requirements.txt && mkdir -p static && cp -r ../frontend/dist/* static/
+  dockerfile: Dockerfile
 start:
-  command: cd backend && uvicorn main:app --host 0.0.0.0 --port 8000
+  command: uvicorn main:app --host 0.0.0.0 --port 8000
+
+port: 8000
+
+healthcheck:
+  path: /health
+  interval: 30
+  timeout: 10
+
 env:
+  # ── 필수: 데이터베이스 ──
   - key: DATABASE_URL
+    description: "PostgreSQL 연결 URL (Docker 내부 주소)"
+    required: true
     sync: false
+
+  # ── 필수: JWT 인증 ──
   - key: SECRET_KEY
+    description: "JWT 토큰 서명 키 (최소 32자 랜덤 문자열)"
+    required: true
     sync: false
-  - key: FRONTEND_URL
+
+  # ── 관리자 계정 ──
+  - key: SUPERADMIN_USERNAME
+    value: "admin"
+    sync: true
+
+  - key: SUPERADMIN_PASSWORD
+    required: true
     sync: false
+
+  # ── 프론트엔드 ──
   - key: VITE_API_URL
+    value: ""
+    sync: true
+
+  - key: FRONTEND_URL
+    description: "CORS 허용 오리진"
     sync: false
+
+  # ── 파일 업로드 ──
+  - key: UPLOAD_DIR
+    value: "/app/uploads"
+    sync: true
+
+  # ── 문서 ──
+  - key: DOCS_DIR
+    value: "/app/docs"
+    sync: true
+
+volumes:
+  - path: /app/uploads
+    description: "사용자 업로드 파일 영속 저장"
+
+# ============================================================
+# 배포 체크리스트 & 트러블슈팅
+# ============================================================
+#
+# 1. 환경변수 (Orbitron 대시보드)
+#    - DATABASE_URL: Docker 내부 주소 사용 (orbitron-xxx-db:port)
+#    - SECRET_KEY: 랜덤 32자+
+#    - SUPERADMIN_PASSWORD: 관리자 비밀번호
+#    - FRONTEND_URL: https://{{PROJECT_NAME_LOWER}}.twinverse.org
+#
+# 2. .env 주의사항
+#    - .env는 로컬 개발 전용 (External DB URL 사용)
+#    - .dockerignore로 Docker 이미지에 복사 차단
+#    - Docker는 Dockerfile의 ENV 기본값 또는 Orbitron 대시보드 값 사용
+#    - .env 형식: KEY=value (접두어/설명 금지, 주석은 # 사용)
+#
+# 3. 트러블슈팅
+#    - 문서/게시글 404 → /health에서 DB 연결 확인
+#    - documents=0 → DATABASE_URL 확인
+#    - 이미지 안보임 → files=0 → uploads/ 볼륨 확인
+#    - 로그인 실패 → SECRET_KEY 확인
+#    - CORS 에러 → FRONTEND_URL 확인
+# ============================================================
 ```
 
 ---
@@ -2299,6 +2473,14 @@ env:
 - Windows에서는 커밋/푸시만 수행, 배포는 Orbitron에서 진행
 - **반드시 프로젝트 루트에 Dockerfile 포함** (Orbitron 자동 생성 Dockerfile은 깨지므로 절대 의존 금지)
 - Dockerfile은 멀티스테이지 빌드: Node(프론트엔드 빌드) → Python(백엔드 + 정적파일 서빙)
+- **반드시 .dockerignore로 .env 차단** (로컬 DB URL이 Docker에 침투하면 연결 실패)
+- Dockerfile에 ENV로 기본 환경변수 설정 (Internal DB URL, SECRET_KEY 등)
+
+## .env 규칙
+- .env는 로컬 개발 전용 (.gitignore + .dockerignore에 포함)
+- 형식: `KEY=value` (접두어/설명 금지, `Internal DATABASE_URL=...` ← ❌ 파싱 실패)
+- Docker 배포는 Dockerfile ENV 또는 Orbitron 대시보드 사용
+- 비환경변수 메모(SSH 정보, 토큰 등)는 .env에 넣지 말 것
 
 ## 커밋 메시지 규칙
 - `feat:` 새 기능 / `fix:` 버그 수정 / `style:` UI / `refactor:` 리팩토링 / `docs:` 문서 / `infra:` 인프라
@@ -2318,12 +2500,17 @@ cd c:\WORK\TwinverseAI && git add -A && git commit -m "feat: 프로젝트 초기
 
 - [ ] Git 초기화 (.gitignore 포함)
 - [ ] Backend 전체 파일 생성 (models 4개, routers 8개, services, deps, main, seed_admin)
+- [ ] **backend/.env 생성** (KEY=value 형식 엄수, 접두어/메모 금지)
+- [ ] **backend/.env.example 생성** (형식 가이드 포함)
 - [ ] Frontend npm install 완료
 - [ ] Frontend 전체 파일 생성 (App.jsx, 모든 컴포넌트/페이지/CSS modules)
 - [ ] 디자인 시스템 (global.css, index.css, 21개 CSS modules)
-- [ ] Dockerfile + Orbitron.yaml
+- [ ] **Dockerfile (ENV 기본값 포함 — Internal DB URL)**
+- [ ] **.dockerignore (.env 차단 필수)**
+- [ ] **Orbitron.yaml (환경변수 8개, 헬스체크, 트러블슈팅)**
 - [ ] docs/ 초기 문서 4개
 - [ ] CLAUDE.md
 - [ ] 첫 커밋
 - [ ] `npm run build` 성공 확인
 - [ ] `uvicorn main:app --reload` 성공 확인 (DB 연결 필요)
+- [ ] **.env 형식 검증** (`grep -P "^\w" backend/.env` — 모든 줄이 KEY=value 또는 #주석인지 확인)
