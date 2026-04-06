@@ -1,52 +1,31 @@
-import os
-from pathlib import Path
-from fastapi import APIRouter, HTTPException
+"""프로젝트 문서 API — PostgreSQL 기반"""
+from fastapi import APIRouter, Depends, HTTPException
+from sqlmodel import Session, select
+from database import get_session
+from models.document import Document
 
 router = APIRouter()
 
-def _find_docs_dir() -> Path:
-    """docs/ 디렉토리를 여러 경로에서 탐색"""
-    # 1. 환경변수 우선
-    env = os.getenv("DOCS_DIR")
-    if env and Path(env).exists():
-        return Path(env)
-    # 2. Docker: /app/docs/
-    docker_path = Path("/app/docs")
-    if docker_path.exists():
-        return docker_path
-    # 3. 로컬 개발: 프로젝트 루트/docs/
-    local_path = Path(__file__).resolve().parent.parent.parent / "docs"
-    if local_path.exists():
-        return local_path
-    return local_path  # fallback
-
-DOCS_DIR = _find_docs_dir()
-
-DOC_FILES = {
-    "dev-plan": "dev-plan.md",
-    "bugfix-log": "bugfix-log.md",
-    "upgrade-log": "upgrade-log.md",
-    "work-log": "work-log.md",
+DOC_TITLES = {
+    "dev-plan": "개발계획",
+    "bugfix-log": "버그수정 로그",
+    "upgrade-log": "업그레이드 로그",
+    "work-log": "작업일지",
 }
 
 
-print(f"[docs] DOCS_DIR resolved to: {DOCS_DIR} (exists={DOCS_DIR.exists()})")
-
-
 @router.get("/list")
-def list_docs():
-    result = []
-    for key, filename in DOC_FILES.items():
-        filepath = DOCS_DIR / filename
-        result.append({"key": key, "filename": filename, "exists": filepath.exists()})
-    return result
+def list_docs(session: Session = Depends(get_session)):
+    docs = session.exec(select(Document)).all()
+    return [
+        {"key": d.key, "title": d.title, "exists": True, "updated_at": d.updated_at.isoformat()}
+        for d in docs
+    ]
 
 
 @router.get("/{doc_key}")
-def get_doc(doc_key: str):
-    if doc_key not in DOC_FILES:
+def get_doc(doc_key: str, session: Session = Depends(get_session)):
+    doc = session.exec(select(Document).where(Document.key == doc_key)).first()
+    if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
-    filepath = DOCS_DIR / DOC_FILES[doc_key]
-    if not filepath.exists():
-        raise HTTPException(status_code=404, detail="Document file not found")
-    return {"key": doc_key, "content": filepath.read_text(encoding="utf-8")}
+    return {"key": doc.key, "title": doc.title, "content": doc.content}
