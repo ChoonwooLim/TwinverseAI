@@ -25,6 +25,12 @@ COPY --from=frontend-build /app/frontend/dist /app/static
 COPY docs/ /app/docs/
 ENV DOCS_DIR=/app/docs
 
+# Default environment variables (Orbitron 대시보드에서 override 가능)
+ENV DATABASE_URL=postgresql://orbitron_user:orbitron_db_pass@orbitron-twinverseai-db:3718/orbitron_db
+ENV SECRET_KEY=twinverse-ai-jwt-secret-key-2026
+ENV FRONTEND_URL=https://twinverseai.twinverse.org
+ENV UPLOAD_DIR=/app/uploads
+
 # Copy sample gallery images + create uploads directory
 COPY uploads/gallery-*.jpg /app/uploads/
 RUN mkdir -p /app/uploads

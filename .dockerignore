@@ -1,0 +1,37 @@
+# Git
+.git
+.gitignore
+
+# Environment (시크릿 — Docker 이미지에 포함 금지)
+.env
+backend/.env
+.env.local
+.env.*.local
+
+# Node
+node_modules
+frontend/node_modules
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Python
+__pycache__
+*.pyc
+.pytest_cache
+
+# Build artifacts
+frontend/dist
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude
+.claude
+
+# Other projects
+deskrpg-master
