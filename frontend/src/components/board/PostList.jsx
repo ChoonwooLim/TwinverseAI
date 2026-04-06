@@ -9,10 +9,25 @@ export default function PostList({ posts, boardType, basePath }) {
       <div className={styles.grid}>
         {posts.map((p) => (
           <Link key={p.id} to={`${basePath}/${p.id}`} className={styles.card}>
-            {p.thumbnail && <img src={p.thumbnail} alt={p.title} className={styles.thumb} />}
+            <div className={styles.thumbWrap}>
+              {p.thumbnail ? (
+                <img src={p.thumbnail} alt={p.title} className={styles.thumb} loading="lazy" />
+              ) : (
+                <div className={styles.thumbPlaceholder}>
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                    <path d="M21 15l-5-5L5 21"/>
+                  </svg>
+                </div>
+              )}
+            </div>
             <div className={styles.cardBody}>
               <h4 className={styles.cardTitle}>{p.title}</h4>
-              <span className={styles.cardMeta}>{p.author}</span>
+              <div className={styles.cardFooter}>
+                <span className={styles.cardMeta}>{p.author}</span>
+                <span className={styles.cardMeta}>{p.view_count} views</span>
+              </div>
             </div>
           </Link>
         ))}

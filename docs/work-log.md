@@ -183,4 +183,19 @@
 - 성능 최적화: React.lazy() 16개 페이지 코드 스플리팅, 중복 폰트 import 제거, 폰트 웨이트 10→7개 축소, Suspense를 MainLayout 내부 Outlet으로 이동, Vite manualChunks(vendor/markdown 분리)
 - /code-review 스킬: 보안/성능/코드품질/베스트프랙티스/유지보수성 5차원 점검, P0-P3 등급 리포트
 
+### 작업 요약 (세션 4)
+
+| 카테고리 | 작업 내용 | 상태 |
+|----------|----------|------|
+| feat | 이미지 갤러리 전면 업그레이드 (썸네일 카드, 라이트박스 뷰어, 샘플 이미지 생성) | 완료 |
+
+### 세부 내용 (세션 4)
+
+- Pillow로 5개 샘플 갤러리 이미지 생성 (Dark Glass Neon 테마 - 포탈, 대시보드, 개발계획, 디자인시스템, 스킬목록)
+- 백엔드 갤러리 목록 API에 thumbnail 필드 추가 (첫 번째 이미지 경로, FileRecord JOIN)
+- _seed_gallery_images() 함수로 갤러리 게시글에 이미지 FileRecord 자동 연결
+- PostList 갤러리 그리드 업그레이드: 썸네일 이미지 카드 + 호버 줌 효과 + SVG placeholder
+- PostDetail 갤러리 뷰어: 이미지 그리드 + 클릭 시 라이트박스 (이전/다음 네비게이션, 파일명 캡션, 키보드 접근성)
+- 이미지와 일반 첨부파일 분리 표시
+
 ---

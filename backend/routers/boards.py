@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlmodel import Session, select, func, col
 from database import get_session
-from models import Post, User
+from models import Post, User, FileRecord
 from deps import get_current_user, require_admin
 
 router = APIRouter()
@@ -77,6 +77,20 @@ def list_posts(
         .limit(size)
     ).all()
 
+    # For gallery board, fetch first image thumbnail per post
+    thumbnails = {}
+    if board_type == "gallery":
+        post_ids = [p.id for p, _ in posts]
+        if post_ids:
+            files = session.exec(
+                select(FileRecord)
+                .where(FileRecord.post_id.in_(post_ids), FileRecord.file_type == "image")
+                .order_by(FileRecord.id)
+            ).all()
+            for f in files:
+                if f.post_id not in thumbnails:
+                    thumbnails[f.post_id] = f.stored_path
+
     return {
         "items": [
             {
@@ -88,6 +102,7 @@ def list_posts(
                 "view_count": p.view_count,
                 "video_url": p.video_url,
                 "created_at": p.created_at.isoformat(),
+                **({"thumbnail": thumbnails[p.id]} if p.id in thumbnails else {}),
             }
             for p, username in posts
         ],

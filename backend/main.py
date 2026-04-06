@@ -70,6 +70,52 @@ def _seed_docs():
         print(f"[seed_docs] Synced {len(DOC_FILES)} docs from {docs_dir}")
 
 
+def _seed_gallery_images(session):
+    """갤러리 게시글에 샘플 이미지 파일 레코드 연결"""
+    from sqlmodel import select
+    from models import Post, FileRecord
+
+    gallery_posts = session.exec(
+        select(Post).where(Post.board_type == "gallery").order_by(Post.id)
+    ).all()
+
+    image_map = [
+        ("gallery-portal-main.jpg", "TwinverseAI 포탈 메인 페이지.jpg"),
+        ("gallery-admin-dashboard.jpg", "어드민 대시보드 UI.jpg"),
+        ("gallery-desk-plan.jpg", "TwinverseDesk 개발계획.jpg"),
+        ("gallery-design-system.jpg", "Dark Glass Neon 디자인 시스템.jpg"),
+        ("gallery-skills-page.jpg", "Claude Code AI 스킬 목록.jpg"),
+    ]
+
+    uploads_dir = Path(os.getenv("UPLOAD_DIR", "/app/uploads"))
+    if not uploads_dir.exists():
+        uploads_dir = Path(__file__).resolve().parent.parent / "uploads"
+
+    for i, post in enumerate(gallery_posts):
+        if i >= len(image_map):
+            break
+        stored_name, original_name = image_map[i]
+        filepath = uploads_dir / stored_name
+        file_size = filepath.stat().st_size if filepath.exists() else 0
+        if file_size == 0:
+            continue
+        # 중복 방지
+        existing = session.exec(
+            select(FileRecord).where(FileRecord.post_id == post.id)
+        ).first()
+        if existing:
+            continue
+        record = FileRecord(
+            post_id=post.id,
+            original_name=original_name,
+            stored_path=f"/uploads/{stored_name}",
+            file_type="image",
+            file_size=file_size,
+        )
+        session.add(record)
+    session.commit()
+
+
 def _seed_sample_posts():
     """게시판별 샘플 게시글 생성 (최초 1회)"""
     from sqlmodel import Session, select, func
@@ -118,6 +164,10 @@ def _seed_sample_posts():
         for post in posts:
             session.add(post)
         session.commit()
+
+        # 갤러리 게시글에 샘플 이미지 연결
+        _seed_gallery_images(session)
+
         print(f"[seed_posts] Created {len(posts)} sample posts")
 
 

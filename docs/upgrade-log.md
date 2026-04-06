@@ -23,3 +23,4 @@
 | 2026-04-06 | /code-review 스킬 신규 생성 (5차원 점검, P0-P3 등급 리포트) | feat | .claude/skills/code-review/SKILL.md |
 | 2026-04-06 | 프론트엔드 성능 최적화 (React.lazy 코드 스플리팅, 폰트 최적화, Vite 청크 분리) | refactor | App.jsx, vite.config.js, index.html, global.css, MainLayout.jsx |
 | 2026-04-06 | Cascade Delete + Pydantic Response Model 적용 | refactor | models/post.py, routers/boards.py |
+| 2026-04-06 | 이미지 갤러리 전면 업그레이드 (썸네일 카드, 라이트박스, 샘플 이미지 5개) | feat | PostList.jsx, PostDetail.jsx, boards.py, main.py |
