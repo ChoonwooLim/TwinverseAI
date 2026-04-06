@@ -31,8 +31,8 @@ ENV SECRET_KEY=twinverse-ai-jwt-secret-key-2026
 ENV FRONTEND_URL=https://twinverseai.twinverse.org
 ENV UPLOAD_DIR=/app/uploads
 
-# Copy sample gallery images + create uploads directory
-COPY uploads/gallery-*.jpg /app/uploads/
+# Gallery defaults — 볼륨 마운트에 영향받지 않는 별도 경로에 보관
+COPY uploads/gallery-*.jpg /app/gallery-defaults/
 RUN mkdir -p /app/uploads
 
 VOLUME ["/app/uploads"]

@@ -3,8 +3,6 @@ import { useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import styles from "./PostDetail.module.css";
 
-const API_BASE = import.meta.env.VITE_API_URL || "";
-
 export default function PostDetail({ post, onDelete, canEdit }) {
   const navigate = useNavigate();
   const [lightbox, setLightbox] = useState(null);
@@ -28,7 +26,7 @@ export default function PostDetail({ post, onDelete, canEdit }) {
         <div className={styles.gallery}>
           {images.map((f, idx) => (
             <div key={f.id} className={styles.galleryItem} onClick={() => setLightbox(idx)}>
-              <img src={`${API_BASE}${f.stored_path}`} alt={f.original_name} className={styles.galleryImage} loading="lazy" />
+              <img src={`${f.stored_path}`} alt={f.original_name} className={styles.galleryImage} loading="lazy" />
             </div>
           ))}
         </div>
@@ -42,7 +40,7 @@ export default function PostDetail({ post, onDelete, canEdit }) {
             <button className={styles.lightboxPrev} onClick={(e) => { e.stopPropagation(); setLightbox(lightbox - 1); }} aria-label="이전">&#8249;</button>
           )}
           <img
-            src={`${API_BASE}${images[lightbox].stored_path}`}
+            src={`${images[lightbox].stored_path}`}
             alt={images[lightbox].original_name}
             className={styles.lightboxImage}
             onClick={(e) => e.stopPropagation()}
@@ -75,7 +73,7 @@ export default function PostDetail({ post, onDelete, canEdit }) {
           <h3 className={styles.filesTitle}>첨부파일</h3>
           <div className={styles.fileList}>
             {otherFiles.map((f) => (
-              <a key={f.id} href={`${API_BASE}${f.stored_path}`} download className={styles.fileLink}>
+              <a key={f.id} href={`${f.stored_path}`} download className={styles.fileLink}>
                 {f.original_name} ({(f.file_size / 1024).toFixed(0)}KB)
               </a>
             ))}

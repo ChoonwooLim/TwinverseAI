@@ -1,8 +1,6 @@
 import { Link } from "react-router-dom";
 import styles from "./PostList.module.css";
 
-const API_BASE = import.meta.env.VITE_API_URL || "";
-
 export default function PostList({ posts, boardType, basePath }) {
   const isGrid = boardType === "gallery";
 
@@ -13,7 +11,7 @@ export default function PostList({ posts, boardType, basePath }) {
           <Link key={p.id} to={`${basePath}/${p.id}`} className={styles.card}>
             <div className={styles.thumbWrap}>
               {p.thumbnail ? (
-                <img src={`${API_BASE}${p.thumbnail}`} alt={p.title} className={styles.thumb} loading="lazy" />
+                <img src={p.thumbnail} alt={p.title} className={styles.thumb} loading="lazy" />
               ) : (
                 <div className={styles.thumbPlaceholder}>
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">

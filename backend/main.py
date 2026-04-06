@@ -1,4 +1,5 @@
 import os
+import shutil
 from pathlib import Path
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
@@ -11,6 +12,28 @@ from fastapi.staticfiles import StaticFiles
 import database
 from database import create_db_and_tables
 from routers import auth, admin, docs, skills, plugins, boards, comments, files
+
+
+def _get_uploads_dir() -> Path:
+    """업로드 디렉토리 결정: UPLOAD_DIR (Docker) > 프로젝트루트/uploads (로컬)"""
+    d = Path(os.getenv("UPLOAD_DIR", ""))
+    if not d.is_dir():
+        d = Path(__file__).resolve().parent.parent / "uploads"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def _copy_gallery_defaults():
+    """Docker VOLUME 마운트로 비어있는 uploads에 갤러리 기본 이미지 복사"""
+    defaults_dir = Path("/app/gallery-defaults")
+    if not defaults_dir.is_dir():
+        return
+    uploads = _get_uploads_dir()
+    for src in defaults_dir.glob("gallery-*.jpg"):
+        dst = uploads / src.name
+        if not dst.exists():
+            shutil.copy2(src, dst)
+            print(f"[gallery-defaults] Copied {src.name} → {uploads}")
 
 def _seed_admin():
     """Ensure default admin account exists on startup."""
@@ -182,6 +205,7 @@ def _seed_sample_posts():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    _copy_gallery_defaults()
     create_db_and_tables()
     _seed_admin()
     _seed_docs()
@@ -231,12 +255,8 @@ def health_check():
     except Exception as e:
         return {"status": "error", "db": str(e)}
 
-# Serve uploaded files — UPLOAD_DIR (Docker: /app/uploads) > 프로젝트루트/uploads (로컬)
-_uploads_dir = Path(os.getenv("UPLOAD_DIR", ""))
-if not _uploads_dir.is_dir():
-    _uploads_dir = Path(__file__).resolve().parent.parent / "uploads"
-_uploads_dir.mkdir(parents=True, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=str(_uploads_dir)), name="uploads")
+# Serve uploaded files
+app.mount("/uploads", StaticFiles(directory=str(_get_uploads_dir())), name="uploads")
 
 # Serve frontend static files in production (Docker build copies to /app/static)
 _static_dir = Path(__file__).resolve().parent / "static"
