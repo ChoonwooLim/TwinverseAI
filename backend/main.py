@@ -76,14 +76,10 @@ def _seed_docs():
         print(f"[seed_docs] ERROR: {e}")
 
 
-def _seed_gallery_images(session):
-    """갤러리 게시글에 샘플 이미지 파일 레코드 연결"""
-    from sqlmodel import select
+def _seed_gallery_images():
+    """갤러리 게시글에 샘플 이미지 파일 레코드 연결 (독립 실행)"""
+    from sqlmodel import Session, select
     from models import Post, FileRecord
-
-    gallery_posts = session.exec(
-        select(Post).where(Post.board_type == "gallery").order_by(Post.id)
-    ).all()
 
     image_map = [
         ("gallery-portal-main.jpg", "TwinverseAI 포탈 메인 페이지.jpg"),
@@ -94,32 +90,42 @@ def _seed_gallery_images(session):
     ]
 
     uploads_dir = Path(os.getenv("UPLOAD_DIR", "/app/uploads"))
-    if not uploads_dir.exists():
+    if not uploads_dir.is_dir():
         uploads_dir = Path(__file__).resolve().parent.parent / "uploads"
 
-    for i, post in enumerate(gallery_posts):
-        if i >= len(image_map):
-            break
-        stored_name, original_name = image_map[i]
-        filepath = uploads_dir / stored_name
-        file_size = filepath.stat().st_size if filepath.exists() else 0
-        if file_size == 0:
-            continue
-        # 중복 방지
-        existing = session.exec(
-            select(FileRecord).where(FileRecord.post_id == post.id)
-        ).first()
-        if existing:
-            continue
-        record = FileRecord(
-            post_id=post.id,
-            original_name=original_name,
-            stored_path=f"/uploads/{stored_name}",
-            file_type="image",
-            file_size=file_size,
-        )
-        session.add(record)
-    session.commit()
+    try:
+        with Session(database.engine) as session:
+            gallery_posts = session.exec(
+                select(Post).where(Post.board_type == "gallery").order_by(Post.id)
+            ).all()
+
+            linked = 0
+            for i, post in enumerate(gallery_posts):
+                if i >= len(image_map):
+                    break
+                stored_name, original_name = image_map[i]
+                filepath = uploads_dir / stored_name
+                file_size = filepath.stat().st_size if filepath.exists() else 0
+                if file_size == 0:
+                    continue
+                existing = session.exec(
+                    select(FileRecord).where(FileRecord.post_id == post.id)
+                ).first()
+                if existing:
+                    continue
+                record = FileRecord(
+                    post_id=post.id,
+                    original_name=original_name,
+                    stored_path=f"/uploads/{stored_name}",
+                    file_type="image",
+                    file_size=file_size,
+                )
+                session.add(record)
+                linked += 1
+            session.commit()
+            print(f"[seed_gallery] Linked {linked} images to gallery posts")
+    except Exception as e:
+        print(f"[seed_gallery] ERROR: {e}")
 
 
 def _seed_sample_posts():
@@ -171,9 +177,6 @@ def _seed_sample_posts():
             session.add(post)
         session.commit()
 
-        # 갤러리 게시글에 샘플 이미지 연결
-        _seed_gallery_images(session)
-
         print(f"[seed_posts] Created {len(posts)} sample posts")
 
 
@@ -183,6 +186,7 @@ async def lifespan(app: FastAPI):
     _seed_admin()
     _seed_docs()
     _seed_sample_posts()
+    _seed_gallery_images()
     yield
 
 app = FastAPI(title="TwinverseAI API", lifespan=lifespan)
@@ -227,8 +231,10 @@ def health_check():
     except Exception as e:
         return {"status": "error", "db": str(e)}
 
-# Serve uploaded files
-_uploads_dir = Path(__file__).resolve().parent.parent / "uploads"
+# Serve uploaded files — UPLOAD_DIR (Docker: /app/uploads) > 프로젝트루트/uploads (로컬)
+_uploads_dir = Path(os.getenv("UPLOAD_DIR", ""))
+if not _uploads_dir.is_dir():
+    _uploads_dir = Path(__file__).resolve().parent.parent / "uploads"
 _uploads_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=str(_uploads_dir)), name="uploads")
 
