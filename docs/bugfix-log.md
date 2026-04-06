@@ -8,3 +8,4 @@
 | 2026-04-04 | JWT 토큰 디코드 실패 | python-jose가 sub 클레임을 문자열로 기대하는데 정수 전달 | create_access_token에서 sub를 str()로 변환 | backend/services/auth_service.py, backend/routers/auth.py |
 | 2026-04-05 | TVDesk NPC 호출/대화 "연결끊김" | DeskRPG 쿠키 Secure 플래그 → Cloudflare Tunnel 내부 HTTP에서 브라우저가 쿠키 저장 거부 | COOKIE_SECURE=false 환경변수 설정 | 서버: ~/.deskrpg/start.sh |
 | 2026-04-05 | 리눅스 브라우저 소켓 인증 실패 | DeskRPG token 쿠키 미설정, twinverse_token만 존재 | 프록시에서 twinverse_token → DeskRPG JWT 자동 변환/주입 | 서버: ~/.deskrpg/proxy.js |
+| 2026-04-06 | Docker 배포 시 프로젝트 문서 404 | Path(__file__).parent.parent.parent가 Docker에서 /docs로 해석 | DOCS_DIR 환경변수 + 자동 탐색 로직, 이후 PostgreSQL 기반으로 전면 전환 | backend/routers/docs.py, backend/models/document.py, backend/main.py |

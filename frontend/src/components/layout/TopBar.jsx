@@ -16,7 +16,7 @@ const DESK_ITEMS = [
   { label: "TVDesk 실행", path: "/twinversedesk/run" },
 ];
 
-export default function TopBar() {
+function TopBar() {
   const location = useLocation();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -105,3 +105,5 @@ export default function TopBar() {
     </header>
   );
 }
+
+export default TopBar;

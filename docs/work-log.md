@@ -153,4 +153,34 @@
 - remark-gfm 패키지 의존성 추가 (package.json)
 - /init 스킬(SKILL.md)에 Sidebar groups 패턴, AdminDocs 컴포넌트 템플릿, remark-gfm 의존성 반영
 
+### 작업 요약 (세션 3)
+
+| 카테고리 | 작업 내용 | 상태 |
+|----------|----------|------|
+| feat | AI 스킬/플러그인 페이지에 실제 상세 내용 추가 (25개 스킬, 14개 플러그인) | 완료 |
+| feat | 프로젝트 문서를 PostgreSQL 기반으로 전환 (filesystem → DB) | 완료 |
+| feat | /init 스킬 전면 업그레이드 — 현재 사이트와 동일한 프로젝트 자동 생성 | 완료 |
+| feat | 스킬/플러그인 목록 JSON 분리 + /end 자동 동기화 로직 추가 | 완료 |
+| feat | 게시판별 샘플 게시글 5개씩 자동 생성 (총 20개) | 완료 |
+| feat | /code-review 스킬 신규 생성 (5차원 점검, 등급별 리포트) | 완료 |
+| fix | Docker 환경 docs/ 경로 불일치 수정 (404 해결) | 완료 |
+| fix | docs 경로 자동 탐색 (환경변수 → Docker → 로컬 순서) | 완료 |
+| style | 프로젝트 문서/Claude Code 메인메뉴 + 서브메뉴 구조 변경 | 완료 |
+| refactor | Cascade Delete 적용 + Response Model 추가 (코드 리뷰 반영) | 완료 |
+| refactor | 프론트엔드 성능 최적화 (코드 스플리팅, 폰트 최적화, Vite 청크 분리) | 완료 |
+
+### 세부 내용 (세션 3)
+
+- AI 스킬 페이지: 25개 스킬을 3카테고리(프로젝트 관리, 디자인&UX, 코드 품질)로 정리, 클릭 시 주요기능/사용법 펼침
+- AI 플러그인 페이지: 14개 플러그인을 2카테고리(공식 플러그인, MCP 서버)로 정리, 카드 UI
+- 프로젝트 문서 PostgreSQL 전환: Document 모델 추가, _seed_docs() 시작 시 docs/ → DB 동기화
+- Docker docs 404 수정: Path 해석 문제 → DOCS_DIR 환경변수 + 자동 탐색 로직
+- 사이드바 children 패턴: groups → children 방식으로 리팩토링 (프로젝트 문서, Claude Code 서브메뉴)
+- /init 스킬: {{PROJECT_NAME}} 변수, Document 모델, DB 기반 docs, children 사이드바 패턴 반영
+- /end 스킬: 2.5단계 스킬/플러그인 자동 동기화 로직 추가
+- 샘플 게시글: _seed_sample_posts()로 공지/QnA/갤러리/비디오 각 5개 (AI/메타버스 테마)
+- Cascade Delete: Post 모델에 Relationship cascade 설정, boards.py에서 N+1 삭제 루프 제거
+- 성능 최적화: React.lazy() 16개 페이지 코드 스플리팅, 중복 폰트 import 제거, 폰트 웨이트 10→7개 축소, Suspense를 MainLayout 내부 Outlet으로 이동, Vite manualChunks(vendor/markdown 분리)
+- /code-review 스킬: 보안/성능/코드품질/베스트프랙티스/유지보수성 5차원 점검, P0-P3 등급 리포트
+
 ---

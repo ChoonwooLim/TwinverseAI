@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import TopBar from "./TopBar";
 import Sidebar from "./Sidebar";
@@ -20,7 +21,9 @@ export default function MainLayout() {
       <div className={styles.body}>
         {sidebarSection && <Sidebar section={sidebarSection} />}
         <main className={`${styles.content} ${!sidebarSection ? styles.full : ""}`}>
-          <Outlet />
+          <Suspense fallback={<div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "40vh", color: "var(--text-secondary)" }}>로딩 중...</div>}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
       <Footer />

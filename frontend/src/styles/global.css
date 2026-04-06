@@ -3,7 +3,7 @@
    Matching twinverse.org: glassmorphism, neon accents, dark theme
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+/* Fonts loaded via index.html <link> for faster preconnect */
 
 /* ============================================================
    1. Design Tokens
