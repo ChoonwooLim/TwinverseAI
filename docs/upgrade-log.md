@@ -24,3 +24,8 @@
 | 2026-04-06 | 프론트엔드 성능 최적화 (React.lazy 코드 스플리팅, 폰트 최적화, Vite 청크 분리) | refactor | App.jsx, vite.config.js, index.html, global.css, MainLayout.jsx |
 | 2026-04-06 | Cascade Delete + Pydantic Response Model 적용 | refactor | models/post.py, routers/boards.py |
 | 2026-04-06 | 이미지 갤러리 전면 업그레이드 (썸네일 카드, 라이트박스, 샘플 이미지 5개) | feat | PostList.jsx, PostDetail.jsx, boards.py, main.py |
+| 2026-04-06 | Orbitron.yaml 전면 업그레이드 (환경변수 8개, 헬스체크, 배포 체크리스트) | infra | Orbitron.yaml |
+| 2026-04-06 | .dockerignore + Dockerfile ENV 기본값 배포 안전장치 | infra | .dockerignore, Dockerfile |
+| 2026-04-06 | /health 엔드포인트 배포 진단 정보 추가 (uploads_dir, uploads_files) | feat | backend/main.py |
+| 2026-04-06 | Vite 프록시 추가 (/api, /uploads, /health → backend 8000) | infra | frontend/vite.config.js |
+| 2026-04-06 | /init 스킬 업로드/이미지 배포 안전장치 12개 섹션 추가 | docs | .claude/skills/init/SKILL.md |

@@ -198,4 +198,32 @@
 - PostDetail 갤러리 뷰어: 이미지 그리드 + 클릭 시 라이트박스 (이전/다음 네비게이션, 파일명 캡션, 키보드 접근성)
 - 이미지와 일반 첨부파일 분리 표시
 
+### 작업 요약 (세션 5)
+
+| 카테고리 | 작업 내용 | 상태 |
+|----------|----------|------|
+| fix | 갤러리 이미지 배포 404 — Docker VOLUME이 uploads 덮어씀 | 완료 |
+| fix | 갤러리 이미지 로컬 깨짐 — Vite 프록시 미설정 | 완료 |
+| fix | UPLOAD_DIR 빈 문자열 → Path("") = CWD(.) 해석 문제 | 완료 |
+| fix | StaticFiles mount → Docker VOLUME 충돌 | 완료 |
+| fix | 갤러리 샘플 이미지 Git 미추적 → Docker 빌드 실패 (502) | 완료 |
+| infra | Orbitron.yaml 환경변수/헬스체크/배포 체크리스트 업그레이드 | 완료 |
+| infra | .dockerignore .env 차단 + Dockerfile ENV 기본값 추가 | 완료 |
+| docs | /init 스킬 전면 업그레이드 — 이미지/업로드 배포 버그 재발 방지 (12개 섹션) | 완료 |
+
+### 세부 내용 (세션 5)
+
+- 배포 사이트 갤러리 이미지 404 근본 원인 추적 및 해결 (5단계 디버깅):
+  1. Docker VOLUME `/app/uploads`가 Orbitron 빈 볼륨으로 마운트 → COPY한 이미지 덮어씀
+  2. `.gitignore`에 `uploads/` → Git에 이미지 없음 → Docker 빌드 실패 (502)
+  3. `UPLOAD_DIR=""` (Orbitron override) → `Path("")` = CWD(.) → 소스 폴더를 uploads로 착각
+  4. `StaticFiles` mount → Docker VOLUME과 충돌하여 파일 미검색
+  5. Vite 프록시 미설정 → `<img src="/uploads/...">` 요청이 SPA HTML 반환
+- 해결책: 갤러리 이미지를 `backend/gallery_defaults/`에 포함, 시작 시 uploads로 복사
+- `/uploads` 서빙을 StaticFiles mount → 명시적 `@app.get("/uploads/{filename}")` 라우트로 변경
+- `/health` 엔드포인트에 `uploads_dir`, `uploads_files` 디버그 정보 추가
+- `vite.config.js`에 `/api`, `/uploads`, `/health` 프록시 추가
+- `api.js` baseURL을 `""` (same-origin)으로 통일
+- `/init` 스킬에 위 모든 수정사항 반영 (12개 섹션, 버그픽스 5~9번 추가)
+
 ---
