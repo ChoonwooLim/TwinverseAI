@@ -1,6 +1,6 @@
 ---
 name: init
-description: 프로젝트 초기 세팅 - Git, 디렉토리 구조, 인증(JWT 버그픽스 포함), 커뮤니티 게시판(4종), 어드민 대시보드, 프로젝트 문서, 스킬/플러그인 뷰어, 파일 업로드, Architectural Futurism 디자인 시스템, Orbitron 배포 자동 생성 (FastAPI + React + Vite + PostgreSQL)
+description: 프로젝트 초기 세팅 - Git, 디렉토리 구조, 인증(JWT 버그픽스 포함), 커뮤니티 게시판(4종), 어드민 대시보드, 프로젝트 문서, 스킬/플러그인 뷰어, 파일 업로드(UPLOAD_DIR 방어+Vite 프록시+Docker VOLUME 안전), Architectural Futurism 디자인 시스템, Orbitron 배포 자동 생성 (FastAPI + React + Vite + PostgreSQL)
 user-invocable: true
 ---
 
@@ -26,6 +26,11 @@ user-invocable: true
 2. `deps.py`에서 `int(payload.get("sub"))` 변환 필수 (DB User.id는 int)
 3. axios 401 인터셉터에서 `/api/auth/` 경로 제외 필수 (로그인 리다이렉트 루프 방지)
 4. LoginPage에서 이미 로그인된 상태면 홈으로 리다이렉트 필수
+5. `UPLOAD_DIR` 빈 문자열 → `Path("")`가 CWD(.)로 해석 → **반드시 `.strip()` 후 빈 문자열 체크**
+6. `/uploads` 서빙에 `StaticFiles` mount 사용 금지 → Docker VOLUME과 충돌 → **명시적 API 라우트** 사용
+7. 갤러리 기본 이미지는 `backend/gallery_defaults/`에 포함 → Docker COPY/VOLUME에 의존 금지
+8. Vite 개발 서버에 `/api`, `/uploads` 프록시 필수 → 없으면 `<img src="/uploads/...">` 가 HTML 반환
+9. `api.js` baseURL은 `""` (same-origin) → Vite 프록시 + Docker same-origin으로 통일
 
 ---
 
@@ -77,8 +82,9 @@ frontend/dist/
 Thumbs.db
 desktop.ini
 
-# Uploads (로컬 fallback)
-uploads/
+# Uploads (사용자 업로드는 무시, 샘플 갤러리 이미지는 추적)
+uploads/*
+!uploads/gallery-*.jpg
 
 # Logs
 *.log
@@ -109,6 +115,8 @@ c:\WORK\TwinverseAI\
 │   ├── services/
 │   │   ├── __init__.py
 │   │   └── auth_service.py
+│   ├── gallery_defaults/
+│   │   └── gallery-*.jpg (샘플 갤러리 이미지 — 시작 시 uploads/에 복사)
 │   ├── main.py
 │   ├── database.py
 │   ├── deps.py
@@ -472,20 +480,58 @@ with Session(engine) as session:
 
 ### backend/main.py
 
+⚠️ **핵심 버그픽스 포함**:
+1. `UPLOAD_DIR` 빈 문자열 방어 — `Path("")`는 CWD로 해석되어 소스 디렉토리를 uploads로 착각
+2. `/uploads` 서빙에 `StaticFiles` mount 사용 금지 — Docker VOLUME과 충돌. 명시적 API 라우트 사용
+3. 갤러리 기본 이미지는 `backend/gallery_defaults/`에 포함 — Docker COPY나 VOLUME에 의존하지 않음
+4. `/health` 엔드포인트에 디버그 정보 포함 — 배포 문제 즉시 진단 가능
+
 ```python
 import os
+import shutil
 from pathlib import Path
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 
 load_dotenv()
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 import database
 from database import create_db_and_tables
 from routers import auth, admin, docs, skills, plugins, boards, comments, files
+
+
+def _get_uploads_dir() -> Path:
+    """업로드 디렉토리 결정: UPLOAD_DIR (Docker) > 프로젝트루트/uploads (로컬)
+    ⚠️ 빈 문자열 방어: Path("")는 CWD(.)로 해석되므로 반드시 strip 후 체크"""
+    env_val = os.getenv("UPLOAD_DIR", "").strip()
+    if env_val:
+        d = Path(env_val)
+    else:
+        d = Path(__file__).resolve().parent.parent / "uploads"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def _copy_gallery_defaults():
+    """갤러리 기본 이미지를 uploads 디렉토리에 복사 (없는 파일만)
+    ⚠️ backend/gallery_defaults/에서 복사 — Docker VOLUME/COPY에 의존하지 않음"""
+    defaults_dir = Path(__file__).resolve().parent / "gallery_defaults"
+    if not defaults_dir.is_dir():
+        print(f"[gallery-defaults] Not found: {defaults_dir}")
+        return
+    uploads = _get_uploads_dir()
+    copied = 0
+    for src in defaults_dir.glob("gallery-*.jpg"):
+        dst = uploads / src.name
+        if not dst.exists():
+            shutil.copy2(src, dst)
+            copied += 1
+    print(f"[gallery-defaults] Copied {copied} files to {uploads}")
+
 
 def _seed_admin():
     """Ensure default admin account exists on startup."""
@@ -527,31 +573,38 @@ def _seed_docs():
         print("[seed_docs] docs/ directory not found, skipping.")
         return
 
-    with Session(database.engine) as session:
-        for key, (title, filename) in DOC_FILES.items():
-            filepath = docs_dir / filename
-            if not filepath.exists():
-                continue
-            content = filepath.read_text(encoding="utf-8")
-            existing = session.exec(select(Document).where(Document.key == key)).first()
-            if existing:
-                existing.content = content
-                existing.title = title
-                session.add(existing)
-            else:
-                session.add(Document(key=key, title=title, content=content))
-        session.commit()
-        print(f"[seed_docs] Synced {len(DOC_FILES)} docs from {docs_dir}")
+    try:
+        with Session(database.engine) as session:
+            synced = 0
+            for key, (title, filename) in DOC_FILES.items():
+                filepath = docs_dir / filename
+                if not filepath.exists():
+                    print(f"[seed_docs] File not found: {filepath}")
+                    continue
+                content = filepath.read_text(encoding="utf-8")
+                existing = session.exec(select(Document).where(Document.key == key)).first()
+                if existing:
+                    existing.content = content
+                    existing.title = title
+                    session.add(existing)
+                else:
+                    session.add(Document(key=key, title=title, content=content))
+                synced += 1
+            session.commit()
+            print(f"[seed_docs] Synced {synced}/{len(DOC_FILES)} docs from {docs_dir}")
+    except Exception as e:
+        print(f"[seed_docs] ERROR: {e}")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    _copy_gallery_defaults()
     create_db_and_tables()
     _seed_admin()
     _seed_docs()
     yield
 
-app = FastAPI(title="TwinverseAI API", lifespan=lifespan)
+app = FastAPI(title="{{PROJECT_NAME}} API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -575,18 +628,43 @@ app.include_router(files.router, prefix="/api/files", tags=["files"])
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok"}
+    """헬스체크 + 배포 진단 정보"""
+    try:
+        from sqlmodel import Session, select, func
+        from models.document import Document
+        from models import Post, FileRecord
+        with Session(database.engine) as session:
+            doc_count = session.exec(select(func.count(Document.id))).one()
+            post_count = session.exec(select(func.count(Post.id))).one()
+            file_count = session.exec(select(func.count(FileRecord.id))).one()
+        uploads = _get_uploads_dir()
+        upload_files = [f.name for f in uploads.iterdir()] if uploads.is_dir() else []
+        return {
+            "status": "ok",
+            "db": "connected",
+            "documents": doc_count,
+            "posts": post_count,
+            "files": file_count,
+            "uploads_dir": str(uploads),
+            "uploads_files": upload_files,
+        }
+    except Exception as e:
+        return {"status": "error", "db": str(e)}
 
-# Serve uploaded files
-_uploads_dir = Path(__file__).resolve().parent.parent / "uploads"
-_uploads_dir.mkdir(parents=True, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=str(_uploads_dir)), name="uploads")
+
+# Serve uploaded files — 명시적 API 라우트 (StaticFiles mount 대신)
+# ⚠️ StaticFiles mount는 Docker VOLUME과 충돌할 수 있으므로 사용 금지
+@app.get("/uploads/{filename:path}")
+def serve_upload(filename: str):
+    filepath = _get_uploads_dir() / filename
+    if filepath.is_file():
+        return FileResponse(filepath)
+    raise HTTPException(status_code=404, detail=f"File not found: {filename}")
+
 
 # Serve frontend static files in production (Docker build copies to /app/static)
 _static_dir = Path(__file__).resolve().parent / "static"
 if _static_dir.exists():
-    from fastapi.responses import FileResponse
-
     @app.get("/{full_path:path}")
     def serve_spa(full_path: str):
         file_path = _static_dir / full_path
@@ -1112,7 +1190,9 @@ from deps import get_current_user
 
 router = APIRouter()
 
-UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", "/app/uploads"))
+# ⚠️ 빈 문자열 방어: Path("")는 CWD(.)로 해석됨
+_env_upload = os.getenv("UPLOAD_DIR", "").strip()
+UPLOAD_DIR = Path(_env_upload) if _env_upload else Path(__file__).resolve().parent.parent / "uploads"
 MAX_IMAGE_SIZE = 10 * 1024 * 1024   # 10MB
 MAX_VIDEO_SIZE = 100 * 1024 * 1024  # 100MB
 
@@ -1449,12 +1529,22 @@ def remove_plugin(plugin_key: str):
 
 ### frontend/vite.config.js
 
+⚠️ **필수**: Vite 개발 서버에서 `/api`, `/uploads`, `/health` 요청을 백엔드(8000)로 프록시해야 합니다.
+프록시 없이 `<img src="/uploads/...">` 는 Vite가 SPA HTML을 반환하여 이미지가 깨집니다.
+
 ```javascript
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
+  server: {
+    proxy: {
+      '/api': 'http://localhost:8000',
+      '/uploads': 'http://localhost:8000',
+      '/health': 'http://localhost:8000',
+    },
+  },
 })
 ```
 
@@ -1563,7 +1653,7 @@ export default function App() {
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:8000",
+  baseURL: import.meta.env.VITE_API_URL || "",
 });
 
 api.interceptors.request.use((config) => {
@@ -2223,6 +2313,8 @@ Thumbs.db
 2. `ENV`로 기본 환경변수 설정 (Orbitron 대시보드에서 override 가능)
 3. `COPY backend/ ./`는 `.dockerignore` 덕분에 `.env`를 복사하지 않음
 4. `docs/`는 Docker 이미지에 포함 (DB seed용)
+5. **갤러리 기본 이미지는 `backend/gallery_defaults/`에 포함** — `COPY backend/ ./`로 자동 포함됨
+6. **별도 `COPY uploads/` 사용 금지** — Docker VOLUME이 덮어씀
 
 ```dockerfile
 # Stage 1: Build frontend
@@ -2243,6 +2335,7 @@ COPY backend/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy backend code (.env는 .dockerignore로 제외됨)
+# ⚠️ backend/gallery_defaults/도 이 단계에서 함께 복사됨
 COPY backend/ ./
 
 # Copy frontend build output
@@ -2260,7 +2353,7 @@ ENV SECRET_KEY={{PROJECT_NAME_LOWER}}-jwt-secret-key-2026
 ENV FRONTEND_URL=https://{{PROJECT_NAME_LOWER}}.twinverse.org
 ENV UPLOAD_DIR=/app/uploads
 
-# Create uploads directory
+# uploads 디렉토리 (갤러리 기본 이미지는 backend/gallery_defaults/에서 시작 시 복사)
 RUN mkdir -p /app/uploads
 
 VOLUME ["/app/uploads"]
@@ -2482,6 +2575,14 @@ volumes:
 - Docker 배포는 Dockerfile ENV 또는 Orbitron 대시보드 사용
 - 비환경변수 메모(SSH 정보, 토큰 등)는 .env에 넣지 말 것
 
+## 파일 업로드 & 이미지 서빙 규칙
+- **UPLOAD_DIR 빈 문자열 방어 필수**: `Path("")`는 CWD(.)로 해석됨 → `.strip()` 후 체크
+- **StaticFiles mount로 /uploads 서빙 금지**: Docker VOLUME과 충돌 → 명시적 API 라우트 사용
+- **갤러리 기본 이미지는 `backend/gallery_defaults/`에 포함**: Docker COPY/VOLUME에 의존하지 않음
+- **Vite 프록시 필수**: `<img src="/uploads/...">` → Vite가 HTML 반환 방지 (vite.config.js proxy 설정)
+- **api.js baseURL은 항상 same-origin (`""`)**: Vite 프록시 + Docker same-origin으로 통일
+- `/health` 엔드포인트에 `uploads_dir`, `uploads_files` 포함하여 배포 진단 가능
+
 ## 커밋 메시지 규칙
 - `feat:` 새 기능 / `fix:` 버그 수정 / `style:` UI / `refactor:` 리팩토링 / `docs:` 문서 / `infra:` 인프라
 ```
@@ -2514,3 +2615,6 @@ cd c:\WORK\TwinverseAI && git add -A && git commit -m "feat: 프로젝트 초기
 - [ ] `npm run build` 성공 확인
 - [ ] `uvicorn main:app --reload` 성공 확인 (DB 연결 필요)
 - [ ] **.env 형식 검증** (`grep -P "^\w" backend/.env` — 모든 줄이 KEY=value 또는 #주석인지 확인)
+- [ ] **Vite 프록시 검증** — `curl -s http://localhost:5173/uploads/` 가 `text/html`이 아닌 이미지/JSON 반환 확인
+- [ ] **UPLOAD_DIR 빈 문자열 검증** — `/health` 응답의 `uploads_dir`이 `.` 이 아닌 절대 경로인지 확인
+- [ ] **갤러리 이미지 검증** — `/health` 응답의 `uploads_files`에 `gallery-*.jpg` 파일이 존재하는지 확인
