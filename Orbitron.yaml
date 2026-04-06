@@ -1,15 +1,131 @@
-# Orbitron 배포 설정
-# 풀스택 단일 서비스: frontend 빌드 → backend에 static으로 복사 → uvicorn 실행
+# ============================================================
+# TwinverseAI — Orbitron 배포 설정
+# ============================================================
+#
+# 배포 방식: Dockerfile 멀티스테이지 빌드 (자동 감지)
+#   Stage 1: Node 20 → frontend 빌드 (npm ci + vite build)
+#   Stage 2: Python 3.12 → backend + static 서빙 (uvicorn)
+#
+# 중요: Orbitron 자동 Dockerfile 생성을 사용하지 않음
+#       프로젝트 루트의 Dockerfile을 직접 사용
+#
+# ============================================================
+
+# ── 빌드 & 실행 ──────────────────────────────────────────────
+# Dockerfile이 있으면 Orbitron이 자동으로 Docker 빌드를 수행합니다.
+# 아래 build/start는 Dockerfile 없이 직접 실행할 때의 fallback입니다.
 build:
-  command: cd frontend && npm install && npm run build && cd ../backend && pip install -r requirements.txt && mkdir -p static && cp -r ../frontend/dist/* static/
+  dockerfile: Dockerfile
 start:
-  command: cd backend && uvicorn main:app --host 0.0.0.0 --port 8000
+  command: uvicorn main:app --host 0.0.0.0 --port 8000
+
+# ── 포트 ─────────────────────────────────────────────────────
+port: 8000
+
+# ── 헬스체크 ─────────────────────────────────────────────────
+# /health 엔드포인트가 DB 연결 상태 + documents/posts/files 개수를 반환
+healthcheck:
+  path: /health
+  interval: 30
+  timeout: 10
+
+# ── 환경변수 ─────────────────────────────────────────────────
+# sync: false → Orbitron 대시보드에서 수동 설정 (시크릿)
+# sync: true  → 이 파일의 value가 배포 시 자동 적용
 env:
+  # ── 필수: 데이터베이스 ──
   - key: DATABASE_URL
+    description: "PostgreSQL 연결 URL (Orbitron PostgreSQL 서버)"
+    example: "postgresql://user:password@host:5432/twinverseai"
+    required: true
     sync: false
+
+  # ── 필수: JWT 인증 ──
   - key: SECRET_KEY
+    description: "JWT 토큰 서명 키 (최소 32자 랜덤 문자열)"
+    example: "your-super-secret-key-change-in-production"
+    required: true
     sync: false
-  - key: FRONTEND_URL
+
+  # ── 관리자 계정 ──
+  - key: SUPERADMIN_USERNAME
+    description: "초기 관리자 계정명 (앱 시작 시 자동 생성)"
+    value: "admin"
+    sync: true
+
+  - key: SUPERADMIN_PASSWORD
+    description: "초기 관리자 비밀번호 (첫 배포 후 반드시 변경)"
+    required: true
     sync: false
+
+  # ── 프론트엔드 ──
   - key: VITE_API_URL
+    description: "프론트엔드 API URL (빈 문자열 = same-origin, Docker 빌드 시점에 적용)"
+    value: ""
+    sync: true
+
+  - key: FRONTEND_URL
+    description: "CORS 허용 오리진 (배포 도메인)"
+    example: "https://twinverseai.twinverse.org"
     sync: false
+
+  # ── 파일 업로드 ──
+  - key: UPLOAD_DIR
+    description: "파일 업로드 저장 경로 (Docker 볼륨 마운트 필요)"
+    value: "/app/uploads"
+    sync: true
+
+  # ── 문서 ──
+  - key: DOCS_DIR
+    description: "프로젝트 문서(markdown) 경로 (Docker 이미지에 포함)"
+    value: "/app/docs"
+    sync: true
+
+# ── 볼륨 (영속 데이터) ────────────────────────────────────────
+volumes:
+  - path: /app/uploads
+    description: "사용자 업로드 파일 (이미지, 동영상). 컨테이너 재생성 시에도 유지 필요"
+
+# ============================================================
+# 배포 체크리스트
+# ============================================================
+#
+# 1. 환경변수 필수 설정 (Orbitron 대시보드)
+#    - DATABASE_URL: Orbitron PostgreSQL 서버 URL
+#    - SECRET_KEY: JWT 서명 키 (랜덤 32자+)
+#    - SUPERADMIN_PASSWORD: 관리자 비밀번호
+#    - FRONTEND_URL: https://twinverseai.twinverse.org
+#
+# 2. 데이터베이스
+#    - 앱 시작 시 자동으로 테이블 생성 (create_db_and_tables)
+#    - 자동 시드: admin 계정, docs/ 문서 → DB, 샘플 게시글 20개, 갤러리 이미지 5개
+#    - DB가 초기화되면 시드가 다시 실행됨 (idempotent)
+#
+# 3. 파일 업로드
+#    - /app/uploads 볼륨이 영속적이어야 함
+#    - 샘플 갤러리 이미지는 Docker 이미지에 포함 (COPY uploads/gallery-*.jpg)
+#    - 사용자 업로드 파일은 볼륨에 저장
+#
+# 4. Dockerfile 주의사항
+#    - 반드시 프로젝트 루트 Dockerfile 사용 (Orbitron 자동 생성 금지)
+#    - 멀티스테이지: Node(프론트) → Python(백엔드+static)
+#    - docs/는 Docker 이미지에 COPY됨 (/app/docs/)
+#    - frontend 빌드 결과는 /app/static/에 복사됨
+#
+# 5. 브랜치
+#    - 기본 브랜치: main (master 사용 금지)
+#    - Orbitron이 main을 기본으로 clone
+#
+# 6. 헬스체크
+#    - GET /health → DB 연결 상태 + 데이터 개수 반환
+#    - documents: 4 (정상), 0 (seed 실패)
+#    - posts: 20 (정상), 0 (seed 실패)
+#    - files: 5 (정상), 0 (갤러리 이미지 연결 실패)
+#
+# 7. 트러블슈팅
+#    - 문서 404: /health에서 documents=0이면 DB 연결 확인
+#    - 갤러리 이미지 안보임: /health에서 files=0이면 uploads/ 볼륨 확인
+#    - 로그인 안됨: SECRET_KEY 미설정 확인
+#    - CORS 에러: FRONTEND_URL 미설정 확인
+#
+# ============================================================
