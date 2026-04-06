@@ -3,13 +3,13 @@
    ═══════════════════════════════════════════════ */
 
 .page {
-  max-width: 820px;
+  max-width: 860px;
 }
 
 /* ── Page Header ── */
 
 .pageHeader {
-  padding: var(--sp-8, 2.5rem) 0 var(--sp-6, 1.75rem);
+  padding-bottom: var(--sp-6, 1.75rem);
   border-bottom: 1px solid var(--border-default, rgba(255,255,255,0.1));
   margin-bottom: var(--sp-8, 2.5rem);
 }
@@ -31,6 +31,62 @@
   font-weight: 700;
   color: #ffffff;
   margin: 0;
+}
+
+.headerDesc {
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--text-tertiary, #888);
+  margin-top: var(--sp-3, 0.75rem);
+  line-height: 1.6;
+}
+
+.headerDesc code {
+  font-size: 0.88em;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 0.1em 0.4em;
+  border-radius: var(--radius-sm, 5px);
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  color: var(--neon-cyan, #00d4ff);
+}
+
+/* ── Category ── */
+
+.category {
+  margin-bottom: var(--sp-8, 2.5rem);
+}
+
+.catHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3, 0.75rem);
+  margin-bottom: var(--sp-2, 0.5rem);
+}
+
+.catTitle {
+  font-family: var(--font-display, 'Noto Sans KR'), sans-serif;
+  font-size: var(--text-lg, 1.125rem);
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+}
+
+.catCount {
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: 600;
+  color: var(--neon-indigo, #667eea);
+  background: rgba(102, 126, 234, 0.15);
+  padding: 0.15em 0.6em;
+  border-radius: 100px;
+}
+
+.catDesc {
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--text-tertiary, #888);
+  margin: 0 0 var(--sp-4, 1rem);
+  line-height: 1.5;
 }
 
 /* ── Skill List ── */
@@ -64,23 +120,18 @@
   transition: background var(--dur-fast, 120ms);
 }
 
-.skillBtn:hover {
-  background: none;
-}
-
 .skillBtn:hover .skillName {
   color: var(--neon-cyan, #00d4ff);
 }
 
 .skillIndex {
-  font-family: var(--font-display, 'Noto Sans KR'), sans-serif;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
   font-size: var(--text-xs, 0.75rem);
   font-weight: 700;
-  letter-spacing: var(--tracking-wide, 0.08em);
   color: var(--text-tertiary, #888);
-  min-width: 2.5rem;
+  min-width: 2rem;
   flex-shrink: 0;
-  padding-top: 2px;
+  padding-top: 3px;
 }
 
 .skillBody {
@@ -89,7 +140,9 @@
 }
 
 .skillName {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3, 0.75rem);
   font-family: var(--font-display, 'Noto Sans KR'), sans-serif;
   font-size: var(--text-base, 1rem);
   font-weight: 600;
@@ -98,15 +151,22 @@
   transition: color var(--dur-fast, 120ms);
 }
 
+.command {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--neon-cyan, #00d4ff);
+  background: rgba(0, 212, 255, 0.1);
+  padding: 0.15em 0.5em;
+  border-radius: var(--radius-sm, 5px);
+  border: 1px solid rgba(0, 212, 255, 0.2);
+}
+
 .skillShort {
   font-family: var(--font-body, 'Inter'), sans-serif;
   font-size: var(--text-sm, 0.875rem);
   color: var(--text-secondary, #ccc);
   line-height: 1.5;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 55ch;
 }
 
 .skillChevron {
@@ -125,26 +185,60 @@
 
 .detail {
   padding: var(--sp-4, 1rem) 0 var(--sp-5, 1.25rem);
-  padding-left: calc(2.5rem + var(--sp-4, 1rem));
-  font-family: var(--font-body, 'Inter'), sans-serif;
-  font-size: var(--text-sm, 0.875rem);
-  line-height: 1.7;
-  color: var(--text-secondary, #ccc);
-  background: transparent;
+  padding-left: calc(2rem + var(--sp-4, 1rem));
   border-top: 1px solid var(--border-subtle, rgba(255,255,255,0.06));
 }
 
-.detail p {
+.detailSection {
+  margin-bottom: var(--sp-4, 1rem);
+}
+
+.detailSection:last-child {
+  margin-bottom: 0;
+}
+
+.detailLabel {
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--neon-indigo, #667eea);
+  margin: 0 0 var(--sp-2, 0.5rem);
+}
+
+.featureList {
+  list-style: none;
+  padding: 0;
   margin: 0;
 }
 
-.detail code {
-  font-size: 0.88em;
-  background: rgba(255, 255, 255, 0.1);
-  padding: 0.1em 0.35em;
+.featureList li {
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--text-secondary, #ccc);
+  line-height: 1.6;
+  padding-left: 1rem;
+  position: relative;
+}
+
+.featureList li::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  color: var(--neon-indigo, #667eea);
+}
+
+.usageText {
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--text-secondary, #ccc);
+  line-height: 1.7;
+  margin: 0;
+  padding: var(--sp-3, 0.75rem);
+  background: rgba(255, 255, 255, 0.04);
   border-radius: var(--radius-sm, 5px);
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  color: var(--neon-cyan, #00d4ff);
+  border-left: 3px solid var(--neon-indigo, #667eea);
 }
 
 .desc {
