@@ -25,7 +25,8 @@ COPY --from=frontend-build /app/frontend/dist /app/static
 COPY docs/ /app/docs/
 ENV DOCS_DIR=/app/docs
 
-# Create uploads directory
+# Copy sample gallery images + create uploads directory
+COPY uploads/gallery-*.jpg /app/uploads/
 RUN mkdir -p /app/uploads
 
 VOLUME ["/app/uploads"]

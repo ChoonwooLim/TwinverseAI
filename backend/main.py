@@ -53,21 +53,27 @@ def _seed_docs():
         print("[seed_docs] docs/ directory not found, skipping.")
         return
 
-    with Session(database.engine) as session:
-        for key, (title, filename) in DOC_FILES.items():
-            filepath = docs_dir / filename
-            if not filepath.exists():
-                continue
-            content = filepath.read_text(encoding="utf-8")
-            existing = session.exec(select(Document).where(Document.key == key)).first()
-            if existing:
-                existing.content = content
-                existing.title = title
-                session.add(existing)
-            else:
-                session.add(Document(key=key, title=title, content=content))
-        session.commit()
-        print(f"[seed_docs] Synced {len(DOC_FILES)} docs from {docs_dir}")
+    try:
+        with Session(database.engine) as session:
+            synced = 0
+            for key, (title, filename) in DOC_FILES.items():
+                filepath = docs_dir / filename
+                if not filepath.exists():
+                    print(f"[seed_docs] File not found: {filepath}")
+                    continue
+                content = filepath.read_text(encoding="utf-8")
+                existing = session.exec(select(Document).where(Document.key == key)).first()
+                if existing:
+                    existing.content = content
+                    existing.title = title
+                    session.add(existing)
+                else:
+                    session.add(Document(key=key, title=title, content=content))
+                synced += 1
+            session.commit()
+            print(f"[seed_docs] Synced {synced}/{len(DOC_FILES)} docs from {docs_dir}")
+    except Exception as e:
+        print(f"[seed_docs] ERROR: {e}")
 
 
 def _seed_gallery_images(session):
@@ -203,7 +209,23 @@ app.include_router(files.router, prefix="/api/files", tags=["files"])
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok"}
+    try:
+        from sqlmodel import Session, select, func
+        from models.document import Document
+        from models import Post, FileRecord
+        with Session(database.engine) as session:
+            doc_count = session.exec(select(func.count(Document.id))).one()
+            post_count = session.exec(select(func.count(Post.id))).one()
+            file_count = session.exec(select(func.count(FileRecord.id))).one()
+        return {
+            "status": "ok",
+            "db": "connected",
+            "documents": doc_count,
+            "posts": post_count,
+            "files": file_count,
+        }
+    except Exception as e:
+        return {"status": "error", "db": str(e)}
 
 # Serve uploaded files
 _uploads_dir = Path(__file__).resolve().parent.parent / "uploads"
