@@ -26,6 +26,29 @@ class PostUpdate(BaseModel):
     is_pinned: bool | None = None
 
 
+class PostResponse(BaseModel):
+    id: int
+    board_type: str
+    title: str
+    content: str
+    author_id: int
+    author_name: str = ""
+    is_pinned: bool
+    view_count: int
+    video_url: str | None = None
+    created_at: datetime
+    updated_at: datetime
+    comment_count: int = 0
+    files: list = []
+
+
+class PostListResponse(BaseModel):
+    total: int
+    page: int
+    size: int
+    posts: list[PostResponse]
+
+
 def _validate_board(board_type: str):
     if board_type not in VALID_BOARDS:
         raise HTTPException(status_code=404, detail=f"Invalid board: {board_type}")
@@ -201,14 +224,7 @@ def delete_post(
     if post.author_id != user.id and user.role not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Not authorized")
 
-    from models import Comment, FileRecord
-    comments = session.exec(select(Comment).where(Comment.post_id == post.id)).all()
-    for c in comments:
-        session.delete(c)
-    files = session.exec(select(FileRecord).where(FileRecord.post_id == post.id)).all()
-    for f in files:
-        session.delete(f)
-
+    # Cascade delete: Post 삭제 시 comments, files 자동 삭제 (모델 Relationship 설정)
     session.delete(post)
     session.commit()
     return {"status": "deleted"}

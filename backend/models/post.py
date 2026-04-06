@@ -1,6 +1,6 @@
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
-from sqlmodel import SQLModel, Field
+from sqlmodel import SQLModel, Field, Relationship
 
 
 class Post(SQLModel, table=True):
@@ -14,3 +14,16 @@ class Post(SQLModel, table=True):
     video_url: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
+
+    # Cascade delete: 게시글 삭제 시 댓글/파일도 자동 삭제
+    comments: List["Comment"] = Relationship(
+        sa_relationship_kwargs={"cascade": "all, delete-orphan", "lazy": "select"}
+    )
+    files: List["FileRecord"] = Relationship(
+        sa_relationship_kwargs={"cascade": "all, delete-orphan", "lazy": "select"}
+    )
+
+
+# Circular import 방지용 forward reference
+from models.comment import Comment  # noqa: E402, F401
+from models.file import FileRecord  # noqa: E402, F401
