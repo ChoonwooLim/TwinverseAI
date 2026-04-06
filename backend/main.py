@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import database
@@ -245,24 +245,39 @@ def health_check():
             doc_count = session.exec(select(func.count(Document.id))).one()
             post_count = session.exec(select(func.count(Post.id))).one()
             file_count = session.exec(select(func.count(FileRecord.id))).one()
+        uploads = _get_uploads_dir()
+        upload_files = [f.name for f in uploads.iterdir()] if uploads.is_dir() else []
+        defaults = Path("/app/gallery-defaults")
+        default_files = [f.name for f in defaults.iterdir()] if defaults.is_dir() else []
         return {
             "status": "ok",
             "db": "connected",
             "documents": doc_count,
             "posts": post_count,
             "files": file_count,
+            "uploads_dir": str(uploads),
+            "uploads_files": upload_files,
+            "defaults_dir": str(defaults),
+            "defaults_files": default_files,
         }
     except Exception as e:
         return {"status": "error", "db": str(e)}
 
-# Serve uploaded files
-app.mount("/uploads", StaticFiles(directory=str(_get_uploads_dir())), name="uploads")
+
+# Serve uploaded files — 명시적 API 라우트 (StaticFiles mount 대신)
+from fastapi.responses import FileResponse
+
+@app.get("/uploads/{filename:path}")
+def serve_upload(filename: str):
+    filepath = _get_uploads_dir() / filename
+    if filepath.is_file():
+        return FileResponse(filepath)
+    raise HTTPException(status_code=404, detail=f"File not found: {filename}")
+
 
 # Serve frontend static files in production (Docker build copies to /app/static)
 _static_dir = Path(__file__).resolve().parent / "static"
 if _static_dir.exists():
-    from fastapi.responses import FileResponse
-
     @app.get("/{full_path:path}")
     def serve_spa(full_path: str):
         file_path = _static_dir / full_path
