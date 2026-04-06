@@ -11,7 +11,7 @@ const NAV_ITEMS = [
 
 const DESK_ITEMS = [
   { label: "TVDesk 분석 보고서", path: "/twinversedesk/analysis" },
-  { label: "TVDesk 개발계획", path: "/twinversedesk/plan" },
+  { label: "TwinverseDesk 개발계획", path: "/twinversedesk/plan" },
   { label: "TVDesk 실행하기", path: "/twinversedesk/launch" },
   { label: "TVDesk 실행", path: "/twinversedesk/run" },
 ];
