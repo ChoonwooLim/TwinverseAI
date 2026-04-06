@@ -1,12 +1,26 @@
+import os
 from pathlib import Path
 from fastapi import APIRouter, HTTPException
 
 router = APIRouter()
 
-import os as _os
+def _find_docs_dir() -> Path:
+    """docs/ 디렉토리를 여러 경로에서 탐색"""
+    # 1. 환경변수 우선
+    env = os.getenv("DOCS_DIR")
+    if env and Path(env).exists():
+        return Path(env)
+    # 2. Docker: /app/docs/
+    docker_path = Path("/app/docs")
+    if docker_path.exists():
+        return docker_path
+    # 3. 로컬 개발: 프로젝트 루트/docs/
+    local_path = Path(__file__).resolve().parent.parent.parent / "docs"
+    if local_path.exists():
+        return local_path
+    return local_path  # fallback
 
-# Docker: /app/docs/  |  Local dev: ../../docs (project root)
-DOCS_DIR = Path(_os.getenv("DOCS_DIR", Path(__file__).resolve().parent.parent.parent / "docs"))
+DOCS_DIR = _find_docs_dir()
 
 DOC_FILES = {
     "dev-plan": "dev-plan.md",
@@ -14,6 +28,9 @@ DOC_FILES = {
     "upgrade-log": "upgrade-log.md",
     "work-log": "work-log.md",
 }
+
+
+print(f"[docs] DOCS_DIR resolved to: {DOCS_DIR} (exists={DOCS_DIR.exists()})")
 
 
 @router.get("/list")
