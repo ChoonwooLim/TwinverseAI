@@ -1604,11 +1604,10 @@ const SIDEBAR_CONFIG = {
       { label: "게시판 관리", path: "/admin/boards" },
       { label: "AI 스킬", path: "/admin/skills" },
       { label: "플러그인", path: "/admin/plugins" },
-    ],
-    groups: [
       {
-        title: "프로젝트 문서",
-        items: [
+        label: "프로젝트 문서",
+        path: "/admin/docs",
+        children: [
           { label: "개발계획", path: "/admin/docs/dev-plan" },
           { label: "버그수정 로그", path: "/admin/docs/bugfix-log" },
           { label: "업그레이드 로그", path: "/admin/docs/upgrade-log" },
@@ -1629,23 +1628,22 @@ export default function Sidebar({ section }) {
       <h3 className={styles.title}>{config.title}</h3>
       <nav className={styles.nav}>
         {config.items.map((item) => (
-          <Link key={item.path} to={item.path} className={`${styles.link} ${location.pathname === item.path ? styles.active : ""}`}>
-            {item.label}
-          </Link>
+          <div key={item.path}>
+            <Link to={item.path} className={`${styles.link} ${location.pathname === item.path ? styles.active : ""}`}>
+              {item.label}
+            </Link>
+            {item.children && (
+              <div className={styles.subNav}>
+                {item.children.map((child) => (
+                  <Link key={child.path} to={child.path} className={`${styles.subLink} ${location.pathname === child.path ? styles.active : ""}`}>
+                    {child.label}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
         ))}
       </nav>
-      {config.groups?.map((group) => (
-        <div key={group.title}>
-          <h3 className={styles.title}>{group.title}</h3>
-          <nav className={styles.nav}>
-            {group.items.map((item) => (
-              <Link key={item.path} to={item.path} className={`${styles.link} ${location.pathname === item.path ? styles.active : ""}`}>
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-        </div>
-      ))}
     </aside>
   );
 }

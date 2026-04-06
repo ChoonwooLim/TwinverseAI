@@ -76,6 +76,40 @@
   border-left-color: var(--neon-indigo, #667eea);
 }
 
+/* ── Sub-navigation (children) ── */
+
+.subNav {
+  display: flex;
+  flex-direction: column;
+}
+
+.subLink {
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: var(--text-tertiary, #888);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  padding: var(--sp-1, 0.25rem) var(--sp-6, 1.5rem) var(--sp-1, 0.25rem) calc(var(--sp-6, 1.5rem) + 14px);
+  border-left: 2px solid transparent;
+  transition: color var(--dur-fast, 120ms), border-color var(--dur-fast, 120ms), background var(--dur-fast, 120ms);
+  line-height: 1.4;
+}
+
+.subLink:hover {
+  color: var(--text-secondary, #ccc);
+  border-left-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.subLink.active {
+  color: #ffffff;
+  font-weight: 600;
+  border-left-color: var(--neon-indigo, #667eea);
+  background: rgba(102, 126, 234, 0.08);
+}
+
 .linkIcon {
   width: 14px;
   height: 14px;
