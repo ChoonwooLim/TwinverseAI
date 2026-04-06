@@ -16,24 +16,30 @@ from routers import auth, admin, docs, skills, plugins, boards, comments, files
 
 def _get_uploads_dir() -> Path:
     """업로드 디렉토리 결정: UPLOAD_DIR (Docker) > 프로젝트루트/uploads (로컬)"""
-    d = Path(os.getenv("UPLOAD_DIR", ""))
-    if not d.is_dir():
+    env_val = os.getenv("UPLOAD_DIR", "").strip()
+    if env_val:
+        d = Path(env_val)
+    else:
         d = Path(__file__).resolve().parent.parent / "uploads"
     d.mkdir(parents=True, exist_ok=True)
     return d
 
 
 def _copy_gallery_defaults():
-    """Docker VOLUME 마운트로 비어있는 uploads에 갤러리 기본 이미지 복사"""
-    defaults_dir = Path("/app/gallery-defaults")
+    """갤러리 기본 이미지를 uploads 디렉토리에 복사 (없는 파일만)"""
+    # backend/gallery_defaults/ (항상 존재 — COPY backend/ ./ 로 Docker에 포함됨)
+    defaults_dir = Path(__file__).resolve().parent / "gallery_defaults"
     if not defaults_dir.is_dir():
+        print(f"[gallery-defaults] Not found: {defaults_dir}")
         return
     uploads = _get_uploads_dir()
+    copied = 0
     for src in defaults_dir.glob("gallery-*.jpg"):
         dst = uploads / src.name
         if not dst.exists():
             shutil.copy2(src, dst)
-            print(f"[gallery-defaults] Copied {src.name} → {uploads}")
+            copied += 1
+    print(f"[gallery-defaults] Copied {copied} files to {uploads}")
 
 def _seed_admin():
     """Ensure default admin account exists on startup."""
