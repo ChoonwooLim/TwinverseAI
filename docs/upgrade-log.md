@@ -34,3 +34,7 @@
 | 2026-04-07 | Orbitron nvidia-container-toolkit 설치 (Docker GPU Runtime) | infra | 서버 설정 |
 | 2026-04-07 | TwinverseDesk UE5 C++ 프로젝트 초기화 + GitHub 리포 생성 | feat | C:\WORK\TwinverseDesk (별도 리포) |
 | 2026-04-07 | TwinverseDesk Dedicated Server 타겟 + Pixel Streaming 패키징 설정 | infra | TwinverseDeskServer.Target.cs, DefaultGame.ini, DefaultEngine.ini |
+| 2026-04-08 | Claude Code 최근정보 시스템 (ClaudeNews DB + API + AdminNews 페이지) | feat | models/news.py, routers/news.py, AdminNews.jsx |
+| 2026-04-08 | /ultraplan 스킬 신규 생성 (멀티 에이전트 심층 계획 수립, 4-Phase) | feat | .claude/skills/ultraplan/SKILL.md |
+| 2026-04-08 | 프로젝트 비전 페이지 — 시네마틱 디자인 (별빛 파티클, 스크롤 reveal, 3D 목업) | feat | VisionPage.jsx, VisionPage.module.css |
+| 2026-04-08 | 프로젝트 비전 문서 + CLAUDE.md 최상위 방침 추가 | docs | docs/vision.md, CLAUDE.md |
