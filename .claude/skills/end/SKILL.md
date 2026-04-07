@@ -73,7 +73,22 @@ cd c:\WORK\TwinverseAI && git log --since="midnight" --format="%h %ai %s" --reve
 | (날짜) | (변경 내용) | (카테고리) | (관련 파일) |
 ```
 
-### 2-4. docs/dev-plan.md (개발계획서) — 마일스톤/기능 상태 변화가 있을 때만 업데이트
+### 2-4. docs/orbitron-server.md (Orbitron 서버) — 서버 상태 변화가 있을 때만 업데이트
+
+SSH로 Orbitron 서버에 접속하여 현재 상태를 확인합니다:
+
+```
+ssh stevenlim@192.168.219.101 "nvidia-smi --query-gpu=name,memory.used,memory.total --format=csv,noheader && echo '---' && docker ps --format '{{.Names}}\t{{.Status}}\t{{.Ports}}' && echo '---' && df -h / | tail -1"
+```
+
+아래 항목이 변경된 경우 `docs/orbitron-server.md` 문서를 업데이트합니다:
+- 새 컨테이너 추가/삭제
+- GPU 드라이버/CUDA 버전 변경
+- 디스크 사용량 변화
+- 새 소프트웨어 설치 (nvidia-container-toolkit 등)
+- Pixel Streaming 배포 준비 상태 변경
+
+### 2-5. docs/dev-plan.md (개발계획서) — 마일스톤/기능 상태 변화가 있을 때만 업데이트
 
 마일스톤 테이블의 상태 컬럼이나 기능 목록 테이블의 상태 컬럼을 업데이트합니다.
 새 기능이 추가되었으면 기능 목록 테이블에 행을 추가합니다.
@@ -186,6 +201,12 @@ cd c:\WORK\TwinverseAI && git push origin main
 - bugfix-log.md: (업데이트 / 변경 없음)
 - upgrade-log.md: (업데이트 / 변경 없음)
 - dev-plan.md: (업데이트 / 변경 없음)
+- orbitron-server.md: (업데이트 / 변경 없음)
+
+### Orbitron 서버 상태
+- GPU: GTX 1080 x 2 (VRAM 사용량)
+- 컨테이너: N개 실행 중
+- 디스크: N% 사용
 
 ### 스킬/플러그인 동기화
 - skills.json: (N개 새 스킬 추가 / 변경 없음)

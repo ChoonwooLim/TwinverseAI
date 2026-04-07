@@ -72,6 +72,7 @@ def _seed_docs():
         "bugfix-log": ("버그수정 로그", "bugfix-log.md"),
         "upgrade-log": ("업그레이드 로그", "upgrade-log.md"),
         "work-log": ("작업일지", "work-log.md"),
+        "orbitron-server": ("Orbitron 서버", "orbitron-server.md"),
     }
 
     # docs/ 디렉토리 탐색: /app/docs (Docker) → 프로젝트루트/docs (로컬)
