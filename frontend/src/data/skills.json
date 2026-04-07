@@ -31,6 +31,13 @@
           "desc": "원스톱 프로젝트 부트스트랩 — /init → MCP 세팅 → /end 까지 자동 실행",
           "features": ["/init 스킬 자동 호출", "MCP 서버 템플릿 자동 머지 (settings.local.json)", "/end 스킬로 초기 문서 생성 & 커밋"],
           "usage": "완전 새 프로젝트 시작 시 /project-start 입력. 모든 초기 세팅이 한 번에 완료됩니다."
+        },
+        {
+          "name": "ultraplan",
+          "command": "/ultraplan",
+          "desc": "심층 구현 계획 수립 — 멀티 에이전트 분석, 리스크 평가, 단계별 실행 계획 자동 생성",
+          "features": ["3단계 모드: Simple / Standard / Deep (자동 선택)", "병렬 Explore 에이전트로 코드베이스 심층 분석", "리스크 평가 (P0~P3 등급) + 롤백 계획", "단계별 실행 계획 + 검증 체크리스트", "사용자 승인 후 자동 실행"],
+          "usage": "/ultraplan <작업 설명> 입력. 예: /ultraplan migrate auth from sessions to JWTs. --deep, --simple 플래그로 모드 지정 가능."
         }
       ]
     },
