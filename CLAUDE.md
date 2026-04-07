@@ -1,5 +1,15 @@
 # TwinverseAI
 
+## 프로젝트 비전 (최상위 방침)
+
+> **반드시 `docs/vision.md`를 읽고 모든 작업에 적용할 것.**
+
+- **최종 목표**: 미래 인간과 AI가 공존하는 세계 최고의 생태계 (Twinverse Platform)
+- **핵심 제품**: TwinverseDesk — UE5 Pixel Streaming 기반 가상 데스크탑 + AI 1인 기업 시스템
+- **품질 기준**: "세계 어떤 사이트/플랫폼보다 뛰어난가?" — 타협 없는 최고 수준
+- **기술 원칙**: 최신 최고 기술 즉시 채택, 항상 최전선 유지
+- **AI 역할**: 단순 도구가 아닌 세계 최고 전문가 파트너로서 작업
+
 ## 프로젝트 구조
 - `backend/` — FastAPI 백엔드 (Python, PostgreSQL on Orbitron)
 - `frontend/` — 웹 앱 (React + Vite, port 5173)

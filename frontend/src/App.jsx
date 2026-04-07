@@ -5,6 +5,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 
 // Lazy-loaded pages
 const HomePage = lazy(() => import("./pages/HomePage"));
+const VisionPage = lazy(() => import("./pages/VisionPage"));
 const AboutPage = lazy(() => import("./pages/AboutPage"));
 const ServicesPage = lazy(() => import("./pages/ServicesPage"));
 const LoginPage = lazy(() => import("./pages/LoginPage"));
@@ -29,6 +30,7 @@ export default function App() {
         <Route element={<MainLayout />}>
             {/* Public */}
             <Route path="/" element={<HomePage />} />
+            <Route path="/vision" element={<VisionPage />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/services" element={<ServicesPage />} />
             <Route path="/login" element={<LoginPage />} />

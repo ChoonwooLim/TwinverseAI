@@ -4,10 +4,11 @@
 
 ## 프로젝트 개요
 
-- **프로젝트명**: TwinverseAI
+- **프로젝트명**: TwinverseAI (Twinverse Platform 웹 포탈)
+- **최종 비전**: 미래 인간-AI 공존 세계 최고 생태계 → [docs/vision.md](vision.md)
 - **시작일**: 2026-04-04
-- **기술 스택**: FastAPI + React + Vite + PostgreSQL
-- **배포**: Orbitron
+- **기술 스택**: FastAPI + React + Vite + PostgreSQL + UE5 Pixel Streaming
+- **배포**: Orbitron (GPU 서버, Docker)
 
 ## 마일스톤
 
@@ -16,6 +17,9 @@
 | 1 | 프로젝트 초기 세팅 | 완료 | 2026-04-04 |
 | 2 | 포탈 전면 구현 (게시판 + 레이아웃 + 디자인) | 완료 | 2026-04-04 |
 | 3 | TwinverseDesk UE5 프로젝트 초기화 + 서버 GPU 환경 구성 | 완료 | 2026-04-07 |
+| 4 | 프로젝트 비전 수립 + AI 방침 문서화 | 완료 | 2026-04-08 |
+| 5 | Pixel Streaming 로컬 테스트 연동 | 예정 | - |
+| 6 | AI 에이전트 통합 (TwinverseDesk 내) | 예정 | - |
 
 ## 기능 목록
 
@@ -35,3 +39,6 @@
 | TwinverseDesk UE5 | UE5 C++ 프로젝트 + Pixel Streaming + Dedicated Server | 높음 | 진행중 |
 | Orbitron GPU 환경 | nvidia-container-toolkit + Docker GPU Runtime | 높음 | 완료 |
 | Orbitron 서버 문서 | 서버 사양/상태 문서 + 관리자 메뉴 | 중간 | 완료 |
+| 프로젝트 비전 문서 | 최종 목표/5대 원칙/로드맵/AI 행동지침 | 최상 | 완료 |
+| Ultra Plan 스킬 | 멀티에이전트 심층 계획 수립 스킬 | 높음 | 완료 |
+| 최근정보 시스템 | Claude Code 최신 뉴스 관리 (AdminNews) | 중간 | 완료 |
