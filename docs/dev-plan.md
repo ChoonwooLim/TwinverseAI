@@ -15,6 +15,7 @@
 |------|------|------|--------|
 | 1 | 프로젝트 초기 세팅 | 완료 | 2026-04-04 |
 | 2 | 포탈 전면 구현 (게시판 + 레이아웃 + 디자인) | 완료 | 2026-04-04 |
+| 3 | TwinverseDesk UE5 프로젝트 초기화 + 서버 GPU 환경 구성 | 완료 | 2026-04-07 |
 
 ## 기능 목록
 
@@ -31,3 +32,6 @@
 | 공개 페이지 | 홈, 소개, 서비스 페이지 | 중간 | 완료 |
 | 디자인 시스템 | Dark Glass Neon (twinverse.org 매칭) | 높음 | 완료 |
 | TwinverseDesk 페이지 | DeskRPG 분석 보고서 + 개발계획 + 실행하기 | 높음 | 완료 |
+| TwinverseDesk UE5 | UE5 C++ 프로젝트 + Pixel Streaming + Dedicated Server | 높음 | 진행중 |
+| Orbitron GPU 환경 | nvidia-container-toolkit + Docker GPU Runtime | 높음 | 완료 |
+| Orbitron 서버 문서 | 서버 사양/상태 문서 + 관리자 메뉴 | 중간 | 완료 |

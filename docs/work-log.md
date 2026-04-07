@@ -227,3 +227,37 @@
 - `/init` 스킬에 위 모든 수정사항 반영 (12개 섹션, 버그픽스 5~9번 추가)
 
 ---
+
+## 2026-04-07
+
+### 작업 요약 (세션 6)
+
+| 카테고리 | 작업 내용 | 상태 |
+|----------|----------|------|
+| feat | Orbitron 서버 사양 문서 + 관리자 메뉴 추가 | 완료 |
+| feat | TwinverseDesk UE5 C++ 프로젝트 초기화 (별도 리포) | 완료 |
+| infra | Orbitron 서버 nvidia-container-toolkit 설치 (Docker GPU) | 완료 |
+| infra | TwinverseDesk Dedicated Server 빌드 타겟 + Pixel Streaming 패키징 설정 | 완료 |
+| infra | SSH 키 인증 등록 (Windows PC → Orbitron 서버) | 완료 |
+| docs | /start, /end 스킬 업데이트 (Orbitron 서버 상태 확인/동기화) | 완료 |
+
+### 세부 내용 (세션 6)
+
+- TwinverseDesk UE5 5.7.4 C++ Third Person 프로젝트 생성 (`C:\WORK\TwinverseDesk`)
+  - GitHub 리포 생성: ChoonwooLim/TwinverseDesk (Private, Git LFS 744파일 141MB)
+  - `.gitignore` UE5 전용, `.gitattributes` LFS (uasset, umap, 텍스처, 오디오, 3D모델 등)
+  - Pixel Streaming + Pixel Streaming 2 + PixelStreamingPlayer 플러그인 활성화
+  - Dedicated Server 빌드 타겟 (`TwinverseDeskServer.Target.cs`) 추가
+  - 패키징 설정 (Shipping, 맵/디렉토리 쿡, Pixel Streaming 기본 설정)
+- Orbitron 서버 GPU 환경 확인 및 설정:
+  - GTX 1080 x 2장 (각 8GB VRAM), NVIDIA Driver 580.126.09, CUDA 13.0
+  - nvidia-container-toolkit v1.19.0 설치 → Docker 컨테이너에서 GPU 접근 가능
+  - Docker GPU Runtime 등록 및 검증 완료
+- `docs/orbitron-server.md` 신규 생성 (하드웨어/소프트웨어/GPU/컨테이너/Pixel Streaming 준비 상태)
+- 백엔드 `_seed_docs()`에 orbitron-server 키 추가 → DB 자동 동기화
+- 프론트엔드 사이드바에 "Orbitron 서버" 서브메뉴 추가
+- SSH 키 인증 등록 (비밀번호 없이 Orbitron 접속 가능)
+- /start 스킬: 세션 시작 시 SSH로 서버 상태(GPU/컨테이너/디스크) 자동 확인
+- /end 스킬: 세션 종료 시 서버 상태 변경 감지 → 문서 자동 업데이트
+
+---

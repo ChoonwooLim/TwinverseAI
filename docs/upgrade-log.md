@@ -29,3 +29,8 @@
 | 2026-04-06 | /health 엔드포인트 배포 진단 정보 추가 (uploads_dir, uploads_files) | feat | backend/main.py |
 | 2026-04-06 | Vite 프록시 추가 (/api, /uploads, /health → backend 8000) | infra | frontend/vite.config.js |
 | 2026-04-06 | /init 스킬 업로드/이미지 배포 안전장치 12개 섹션 추가 | docs | .claude/skills/init/SKILL.md |
+| 2026-04-07 | Orbitron 서버 사양 문서 + 관리자 메뉴 추가 | feat | docs/orbitron-server.md, Sidebar.jsx, main.py |
+| 2026-04-07 | /start /end 스킬에 Orbitron 서버 상태 확인/동기화 추가 | feat | .claude/skills/start/SKILL.md, .claude/skills/end/SKILL.md |
+| 2026-04-07 | Orbitron nvidia-container-toolkit 설치 (Docker GPU Runtime) | infra | 서버 설정 |
+| 2026-04-07 | TwinverseDesk UE5 C++ 프로젝트 초기화 + GitHub 리포 생성 | feat | C:\WORK\TwinverseDesk (별도 리포) |
+| 2026-04-07 | TwinverseDesk Dedicated Server 타겟 + Pixel Streaming 패키징 설정 | infra | TwinverseDeskServer.Target.cs, DefaultGame.ini, DefaultEngine.ini |
