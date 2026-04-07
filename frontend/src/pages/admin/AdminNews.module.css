@@ -1,0 +1,266 @@
+/* ═══════════════════════════════════════════════
+   AdminNews — Dark Glass Neon
+   ═══════════════════════════════════════════════ */
+
+.page {
+  max-width: 860px;
+}
+
+/* ── Page Header ── */
+
+.pageHeader {
+  padding-bottom: var(--sp-6, 1.75rem);
+  border-bottom: 1px solid var(--border-default, rgba(255,255,255,0.1));
+  margin-bottom: var(--sp-8, 2.5rem);
+}
+
+.overline {
+  display: block;
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: 600;
+  letter-spacing: var(--tracking-mega, 0.15em);
+  text-transform: uppercase;
+  color: var(--text-tertiary, #888);
+  margin-bottom: var(--sp-2, 0.5rem);
+}
+
+.title {
+  font-family: var(--font-display, 'Noto Sans KR'), sans-serif;
+  font-size: clamp(1.75rem, 3vw, 2.75rem);
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+}
+
+.headerDesc {
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--text-tertiary, #888);
+  margin-top: var(--sp-3, 0.75rem);
+  line-height: 1.6;
+}
+
+/* ── News List ── */
+
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.item {
+  border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,0.06));
+}
+
+.item:last-child {
+  border-bottom: none;
+}
+
+/* ── News Toggle Button ── */
+
+.newsBtn {
+  display: flex;
+  width: 100%;
+  padding: var(--sp-4, 1rem) 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  align-items: flex-start;
+  gap: var(--sp-4, 1rem);
+  transition: background var(--dur-fast, 120ms);
+}
+
+.newsBtn:hover .newsName {
+  color: var(--neon-cyan, #00d4ff);
+}
+
+.newsIndex {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: 700;
+  color: var(--text-tertiary, #888);
+  min-width: 2rem;
+  flex-shrink: 0;
+  padding-top: 3px;
+}
+
+.newsBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.newsName {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3, 0.75rem);
+  font-family: var(--font-display, 'Noto Sans KR'), sans-serif;
+  font-size: var(--text-base, 1rem);
+  font-weight: 600;
+  color: #ffffff;
+  margin-bottom: var(--sp-1, 0.25rem);
+  transition: color var(--dur-fast, 120ms);
+  flex-wrap: wrap;
+}
+
+.badge {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.15em 0.5em;
+  border-radius: var(--radius-sm, 5px);
+  border: 1px solid;
+  white-space: nowrap;
+}
+
+.newsSummary {
+  display: block;
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--text-secondary, #ccc);
+  line-height: 1.5;
+  margin-bottom: var(--sp-1, 0.25rem);
+}
+
+.newsDate {
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--text-tertiary, #888);
+}
+
+.sourceLink {
+  color: var(--neon-indigo, #667eea);
+  text-decoration: none;
+}
+
+.sourceLink:hover {
+  text-decoration: underline;
+}
+
+.chevron {
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--text-tertiary, #888);
+  flex-shrink: 0;
+  padding-top: 4px;
+  transition: transform var(--dur-fast, 120ms);
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+/* ── Detail Drawer ── */
+
+.detail {
+  padding: var(--sp-4, 1rem) 0 var(--sp-5, 1.25rem);
+  padding-left: calc(2rem + var(--sp-4, 1rem));
+  border-top: 1px solid var(--border-subtle, rgba(255,255,255,0.06));
+}
+
+/* ── Markdown Content ── */
+
+.markdown {
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--text-secondary, #ccc);
+  line-height: 1.7;
+}
+
+.markdown h1,
+.markdown h2,
+.markdown h3 {
+  font-family: var(--font-display, 'Noto Sans KR'), sans-serif;
+  color: #ffffff;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+}
+
+.markdown h1 { font-size: 1.4rem; }
+.markdown h2 { font-size: 1.15rem; color: var(--neon-indigo, #667eea); }
+.markdown h3 { font-size: 1rem; }
+
+.markdown p {
+  margin: 0.5em 0;
+}
+
+.markdown code {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.85em;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0.1em 0.4em;
+  border-radius: var(--radius-sm, 5px);
+  color: var(--neon-cyan, #00d4ff);
+}
+
+.markdown pre {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-sm, 5px);
+  padding: var(--sp-3, 0.75rem);
+  overflow-x: auto;
+}
+
+.markdown pre code {
+  background: none;
+  padding: 0;
+  color: var(--text-secondary, #ccc);
+}
+
+.markdown table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.75em 0;
+}
+
+.markdown th,
+.markdown td {
+  padding: 0.5em 0.75em;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: left;
+}
+
+.markdown th {
+  background: rgba(102, 126, 234, 0.1);
+  color: var(--neon-indigo, #667eea);
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.markdown ul,
+.markdown ol {
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+}
+
+.markdown li {
+  margin-bottom: 0.25em;
+}
+
+.markdown strong {
+  color: #ffffff;
+}
+
+.markdown a {
+  color: var(--neon-cyan, #00d4ff);
+  text-decoration: none;
+}
+
+.markdown a:hover {
+  text-decoration: underline;
+}
+
+.markdown hr {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin: 1.5em 0;
+}
+
+.markdown blockquote {
+  border-left: 3px solid var(--neon-indigo, #667eea);
+  padding-left: var(--sp-3, 0.75rem);
+  margin-left: 0;
+  color: var(--text-tertiary, #888);
+}

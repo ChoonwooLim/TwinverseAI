@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import database
 from database import create_db_and_tables
-from routers import auth, admin, docs, skills, plugins, boards, comments, files
+from routers import auth, admin, docs, skills, plugins, boards, comments, files, news
 
 
 def _get_uploads_dir() -> Path:
@@ -210,12 +210,223 @@ def _seed_sample_posts():
         print(f"[seed_posts] Created {len(posts)} sample posts")
 
 
+def _seed_news():
+    """Claude Code 최근정보 초기 데이터"""
+    from sqlmodel import Session, select, func
+    from models.news import ClaudeNews
+    from datetime import datetime
+
+    with Session(database.engine) as session:
+        count = session.exec(select(func.count(ClaudeNews.id))).one()
+        if count > 0:
+            return
+
+        items = [
+            ClaudeNews(
+                title="Ultra Plan (Ultraplan) 모드",
+                category="mode",
+                summary="로컬 터미널이 아닌 Anthropic 클라우드(CCR)에서 계획을 세우는 새로운 모드. Opus 4.6 전용, 최대 30분 컴퓨트, 2배 속도.",
+                content="""# Ultra Plan (Ultraplan) 모드
+
+## 개요
+Ultra Plan은 Claude Code의 새로운 계획 모드로, 로컬 터미널 대신 **Anthropic 클라우드(CCR)**에서 계획을 수립합니다.
+
+## 핵심 특징
+- **클라우드 실행**: Opus 4.6 모델, 최대 30분 전용 컴퓨트
+- **2배 속도**: 로컬 Plan 모드 대비 2배 빠른 처리
+- **터미널 자유**: 계획 수립 중에도 터미널에서 다른 작업 가능
+- **브라우저 검토**: 인라인 코멘트, 다이어그램, 섹션별 피드백
+- **동시 관리**: 여러 계획을 동시에 관리 가능
+
+## 3가지 모드
+| 모드 | 용도 |
+|------|------|
+| **Simple Plan** | 간단한 작업 계획 |
+| **Visual Plan** | 다이어그램 포함 시각적 계획 |
+| **Deep Plan** | 복잡한 워크플로우, 서브 에이전트 리스크 분석 |
+
+## 사용법
+```bash
+/ultraplan migrate the auth service from sessions to JWTs
+```
+
+또는 로컬 Plan 완료 후 승인 단계에서 "No, refine with Ultraplan on Claude Code on the web" 선택.
+
+## Plan 모드 vs Ultra Plan 비교
+| 항목 | Plan 모드 | Ultra Plan |
+|------|-----------|------------|
+| 실행 위치 | 로컬 터미널 | Anthropic 클라우드 (CCR) |
+| 모델 | 현재 모델 | Opus 4.6 전용 |
+| 계산 시간 | 터미널 점유 | 최대 30분 전용 |
+| 속도 | 일반 | 2배 |
+| 검토 | 터미널 | 브라우저 (인라인 코멘트) |
+| 서브 에이전트 | 없음 | 있음 (리스크 평가) |
+""",
+                source_url="https://code.claude.com/docs/en/ultraplan",
+                discovered_at=datetime(2026, 4, 8),
+            ),
+            ClaudeNews(
+                title="Pixel Streaming 2 플러그인",
+                category="plugin",
+                summary="UE5.5+에서 제공하는 차세대 Pixel Streaming. WebRTC 개선, 적응형 비트레이트, 다중 스트림 지원.",
+                content="""# Pixel Streaming 2
+
+## 개요
+Unreal Engine 5.5+에서 도입된 차세대 Pixel Streaming 플러그인. 기존 Pixel Streaming의 한계를 개선.
+
+## 주요 개선사항
+- **적응형 비트레이트**: 네트워크 상태에 따라 자동 품질 조절
+- **다중 스트림**: 하나의 서버에서 여러 클라이언트에 다른 뷰 전송
+- **개선된 WebRTC**: 지연시간 감소, 안정성 향상
+- **입력 처리 개선**: 터치, 게임패드 등 다양한 입력 지원
+- **시그널링 서버 내장**: 별도 시그널링 서버 불필요 (선택적)
+
+## 활성화 방법
+1. Unreal Editor > Edit > Plugins
+2. "Pixel Streaming 2" 검색 > Enable
+3. 에디터 재시작
+
+## TwinverseDesk 적용
+TwinverseDesk 프로젝트에 PixelStreaming + PixelStreaming2 + PixelStreamingPlayer 3개 플러그인 모두 활성화됨.
+""",
+                source_url="https://dev.epicgames.com/documentation/en-us/unreal-engine/pixel-streaming-2",
+                discovered_at=datetime(2026, 4, 8),
+            ),
+            ClaudeNews(
+                title="Claude Opus 4.6 모델 출시",
+                category="update",
+                summary="Anthropic의 최신 플래그십 모델. 코딩, 추론, 장문 컨텍스트에서 대폭 성능 향상.",
+                content="""# Claude Opus 4.6
+
+## 개요
+Anthropic의 최신 플래그십 AI 모델. Claude Code의 기본 모델로 사용됨.
+
+## 모델 패밀리 (2026년 기준)
+| 모델 | ID | 특징 |
+|------|------|------|
+| **Opus 4.6** | claude-opus-4-6 | 최고 성능, 복잡한 추론 |
+| **Sonnet 4.6** | claude-sonnet-4-6 | 균형잡힌 성능/속도 |
+| **Haiku 4.5** | claude-haiku-4-5-20251001 | 빠른 응답, 경량 작업 |
+
+## 주요 개선
+- 코딩 성능 대폭 향상
+- 장문 컨텍스트 처리 능력 개선
+- 멀티모달 (이미지, PDF) 지원 강화
+- Claude Code에서 Fast 모드 지원 (같은 모델, 빠른 출력)
+
+## Claude Code에서 사용
+```bash
+# 기본 모델로 자동 사용
+claude
+
+# Fast 모드 토글
+/fast
+```
+""",
+                source_url="https://docs.anthropic.com/en/docs/about-claude/models",
+                discovered_at=datetime(2026, 4, 7),
+            ),
+            ClaudeNews(
+                title="NVIDIA Container Toolkit Docker GPU 지원",
+                category="feature",
+                summary="Docker 컨테이너에서 GPU 접근을 가능하게 하는 NVIDIA Container Toolkit. Pixel Streaming 배포에 필수.",
+                content="""# NVIDIA Container Toolkit
+
+## 개요
+Docker 컨테이너 내에서 NVIDIA GPU에 접근할 수 있게 해주는 툴킷.
+
+## 설치 (Ubuntu)
+```bash
+# GPG 키 추가
+curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | \\
+  sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+
+# 리포지토리 추가
+curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \\
+  sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \\
+  sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+
+# 설치
+sudo apt-get update && sudo apt-get install -y nvidia-container-toolkit
+
+# Docker 런타임 등록
+sudo nvidia-ctk runtime configure --runtime=docker
+sudo systemctl restart docker
+```
+
+## 검증
+```bash
+docker run --rm --gpus all nvidia/cuda:12.6.3-base-ubuntu24.04 nvidia-smi
+```
+
+## Orbitron 서버 상태
+- GTX 1080 x 2장 (각 8GB VRAM)
+- nvidia-container-toolkit v1.19.0 설치 완료
+- Docker GPU Runtime 등록 완료
+""",
+                source_url="https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html",
+                discovered_at=datetime(2026, 4, 7),
+            ),
+            ClaudeNews(
+                title="Claude Code MCP 서버 통합",
+                category="feature",
+                summary="Model Context Protocol 기반 외부 도구 서버 연동. GitHub, PostgreSQL, Docker 등 14개 플러그인 지원.",
+                content="""# Claude Code MCP (Model Context Protocol) 서버
+
+## 개요
+Claude Code에서 외부 도구 서버를 연동하여 기능을 확장하는 프로토콜.
+
+## 설정 방법
+`settings.local.json`에 MCP 서버를 추가:
+```json
+{
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": { "GITHUB_PERSONAL_ACCESS_TOKEN": "ghp_..." }
+    }
+  }
+}
+```
+
+## TwinverseAI에 설치된 MCP 서버 (10개)
+| 서버 | 용도 | 키 필요 |
+|------|------|---------|
+| Context7 | 라이브러리 최신 문서 조회 | - |
+| GitHub | GitHub API 접근 | GITHUB_TOKEN |
+| PostgreSQL | DB 직접 쿼리 | DATABASE_URL |
+| Puppeteer | 헤드리스 브라우저 | - |
+| Sequential Thinking | 단계별 추론 | - |
+| Memory | 지식 그래프 기억 | - |
+| Brave Search | 웹 검색 | BRAVE_API_KEY |
+| Filesystem | 파일 시스템 조작 | - |
+| Fetch | HTTP API 호출 | - |
+| Docker | 컨테이너 관리 | - |
+
+## 새 MCP 서버 추가 방법
+1. 관리자 > Claude Code > 플러그인 페이지에서 확인
+2. `settings.local.json`에 서버 정보 추가
+3. Claude Code 재시작
+""",
+                source_url="https://modelcontextprotocol.io/",
+                discovered_at=datetime(2026, 4, 6),
+            ),
+        ]
+
+        for item in items:
+            session.add(item)
+        session.commit()
+        print(f"[seed_news] Created {len(items)} Claude Code news items")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     _copy_gallery_defaults()
     create_db_and_tables()
     _seed_admin()
     _seed_docs()
+    _seed_news()
     _seed_sample_posts()
     _seed_gallery_images()
     yield
@@ -241,6 +452,7 @@ app.include_router(plugins.router, prefix="/api/plugins", tags=["plugins"])
 app.include_router(boards.router, prefix="/api/boards", tags=["boards"])
 app.include_router(comments.router, prefix="/api/comments", tags=["comments"])
 app.include_router(files.router, prefix="/api/files", tags=["files"])
+app.include_router(news.router, prefix="/api/news", tags=["news"])
 
 @app.get("/health")
 def health_check():
