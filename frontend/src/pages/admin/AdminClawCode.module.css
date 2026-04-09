@@ -1,0 +1,587 @@
+/* ═══════════════════════════════════════════════
+   AdminClawCode — Dark Glass Neon (Analysis Report)
+   ═══════════════════════════════════════════════ */
+
+.page {
+  max-width: 920px;
+}
+
+/* ── Page Header ── */
+
+.pageHeader {
+  padding-bottom: var(--sp-6, 1.75rem);
+  border-bottom: 1px solid var(--border-default, rgba(255,255,255,0.1));
+  margin-bottom: var(--sp-8, 2.5rem);
+}
+
+.overline {
+  display: block;
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: 600;
+  letter-spacing: var(--tracking-mega, 0.15em);
+  text-transform: uppercase;
+  color: var(--text-tertiary, #888);
+  margin-bottom: var(--sp-2, 0.5rem);
+}
+
+.title {
+  font-family: var(--font-display, 'Noto Sans KR'), sans-serif;
+  font-size: clamp(1.75rem, 3vw, 2.75rem);
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+}
+
+.headerDesc {
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--text-secondary, #ccc);
+  margin-top: var(--sp-3, 0.75rem);
+  line-height: 1.6;
+}
+
+.headerMeta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--text-tertiary, #888);
+  margin-top: var(--sp-2, 0.5rem);
+}
+
+.dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--text-tertiary, #888);
+  flex-shrink: 0;
+}
+
+/* ── Stats Grid ── */
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--sp-3, 0.75rem);
+  margin-bottom: var(--sp-8, 2.5rem);
+}
+
+.statCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--sp-4, 1rem) var(--sp-3, 0.75rem);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-md, 8px);
+  transition: border-color 180ms;
+}
+
+.statCard:hover {
+  border-color: var(--neon-indigo, #667eea);
+}
+
+.statValue {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--neon-cyan, #00d4ff);
+}
+
+.statLabel {
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--text-tertiary, #888);
+  margin-top: 0.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ── Sections ── */
+
+.section {
+  margin-bottom: var(--sp-8, 2.5rem);
+  padding-bottom: var(--sp-6, 1.75rem);
+  border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,0.06));
+}
+
+.section:last-of-type {
+  border-bottom: none;
+}
+
+.sectionTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3, 0.75rem);
+  font-family: var(--font-display, 'Noto Sans KR'), sans-serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 var(--sp-4, 1rem);
+}
+
+.sectionIcon {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--neon-indigo, #667eea);
+  background: rgba(102, 126, 234, 0.12);
+  padding: 0.25em 0.6em;
+  border-radius: var(--radius-sm, 5px);
+  letter-spacing: 0.05em;
+}
+
+.sectionToggle {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 0;
+}
+
+.sectionToggle .sectionTitle {
+  margin-bottom: 0;
+}
+
+.sectionContent {
+  margin-top: var(--sp-4, 1rem);
+}
+
+.subTitle {
+  font-family: var(--font-display, 'Noto Sans KR'), sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--neon-indigo, #667eea);
+  margin: var(--sp-5, 1.25rem) 0 var(--sp-3, 0.75rem);
+}
+
+.bodyText {
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--text-secondary, #ccc);
+  line-height: 1.7;
+  margin: 0;
+}
+
+/* ── Tags ── */
+
+.tagRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2, 0.5rem);
+  margin-top: var(--sp-3, 0.75rem);
+}
+
+.tag {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.2em 0.6em;
+  border-radius: var(--radius-sm, 5px);
+  background: rgba(0, 212, 255, 0.1);
+  color: var(--neon-cyan, #00d4ff);
+  border: 1px solid rgba(0, 212, 255, 0.25);
+}
+
+.tagMuted {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.7rem;
+  font-weight: 500;
+  padding: 0.2em 0.6em;
+  border-radius: var(--radius-sm, 5px);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-tertiary, #888);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* ── Architecture Flow ── */
+
+.flowList {
+  display: flex;
+  flex-direction: column;
+}
+
+.flowItem {
+  display: flex;
+  gap: var(--sp-4, 1rem);
+  min-height: 3rem;
+}
+
+.flowLine {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 1.5rem;
+  flex-shrink: 0;
+}
+
+.flowDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--neon-indigo, #667eea);
+  border: 2px solid rgba(102, 126, 234, 0.4);
+  flex-shrink: 0;
+  margin-top: 5px;
+}
+
+.flowConnector {
+  width: 2px;
+  flex: 1;
+  background: linear-gradient(to bottom, var(--neon-indigo, #667eea), rgba(102, 126, 234, 0.15));
+  min-height: 1rem;
+}
+
+.flowContent {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: var(--sp-3, 0.75rem);
+}
+
+.flowStep {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: var(--text-sm, 0.875rem);
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.flowDetail {
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--text-tertiary, #888);
+  margin-top: 2px;
+  line-height: 1.5;
+}
+
+/* ── Crate List ── */
+
+.crateList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.crateItem {
+  border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,0.06));
+}
+
+.crateItem:last-child {
+  border-bottom: none;
+}
+
+.crateBtn {
+  display: flex;
+  width: 100%;
+  padding: var(--sp-4, 1rem) 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  align-items: flex-start;
+  gap: var(--sp-4, 1rem);
+  transition: background 120ms;
+}
+
+.crateBtn:hover .crateName {
+  color: var(--neon-cyan, #00d4ff);
+}
+
+.crateIndex {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: 700;
+  color: var(--text-tertiary, #888);
+  min-width: 2rem;
+  flex-shrink: 0;
+  padding-top: 3px;
+}
+
+.crateBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.crateName {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3, 0.75rem);
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: var(--text-base, 1rem);
+  font-weight: 600;
+  color: #ffffff;
+  margin-bottom: var(--sp-1, 0.25rem);
+  transition: color 120ms;
+  flex-wrap: wrap;
+}
+
+.crateRole {
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.15em 0.5em;
+  border-radius: var(--radius-sm, 5px);
+  background: rgba(102, 126, 234, 0.12);
+  color: var(--neon-indigo, #667eea);
+  border: 1px solid rgba(102, 126, 234, 0.25);
+  white-space: nowrap;
+}
+
+.crateDesc {
+  display: block;
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--text-secondary, #ccc);
+  line-height: 1.5;
+}
+
+.crateDetail {
+  padding: var(--sp-4, 1rem) 0 var(--sp-5, 1.25rem);
+  padding-left: calc(2rem + var(--sp-4, 1rem));
+  border-top: 1px solid var(--border-subtle, rgba(255,255,255,0.06));
+}
+
+.detailBlock {
+  margin-bottom: var(--sp-3, 0.75rem);
+}
+
+.detailLabel {
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--neon-indigo, #667eea);
+  margin: 0 0 var(--sp-2, 0.5rem);
+}
+
+.detailMeta {
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--text-tertiary, #888);
+  margin: var(--sp-2, 0.5rem) 0 0;
+}
+
+.depText {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.7rem;
+  color: var(--text-secondary, #ccc);
+}
+
+/* ── Chevron ── */
+
+.chevron {
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--text-tertiary, #888);
+  flex-shrink: 0;
+  padding-top: 4px;
+  transition: transform 120ms;
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+/* ── Key List ── */
+
+.keyList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.keyList li {
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--text-secondary, #ccc);
+  line-height: 1.6;
+  padding: 0.15em 0;
+  padding-left: 1rem;
+  position: relative;
+}
+
+.keyList li::before {
+  content: "\203A";
+  position: absolute;
+  left: 0;
+  color: var(--neon-cyan, #00d4ff);
+  font-weight: 700;
+}
+
+/* ── Feature Grid ── */
+
+.featureGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--sp-4, 1rem);
+}
+
+.featureCard {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-md, 8px);
+  padding: var(--sp-4, 1rem);
+  transition: border-color 180ms;
+}
+
+.featureCard:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.featureTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-display, 'Noto Sans KR'), sans-serif;
+  font-size: var(--text-sm, 0.875rem);
+  font-weight: 700;
+  margin: 0 0 var(--sp-3, 0.75rem);
+}
+
+.featureDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.featureItems {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.featureItems li {
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--text-secondary, #ccc);
+  line-height: 1.6;
+  padding: 0.15em 0 0.15em 0.75rem;
+  position: relative;
+}
+
+.featureItems li::before {
+  content: "\2022";
+  position: absolute;
+  left: 0;
+  color: var(--text-tertiary, #888);
+}
+
+/* ── Table ── */
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.5em 0;
+}
+
+.table th,
+.table td {
+  padding: 0.5em 0.75em;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  text-align: left;
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--text-secondary, #ccc);
+}
+
+.table th {
+  background: rgba(102, 126, 234, 0.08);
+  color: var(--neon-indigo, #667eea);
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.table tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.code {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.85em;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0.1em 0.4em;
+  border-radius: var(--radius-sm, 5px);
+  color: var(--neon-cyan, #00d4ff);
+}
+
+/* ── Lane List (Parity) ── */
+
+.laneList {
+  list-style: none;
+  padding: 0;
+  margin: var(--sp-3, 0.75rem) 0 0;
+}
+
+.laneItem {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2, 0.5rem);
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--text-secondary, #ccc);
+  padding: 0.35em 0;
+}
+
+.laneCheck {
+  color: #4ade80;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+/* ── CI List ── */
+
+.ciList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2, 0.5rem);
+}
+
+.ciItem {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3, 0.75rem);
+  padding: var(--sp-3, 0.75rem);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-sm, 5px);
+}
+
+.ciLabel {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: var(--text-sm, 0.875rem);
+  font-weight: 600;
+  color: var(--neon-cyan, #00d4ff);
+  min-width: 140px;
+}
+
+.ciDesc {
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--text-secondary, #ccc);
+}
+
+/* ── Footer ── */
+
+.footer {
+  padding-top: var(--sp-4, 1rem);
+  text-align: center;
+}
+
+.footer p {
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--text-tertiary, #888);
+}
