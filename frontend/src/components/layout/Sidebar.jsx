@@ -29,6 +29,17 @@ const SIDEBAR_CONFIG = {
         ],
       },
       {
+        label: "Unreal Engine",
+        path: "/admin/docs/ue-project-setup",
+        children: [
+          { label: "프로젝트 설정", path: "/admin/docs/ue-project-setup" },
+          { label: "Pixel Streaming 2", path: "/admin/docs/ue-pixel-streaming" },
+          { label: "PS2 Spawner API", path: "/admin/docs/ue-spawner-api" },
+          { label: "GPU 클라우드 호스팅", path: "/admin/docs/ue-gpu-hosting" },
+          { label: "EOS Online Framework", path: "/admin/docs/ue-eos-framework" },
+        ],
+      },
+      {
         label: "프로젝트 문서",
         path: "/admin/docs",
         children: [

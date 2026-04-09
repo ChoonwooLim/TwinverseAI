@@ -76,6 +76,11 @@ def _seed_docs():
         "upgrade-log": ("업그레이드 로그", "upgrade-log.md"),
         "work-log": ("작업일지", "work-log.md"),
         "orbitron-server": ("Orbitron 서버", "orbitron-server.md"),
+        "ue-pixel-streaming": ("Pixel Streaming 2", "ue-pixel-streaming.md"),
+        "ue-eos-framework": ("EOS Online Framework", "ue-eos-framework.md"),
+        "ue-gpu-hosting": ("GPU 클라우드 호스팅", "ue-gpu-hosting.md"),
+        "ue-project-setup": ("UE5 프로젝트 설정", "ue-project-setup.md"),
+        "ue-spawner-api": ("PS2 Spawner API", "ue-spawner-api.md"),
     }
 
     # docs/ 디렉토리 탐색: /app/docs (Docker) → 프로젝트루트/docs (로컬)
