@@ -14,6 +14,7 @@ from sqlmodel import SQLModel
 # 모든 모델 import — autogenerate가 메타데이터를 인식하도록
 from models import User, Post, Comment, FileRecord, Document  # noqa: F401
 from models.news import ClaudeNews  # noqa: F401
+from models.ps2_session import PS2Session  # noqa: F401
 
 config = context.config
 

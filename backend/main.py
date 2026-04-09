@@ -14,7 +14,7 @@ from slowapi.errors import RateLimitExceeded
 from rate_limit import limiter
 import database
 from database import create_db_and_tables
-from routers import auth, admin, docs, skills, plugins, boards, comments, files, news
+from routers import auth, admin, docs, skills, plugins, boards, comments, files, news, ps2_spawner
 
 
 def _get_uploads_dir() -> Path:
@@ -432,6 +432,14 @@ async def lifespan(app: FastAPI):
     _seed_news()
     _seed_sample_posts()
     _seed_gallery_images()
+    # Clean up orphaned PS2 sessions from previous server run
+    try:
+        from sqlmodel import Session as DBSession
+        from services.ps2_service import cleanup_orphaned_sessions
+        with DBSession(database.engine) as db:
+            cleanup_orphaned_sessions(db)
+    except Exception as e:
+        print(f"[ps2] Orphan cleanup error: {e}")
     yield
 
 app = FastAPI(title="TwinverseAI API", lifespan=lifespan)
@@ -460,6 +468,7 @@ app.include_router(boards.router, prefix="/api/boards", tags=["boards"])
 app.include_router(comments.router, prefix="/api/comments", tags=["comments"])
 app.include_router(files.router, prefix="/api/files", tags=["files"])
 app.include_router(news.router, prefix="/api/news", tags=["news"])
+app.include_router(ps2_spawner.router, prefix="/api/ps2", tags=["ps2-spawner"])
 
 @app.get("/health")
 def health_check():
