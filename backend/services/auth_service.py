@@ -1,11 +1,24 @@
 import os
+import secrets
+import logging
 from datetime import datetime, timedelta
 import bcrypt
 from jose import jwt, JWTError
 
-SECRET_KEY = os.getenv("SECRET_KEY", "change-me-in-production")
+logger = logging.getLogger("twinverse.auth")
+
+_env_key = os.getenv("SECRET_KEY", "").strip()
+if not _env_key:
+    SECRET_KEY = secrets.token_urlsafe(64)
+    logger.warning("SECRET_KEY not set — generated ephemeral key. Tokens will NOT survive restarts. Set SECRET_KEY in env.")
+elif len(_env_key) < 32:
+    SECRET_KEY = _env_key
+    logger.warning("SECRET_KEY is too short (< 32 chars). Use `python -c \"import secrets; print(secrets.token_urlsafe(64))\"` to generate a strong key.")
+else:
+    SECRET_KEY = _env_key
+
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24시간
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 8  # 8시간 (24h → 8h 단축)
 
 
 def hash_password(password: str) -> str:

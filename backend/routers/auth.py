@@ -1,10 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 from sqlmodel import Session, select
 from database import get_session
 from models import User
 from services.auth_service import hash_password, verify_password, create_access_token
 from deps import get_current_user
+from services.audit_log import log_auth
+from rate_limit import limiter
 
 router = APIRouter()
 
@@ -27,10 +29,14 @@ class TokenResponse(BaseModel):
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(body: LoginRequest, session: Session = Depends(get_session)):
+@limiter.limit("10/minute")
+def login(request: Request, body: LoginRequest, session: Session = Depends(get_session)):
+    client_ip = request.client.host if request.client else "unknown"
     user = session.exec(select(User).where(User.username == body.username)).first()
     if not user or not verify_password(body.password, user.hashed_password):
+        log_auth("login", body.username, client_ip, success=False)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+    log_auth("login", user.username, client_ip, success=True)
     token = create_access_token({"sub": user.id, "role": user.role})
     return TokenResponse(
         access_token=token,
@@ -39,11 +45,14 @@ def login(body: LoginRequest, session: Session = Depends(get_session)):
 
 
 @router.post("/register", response_model=TokenResponse)
-def register(body: RegisterRequest, session: Session = Depends(get_session)):
+@limiter.limit("5/minute")
+def register(request: Request, body: RegisterRequest, session: Session = Depends(get_session)):
+    client_ip = request.client.host if request.client else "unknown"
     existing = session.exec(
         select(User).where((User.username == body.username) | (User.email == body.email))
     ).first()
     if existing:
+        log_auth("register", body.username, client_ip, success=False, detail="duplicate")
         raise HTTPException(status_code=400, detail="Username or email already exists")
     user = User(
         username=body.username,
@@ -53,6 +62,7 @@ def register(body: RegisterRequest, session: Session = Depends(get_session)):
     session.add(user)
     session.commit()
     session.refresh(user)
+    log_auth("register", user.username, client_ip, success=True)
     token = create_access_token({"sub": user.id, "role": user.role})
     return TokenResponse(
         access_token=token,

@@ -9,6 +9,9 @@ load_dotenv()
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from rate_limit import limiter
 import database
 from database import create_db_and_tables
 from routers import auth, admin, docs, skills, plugins, boards, comments, files, news
@@ -432,16 +435,20 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(title="TwinverseAI API", lifespan=lifespan)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+_allowed_origins = ["http://localhost:5173"]
+_frontend_url = os.getenv("FRONTEND_URL", "").strip()
+if _frontend_url:
+    _allowed_origins.append(_frontend_url)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        os.getenv("FRONTEND_URL", ""),
-    ],
+    allow_origins=_allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
@@ -490,7 +497,10 @@ from fastapi.responses import FileResponse
 def serve_upload(filename: str):
     filepath = _get_uploads_dir() / filename
     if filepath.is_file():
-        return FileResponse(filepath)
+        return FileResponse(
+            filepath,
+            headers={"Content-Disposition": f'inline; filename="{filepath.name}"'},
+        )
     raise HTTPException(status_code=404, detail=f"File not found: {filename}")
 
 

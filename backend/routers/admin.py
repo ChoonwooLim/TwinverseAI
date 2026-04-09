@@ -5,6 +5,7 @@ from sqlmodel import Session, select, func, col
 from database import get_session
 from models import User, Post, Comment
 from deps import require_admin
+from services.audit_log import log_admin
 
 router = APIRouter()
 
@@ -70,9 +71,11 @@ def update_user_role(
         raise HTTPException(status_code=404, detail="User not found")
     if body.role == "superadmin" and admin.role != "superadmin":
         raise HTTPException(status_code=403, detail="Only superadmin can assign superadmin role")
+    old_role = user.role
     user.role = body.role
     session.add(user)
     session.commit()
+    log_admin("role_change", admin.username, target=user.username, detail=f"{old_role}->{body.role}")
     return {"id": user.id, "role": user.role}
 
 
@@ -93,6 +96,7 @@ def update_user_active(
     user.is_active = body.is_active
     session.add(user)
     session.commit()
+    log_admin("active_change", admin.username, target=user.username, detail=f"is_active={body.is_active}")
     return {"id": user.id, "is_active": user.is_active}
 
 
