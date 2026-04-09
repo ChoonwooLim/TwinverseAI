@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
-import api from "../../services/api";
+import ps2api from "../../services/ps2api";
 import styles from "./DeskLaunch.module.css";
 
 const TVDESK_PS2_URL =
@@ -54,7 +54,7 @@ export default function DeskLaunch() {
   useEffect(() => {
     const fetchHealth = async () => {
       try {
-        const res = await api.get("/api/ps2/health");
+        const res = await ps2api.get("/api/ps2/health");
         setHealth(res.data);
       } catch { /* spawner unavailable */ }
     };
@@ -68,7 +68,7 @@ export default function DeskLaunch() {
     if (!isLoggedIn) return;
     const checkExisting = async () => {
       try {
-        const res = await api.get("/api/ps2/sessions");
+        const res = await ps2api.get("/api/ps2/sessions");
         if (res.data.length > 0) {
           const s = res.data[0];
           setSession(s);
@@ -85,7 +85,7 @@ export default function DeskLaunch() {
     if (pollRef.current) clearInterval(pollRef.current);
     pollRef.current = setInterval(async () => {
       try {
-        const res = await api.get(`/api/ps2/status/${sessionId}`);
+        const res = await ps2api.get(`/api/ps2/status/${sessionId}`);
         setSession(res.data);
         if (res.data.status === "running") {
           clearInterval(pollRef.current);
@@ -109,7 +109,7 @@ export default function DeskLaunch() {
     if (heartbeatRef.current) clearInterval(heartbeatRef.current);
     heartbeatRef.current = setInterval(async () => {
       try {
-        await api.post(`/api/ps2/heartbeat/${sessionId}`);
+        await ps2api.post(`/api/ps2/heartbeat/${sessionId}`);
       } catch { /* session may have been terminated */ }
     }, HEARTBEAT_INTERVAL);
   }, []);
@@ -126,7 +126,7 @@ export default function DeskLaunch() {
     setStatus("spawning");
     setSpawnError(null);
     try {
-      const res = await api.post("/api/ps2/spawn");
+      const res = await ps2api.post("/api/ps2/spawn");
       setSession(res.data);
       setStatus("starting");
       startPolling(res.data.session_id);
@@ -139,7 +139,7 @@ export default function DeskLaunch() {
   const handleTerminate = async () => {
     if (!session) return;
     try {
-      await api.post(`/api/ps2/terminate/${session.session_id}`);
+      await ps2api.post(`/api/ps2/terminate/${session.session_id}`);
     } catch { /* ignore */ }
     if (heartbeatRef.current) clearInterval(heartbeatRef.current);
     if (pollRef.current) clearInterval(pollRef.current);

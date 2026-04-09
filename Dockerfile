@@ -5,6 +5,7 @@ COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 COPY frontend/ ./
 ENV VITE_API_URL=""
+ENV VITE_PS2_API_URL="https://ps2-api.twinverse.org"
 RUN npm run build
 
 # Stage 2: Production image
