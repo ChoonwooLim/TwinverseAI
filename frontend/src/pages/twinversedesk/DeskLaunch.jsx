@@ -138,9 +138,39 @@ export default function DeskLaunch() {
     };
   }, []);
 
+  const ensureServersRunning = async () => {
+    try {
+      await ps2api.get("/api/ps2/health");
+      return true; // PS2 server is up
+    } catch {
+      // PS2 server is down — ask main backend to start it
+      setSpawnError("GPU 서버 시작 중...");
+      try {
+        const res = await api.post("/api/ps2/server/start");
+        if (!res.data.ready) {
+          setSpawnError("서버 시작 실패: " + JSON.stringify(res.data));
+          return false;
+        }
+        // Wait a moment for PS2 server to fully start
+        await new Promise((r) => setTimeout(r, 2000));
+        return true;
+      } catch (err) {
+        setSpawnError("서버를 시작할 수 없습니다: " + (err.response?.data?.detail || err.message));
+        return false;
+      }
+    }
+  };
+
   const handleSpawn = async () => {
     setStatus("spawning");
     setSpawnError(null);
+    // Step 1: Ensure Wilbur + PS2 Spawner are running
+    const ready = await ensureServersRunning();
+    if (!ready) {
+      setStatus("error");
+      return;
+    }
+    // Step 2: Spawn UE5 instance
     try {
       const user = JSON.parse(localStorage.getItem("user") || "{}");
       const res = await ps2api.post("/api/ps2/spawn", { user_id: user.id });

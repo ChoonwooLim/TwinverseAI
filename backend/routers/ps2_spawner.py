@@ -8,6 +8,7 @@ from models import User
 from deps import get_current_user, get_optional_user, require_admin
 from rate_limit import limiter
 from services import ps2_service
+from services import ps2_launcher
 
 router = APIRouter()
 
@@ -193,3 +194,21 @@ def admin_terminate(
     if not record:
         raise HTTPException(status_code=404, detail="Session not found")
     return {"ok": True, "session_id": session_id, "status": record.status}
+
+
+# ── Server Launcher Endpoints ──
+
+@router.get("/server/status")
+def server_status(request: Request):
+    """Check if Wilbur and PS2 Spawner are running."""
+    return ps2_launcher.get_status()
+
+
+@router.post("/server/start")
+@limiter.limit("3/minute")
+def start_servers(
+    request: Request,
+    user: User = Depends(get_current_user),
+):
+    """Start Wilbur + PS2 Spawner if not running. Requires login."""
+    return ps2_launcher.start_all()
