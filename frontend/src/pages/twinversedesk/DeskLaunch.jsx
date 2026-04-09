@@ -1,27 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
-import axios from "axios";
 import api from "../../services/api";
 import styles from "./DeskLaunch.module.css";
 
 const TVDESK_PS2_URL =
   import.meta.env.VITE_TVDESK_URL || "http://localhost:8080";
-const SIGNALING_URL =
-  import.meta.env.VITE_TVDESK_SIGNALING || "ws://localhost:8888";
-// PS2 GPU Server — standalone spawner API (separate from main backend)
-const PS2_API_URL =
-  import.meta.env.VITE_PS2_API_URL || "http://localhost:9000";
-const PS2_API_KEY =
-  import.meta.env.VITE_PS2_API_KEY || "ps2-dev-key-change-me";
 const HEARTBEAT_INTERVAL = 30000; // 30s
 const STATUS_POLL_INTERVAL = 3000; // 3s
-
-// PS2 API client (calls GPU server directly, not Orbitron backend)
-const ps2api = axios.create({ baseURL: PS2_API_URL });
-ps2api.interceptors.request.use((config) => {
-  config.headers["X-PS2-API-Key"] = PS2_API_KEY;
-  return config;
-});
 
 const REQUIREMENTS = [
   { label: "브라우저", value: "Chrome 90+ / Edge 90+ / Firefox 100+" },
@@ -69,7 +54,7 @@ export default function DeskLaunch() {
   useEffect(() => {
     const fetchHealth = async () => {
       try {
-        const res = await ps2api.get("/api/ps2/health");
+        const res = await api.get("/api/ps2/health");
         setHealth(res.data);
       } catch { /* spawner unavailable */ }
     };
@@ -81,10 +66,9 @@ export default function DeskLaunch() {
   // Check if user already has an active session
   useEffect(() => {
     if (!isLoggedIn) return;
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
     const checkExisting = async () => {
       try {
-        const res = await ps2api.get("/api/ps2/sessions", { params: { user_id: user.id } });
+        const res = await api.get("/api/ps2/sessions");
         if (res.data.length > 0) {
           const s = res.data[0];
           setSession(s);
@@ -101,7 +85,7 @@ export default function DeskLaunch() {
     if (pollRef.current) clearInterval(pollRef.current);
     pollRef.current = setInterval(async () => {
       try {
-        const res = await ps2api.get(`/api/ps2/status/${sessionId}`);
+        const res = await api.get(`/api/ps2/status/${sessionId}`);
         setSession(res.data);
         if (res.data.status === "running") {
           clearInterval(pollRef.current);
@@ -125,7 +109,7 @@ export default function DeskLaunch() {
     if (heartbeatRef.current) clearInterval(heartbeatRef.current);
     heartbeatRef.current = setInterval(async () => {
       try {
-        await ps2api.post(`/api/ps2/heartbeat/${sessionId}`);
+        await api.post(`/api/ps2/heartbeat/${sessionId}`);
       } catch { /* session may have been terminated */ }
     }, HEARTBEAT_INTERVAL);
   }, []);
@@ -138,42 +122,11 @@ export default function DeskLaunch() {
     };
   }, []);
 
-  const ensureServersRunning = async () => {
-    try {
-      await ps2api.get("/api/ps2/health");
-      return true; // PS2 server is up
-    } catch {
-      // PS2 server is down — ask main backend to start it
-      setSpawnError("GPU 서버 시작 중...");
-      try {
-        const res = await api.post("/api/ps2/server/start");
-        if (!res.data.ready) {
-          setSpawnError("서버 시작 실패: " + JSON.stringify(res.data));
-          return false;
-        }
-        // Wait a moment for PS2 server to fully start
-        await new Promise((r) => setTimeout(r, 2000));
-        return true;
-      } catch (err) {
-        setSpawnError("서버를 시작할 수 없습니다: " + (err.response?.data?.detail || err.message));
-        return false;
-      }
-    }
-  };
-
   const handleSpawn = async () => {
     setStatus("spawning");
     setSpawnError(null);
-    // Step 1: Ensure Wilbur + PS2 Spawner are running
-    const ready = await ensureServersRunning();
-    if (!ready) {
-      setStatus("error");
-      return;
-    }
-    // Step 2: Spawn UE5 instance
     try {
-      const user = JSON.parse(localStorage.getItem("user") || "{}");
-      const res = await ps2api.post("/api/ps2/spawn", { user_id: user.id });
+      const res = await api.post("/api/ps2/spawn");
       setSession(res.data);
       setStatus("starting");
       startPolling(res.data.session_id);
@@ -186,7 +139,7 @@ export default function DeskLaunch() {
   const handleTerminate = async () => {
     if (!session) return;
     try {
-      await ps2api.post(`/api/ps2/terminate/${session.session_id}`);
+      await api.post(`/api/ps2/terminate/${session.session_id}`);
     } catch { /* ignore */ }
     if (heartbeatRef.current) clearInterval(heartbeatRef.current);
     if (pollRef.current) clearInterval(pollRef.current);

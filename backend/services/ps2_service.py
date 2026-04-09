@@ -15,7 +15,8 @@ logger = logging.getLogger("twinverse.ps2")
 # Packaged build takes priority over editor
 _PACKAGED_EXE = os.getenv("UE_PACKAGED_PATH", r"C:\WORK\TwinverseDesk\Package\Windows\TwinverseDesk.exe")
 _EDITOR_EXE = os.getenv("UE_EDITOR_PATH", r"D:\Program Files\UE_5.7\Engine\Binaries\Win64\UnrealEditor.exe")
-USE_PACKAGED = os.path.isfile(_PACKAGED_EXE)
+def _use_packaged():
+    return os.path.isfile(_PACKAGED_EXE)
 UE_PROJECT = os.getenv("UE_PROJECT_PATH", r"C:\WORK\TwinverseDesk\TwinverseDesk.uproject")
 UE_MAP = os.getenv("UE_MAP", "/Game/PCG/PCG_Study_Modern")
 WILBUR_PLAYER_URL = os.getenv("WILBUR_PLAYER_URL", "http://localhost:8080")
@@ -126,11 +127,12 @@ def spawn_session(user_id: int, db: Session) -> PS2Session:
     player_url = f"{base_url}?StreamerId={session_id}"
 
     # Build UE5 command — packaged build or editor
-    if USE_PACKAGED:
+    # UE5.7 PS2 command line args: PixelStreamingConnectionURL (was SignallingURL), PixelStreamingID (was PixelStreaming2.ID)
+    if _use_packaged():
         cmd = [
             _PACKAGED_EXE,
-            f"-PixelStreamingSignallingURL={WILBUR_SIGNALING_URL}",
-            f"-PixelStreaming2.ID={session_id}",
+            f"-PixelStreamingConnectionURL={WILBUR_SIGNALING_URL}",
+            f"-PixelStreamingID={session_id}",
             "-RenderOffScreen",
             "-ResX=1280", "-ResY=720", "-ForceRes",
             "-AudioMixer", "-Unattended", "-NoPause", "-log",
@@ -141,19 +143,23 @@ def spawn_session(user_id: int, db: Session) -> PS2Session:
             UE_PROJECT,
             UE_MAP,
             "-game",
-            f"-PixelStreamingSignallingURL={WILBUR_SIGNALING_URL}",
-            f"-PixelStreaming2.ID={session_id}",
+            f"-PixelStreamingConnectionURL={WILBUR_SIGNALING_URL}",
+            f"-PixelStreamingID={session_id}",
             "-RenderOffScreen",
             "-ResX=1280", "-ResY=720", "-ForceRes",
             "-AudioMixer", "-Unattended", "-NoPause", "-log",
         ]
 
-    ue_path = _PACKAGED_EXE if USE_PACKAGED else _EDITOR_EXE
-    logger.info(f"Spawning UE5 ({'packaged' if USE_PACKAGED else 'editor'}): session={session_id}, user={user_id}")
+    ue_path = _PACKAGED_EXE if _use_packaged() else _EDITOR_EXE
+    logger.info(f"Spawning UE5 ({'packaged' if _use_packaged() else 'editor'}): session={session_id}, user={user_id}")
+
+    # Packaged build must run from its own directory (relative pak paths)
+    cwd = os.path.dirname(_PACKAGED_EXE) if _use_packaged() else None
 
     try:
         proc = subprocess.Popen(
             cmd,
+            cwd=cwd,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
