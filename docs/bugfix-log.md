@@ -14,3 +14,8 @@
 | 2026-04-06 | UPLOAD_DIR 빈 문자열로 CWD 해석 | Orbitron이 UPLOAD_DIR=""로 override → Path("")=CWD(.) → 소스 폴더를 uploads로 착각 | .strip() 후 빈 문자열이면 fallback 경로 사용 | backend/main.py, backend/routers/files.py |
 | 2026-04-06 | StaticFiles mount Docker VOLUME 충돌 | StaticFiles mount가 VOLUME 마운트된 빈 디렉토리 참조 → 파일 미검색 | StaticFiles mount 제거 → 명시적 @app.get("/uploads/{filename}") 라우트 사용 | backend/main.py |
 | 2026-04-06 | 로컬 갤러리 이미지 깨짐 | Vite 프록시 미설정 → img src="/uploads/..." 요청이 SPA HTML(text/html) 반환 | vite.config.js에 /api, /uploads, /health 프록시 추가 | frontend/vite.config.js |
+| 2026-04-09 | TVDeskRun 2D 가상오피스 페이지 사라짐 | PS2 DeskLaunch로 덮어씀 | TVDeskRun 원래 페이지 복원, DeskLaunch 별도 라우트 | TVDeskRun.jsx, DeskLaunch.jsx |
+| 2026-04-09 | subprocess.CREATE_NEW_PROCESS_GROUP Linux 오류 | Windows 전용 플래그를 Linux에서 사용 | os.name 체크로 Windows 전용 분기 | ps2_service.py |
+| 2026-04-09 | PS2 API URL 프로덕션 빌드 미반영 | .env.production 미설정 | .env.production 추가 + fallback 하드코딩 | .env.production, ps2api.js |
+| 2026-04-09 | 맵 선택해도 같은 맵 로딩 (UE5 패키지 빌드) | 패키지 빌드가 positional map arg, ExecCmds 무시 | GameInstance::OnStart()에서 -MapOverride 파싱 → OpenLevel() | TwinverseDeskGameInstance.cpp |
+| 2026-04-09 | spawn이 기존 세션 반환 (다른 맵인데도) | spawn_session idempotent 로직이 맵 비교 안 함 | PS2Session에 map_path 필드 추가, 맵 다르면 기존 종료 후 재생성 | ps2_service.py, ps2_session.py |

@@ -18,7 +18,7 @@
 | 2 | 포탈 전면 구현 (게시판 + 레이아웃 + 디자인) | 완료 | 2026-04-04 |
 | 3 | TwinverseDesk UE5 프로젝트 초기화 + 서버 GPU 환경 구성 | 완료 | 2026-04-07 |
 | 4 | 프로젝트 비전 수립 + AI 방침 문서화 | 완료 | 2026-04-08 |
-| 5 | Pixel Streaming 로컬 테스트 연동 | 예정 | - |
+| 5 | Pixel Streaming 로컬 테스트 연동 | 완료 | 2026-04-09 |
 | 6 | AI 에이전트 통합 (TwinverseDesk 내) | 예정 | - |
 
 ## 기능 목록
@@ -46,3 +46,8 @@
 | Claw Code 분석 | Rust 재구현 Claude Code CLI 정밀 분석 보고서 (/admin/claw-code) | 중간 | 완료 |
 | 공식 레포 분석 | Anthropic 공식 Claude Code 정밀 분석 보고서 (/admin/claude-code-repo) | 중간 | 완료 |
 | 개발 환경 통합 실행 | npm run dev로 프론트+백엔드 동시 실행 (concurrently) | 중간 | 완료 |
+| PS2 Spawner 시스템 | 유저별 독립 UE5 인스턴스 자동 생성/관리 (6+4 API) | 최상 | 완료 |
+| DeskLaunch UI | Pixel Streaming 2 실행 + 멀티 레벨 선택 UI | 높음 | 완료 |
+| UE5 맵 오버라이드 | GameInstance -MapOverride CLI → OpenLevel 맵 전환 | 높음 | 완료 |
+| Cloudflare Tunnel PS2 | ps2-api/ps2.twinverse.org 외부 접근 | 높음 | 완료 |
+| 어드민 UE 문서 | Unreal Engine 5개 기술 문서 + 사이드바 메뉴 | 중간 | 완료 |

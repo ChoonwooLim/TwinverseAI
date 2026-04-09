@@ -41,3 +41,10 @@
 | 2026-04-09 | Claw Code 분석 페이지 (Rust 재구현 CLI 정밀 분석 보고서, 10개 섹션) | feat | AdminClawCode.jsx, AdminClawCode.module.css |
 | 2026-04-09 | Claude Code 공식 레포 분석 페이지 (Anthropic 공식 CLI 정밀 분석 보고서, 10개 섹션) | feat | AdminClaudeCodeRepo.jsx, AdminClaudeCodeRepo.module.css |
 | 2026-04-09 | 프론트엔드 npm run dev 시 백엔드 자동 실행 (concurrently 패키지) | feat | frontend/package.json |
+| 2026-04-09 | Phase 1 보안 강화 + Alembic DB 마이그레이션 + TVDeskRun PS2 스트리밍 연동 | feat | backend/ |
+| 2026-04-09 | PS2 Spawner — 유저별 독립 UE5 인스턴스 자동 생성/관리 (6+4 API) | feat | ps2_service.py, ps2_spawner.py, ps2_session.py |
+| 2026-04-09 | PS2 외부 접근 — Cloudflare Tunnel + GPU 서버 통합 | feat | ps2_spawner.py, ps2api.js |
+| 2026-04-09 | PS2 서버/패키지 빌드 자동 감지 + 서버 자동 시작 | feat | ps2_service.py |
+| 2026-04-09 | DeskLaunch UI — Pixel Streaming 2 실행 + 멀티 레벨 선택 (썸네일 카드) | feat | DeskLaunch.jsx, DeskLaunch.module.css |
+| 2026-04-09 | UE5 GameInstance 맵 오버라이드 (-MapOverride CLI → OpenLevel) | feat | TwinverseDeskGameInstance.cpp/h |
+| 2026-04-09 | 어드민 Unreal Engine 문서 섹션 (5개 기술 문서 + 사이드바 메뉴) | feat | docs/ue-*.md, Sidebar.jsx, main.py |

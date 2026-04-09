@@ -345,4 +345,45 @@
   - `npm run dev` → 백엔드(uvicorn) + 프론트엔드(vite) 동시 실행
   - `npm run dev:front` / `npm run dev:back` 개별 실행 스크립트 추가
 
+### 작업 요약 (세션 2)
+
+| 카테고리 | 작업 내용 | 상태 |
+|----------|----------|------|
+| feat | Phase 1 보안 강화 + Alembic + TVDeskRun PS2 스트리밍 연동 | 완료 |
+| feat | PS2 Spawner — 유저별 독립 UE5 인스턴스 자동 생성/관리 | 완료 |
+| feat | PS2 GPU 서버 외부 접근 — Cloudflare Tunnel + 독립 Spawner API | 완료 |
+| feat | PS2 서버 자동 시작 (Wilbur + Spawner 자동 실행) | 완료 |
+| feat | PS2 패키지 빌드 자동 감지 (packaged exe 우선, 에디터 fallback) | 완료 |
+| feat | Pixel Streaming 2 DeskLaunch UI 컴포넌트 | 완료 |
+| feat | PS2 외부 접근 — Cloudflare Tunnel + GPU 서버 통합 | 완료 |
+| feat | 멀티 레벨 선택 UI + 백엔드 맵 파라미터 지원 | 완료 |
+| feat | 어드민 Unreal Engine 문서 섹션 (5개 기술 문서 + 사이드바 메뉴) | 완료 |
+| fix | TVDeskRun 원래 2D 가상오피스 페이지 복원 | 완료 |
+| fix | subprocess.CREATE_NEW_PROCESS_GROUP Windows 전용 분기 | 완료 |
+| fix | 프론트엔드 .env.production PS2 API URL 빌드 반영 | 완료 |
+| fix | PS2 API URL 프로덕션 fallback 하드코딩 | 완료 |
+| style | TopBar 메뉴명 'TwinverseDesk 실행하기' → 'TwinverseDesk 실행' | 완료 |
+
+### 세부 내용 (세션 2)
+
+- **PS2 Spawner 시스템 전체 구현**:
+  - `backend/services/ps2_service.py` — UE5 인스턴스 생성/관리 핵심 서비스 (spawn, heartbeat, terminate, 좀비 정리)
+  - `backend/routers/ps2_spawner.py` — 6개 사용자 API + 4개 관리자 API 엔드포인트
+  - `backend/models/ps2_session.py` — PS2Session DB 모델 (session_id, pid, map_path, heartbeat 등)
+  - 유저별 독립 UE5 인스턴스: 최대 3개 동시, 90초 heartbeat 타임아웃, psutil 기반 좀비 정리
+
+- **UE5 맵 전환 (GameInstance 방식)**:
+  - `TwinverseDeskGameInstance.cpp` — `-MapOverride=` CLI 인자 읽어서 `OpenLevel()` 호출
+  - UE5 패키지 빌드에서 positional arg, ExecCmds, GameMode BeginPlay 모두 실패 → GameInstance::OnStart()가 유일한 해법
+  - spawn 시 맵이 다르면 기존 세션 종료 후 새 세션 생성 (idempotent + map comparison)
+
+- **DeskLaunch 멀티 레벨 UI**:
+  - LEVELS 배열 (Modern Office, New York City) + 썸네일 카드 선택 UI
+  - spawn 요청 시 선택된 맵 전송: `ps2api.post("/api/ps2/spawn", { map: selectedLevel.map })`
+
+- **Cloudflare Tunnel**: ps2-api.twinverse.org → localhost:8000, ps2.twinverse.org → localhost:8080
+
+- **어드민 UE 문서 5개**: Pixel Streaming 2, PS2 Spawner API, GPU 호스팅, EOS Framework, UE5 프로젝트 설정
+  - `backend/main.py` _seed_docs()에 등록, 사이드바 "Unreal Engine" 드롭다운 메뉴 추가
+
 ---
