@@ -19,3 +19,6 @@
 | 2026-04-09 | PS2 API URL 프로덕션 빌드 미반영 | .env.production 미설정 | .env.production 추가 + fallback 하드코딩 | .env.production, ps2api.js |
 | 2026-04-09 | 맵 선택해도 같은 맵 로딩 (UE5 패키지 빌드) | 패키지 빌드가 positional map arg, ExecCmds 무시 | GameInstance::OnStart()에서 -MapOverride 파싱 → OpenLevel() | TwinverseDeskGameInstance.cpp |
 | 2026-04-09 | spawn이 기존 세션 반환 (다른 맵인데도) | spawn_session idempotent 로직이 맵 비교 안 함 | PS2Session에 map_path 필드 추가, 맵 다르면 기존 종료 후 재생성 | ps2_service.py, ps2_session.py |
+| 2026-04-09 | PCG 이주 레벨에서 클래식카 로드 불가 | ChaosVehiclesPlugin 미활성화 + 에셋 폴더 누락 | .uproject에 ChaosVehiclesPlugin + PCG 플러그인 5종 추가 | TwinverseDesk.uproject |
+| 2026-04-09 | ABP_Dashboard 컴파일 에러 (VehicleMovementComponent) | Parent Class가 AnimInstance여서 차량 함수 없음 | Parent Class → VehicleAnimationInstance + Cast 노드 재생성 | ABP_Dashboard.uasset |
+| 2026-04-09 | UE5 패키징 실패 C4458 | 로컬 변수 Mesh가 ACharacter::Mesh 멤버 숨김 | Mesh → CharMesh로 변수명 변경 | OfficeCharacter.cpp, OfficeNPC.cpp |

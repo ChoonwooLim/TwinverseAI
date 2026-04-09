@@ -437,3 +437,31 @@
   - `OfficeHUD` 7개 위젯 통합 관리
 
 ---
+
+### 작업 요약 (세션 4 — UE5 플러그인 + 이주 문제 해결 + 컴파일 에러 수정)
+
+| 카테고리 | 작업 내용 | 상태 |
+|----------|----------|------|
+| fix | TwinverseDesk.uproject에 ChaosVehiclesPlugin 활성화 | 완료 |
+| fix | TwinverseDesk.uproject에 PCG 플러그인 5종 활성화 | 완료 |
+| fix | ABP_Dashboard 이주 후 Cast/VehicleMovementComponent 에러 해결 가이드 | 완료 |
+| fix | OfficeCharacter.cpp C4458 — 로컬 변수 Mesh가 ACharacter::Mesh 숨김 | 완료 |
+| fix | OfficeNPC.cpp C4458 — 동일 Mesh 이름 충돌 | 완료 |
+
+### 세부 내용 (세션 4)
+
+- **PCG_Study_Modern 레벨 이주 문제 진단**:
+  - 소스(A01_UE5_contents) vs 대상(TwinverseDesk) 프로젝트 구조 비교
+  - 원인: ChaosVehiclesPlugin 미활성화 + 에셋 폴더 누락 (Vehicles/ 1,154파일, Car_Dealership/ 334파일)
+  - TwinverseDesk.uproject에 ChaosVehiclesPlugin, PCG 관련 플러그인 5종 추가
+
+- **ABP_Dashboard 블루프린트 에러 해결**:
+  - Parent Class를 AnimInstance → VehicleAnimationInstance로 변경
+  - Bad cast node 삭제 → 새 Cast To BP_Farton 노드 생성
+  - As BP Farton에서 Vehicle Movement Component, Fuel, Get Forward Speed 노드 재생성/연결
+
+- **UE5 패키징 C++ 컴파일 에러 수정**:
+  - OfficeCharacter.cpp:133, OfficeNPC.cpp:217 — `USkeletalMeshComponent* Mesh` → `CharMesh`로 변수명 변경
+  - `ACharacter::Mesh` 멤버와 이름 충돌 해결 (error C4458)
+
+---
