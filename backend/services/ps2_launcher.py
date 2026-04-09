@@ -63,14 +63,12 @@ def start_wilbur() -> dict:
         "--console_messages", "verbose",
     ]
 
+    popen_kwargs = dict(cwd=WILBUR_DIR, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    if os.name == "nt":
+        popen_kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
+
     try:
-        proc = subprocess.Popen(
-            node_cmd,
-            cwd=WILBUR_DIR,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
-        )
+        proc = subprocess.Popen(node_cmd, **popen_kwargs)
         logger.info(f"Started Wilbur pid={proc.pid}")
 
         # Wait for it to come up
@@ -96,14 +94,12 @@ def start_ps2_server() -> dict:
         "--port", str(PS2_SERVER_PORT),
     ]
 
+    popen_kwargs2 = dict(cwd=BACKEND_DIR, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    if os.name == "nt":
+        popen_kwargs2["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
+
     try:
-        proc = subprocess.Popen(
-            cmd,
-            cwd=BACKEND_DIR,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
-        )
+        proc = subprocess.Popen(cmd, **popen_kwargs2)
         logger.info(f"Started PS2 Spawner pid={proc.pid}")
 
         for _ in range(10):

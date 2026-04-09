@@ -156,14 +156,12 @@ def spawn_session(user_id: int, db: Session) -> PS2Session:
     # Packaged build must run from its own directory (relative pak paths)
     cwd = os.path.dirname(_PACKAGED_EXE) if _use_packaged() else None
 
+    popen_kwargs = dict(cwd=cwd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    if os.name == "nt":
+        popen_kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
+
     try:
-        proc = subprocess.Popen(
-            cmd,
-            cwd=cwd,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
-        )
+        proc = subprocess.Popen(cmd, **popen_kwargs)
     except FileNotFoundError:
         raise RuntimeError(f"UE5 not found at: {ue_path}")
     except Exception as e:
