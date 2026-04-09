@@ -1,0 +1,27 @@
+# Cloudflare Tunnel Config for TwinverseDesk PS2 GPU Server
+# =========================================================
+# Copy this to: %USERPROFILE%\.cloudflared\config.yml
+# Or run: cloudflared tunnel --config scripts/tunnel_config.yml run twinverse-ps2
+#
+# Before using:
+# 1. Replace TUNNEL_ID with your actual tunnel ID
+# 2. Set up DNS records in Cloudflare dashboard:
+#    - ps2-api.twinverse.org → TUNNEL_ID
+#    - ps2.twinverse.org     → TUNNEL_ID
+
+tunnel: TUNNEL_ID
+credentials-file: "%USERPROFILE%\\.cloudflared\\TUNNEL_ID.json"
+
+ingress:
+  # PS2 Spawner API (port 9000)
+  - hostname: ps2-api.twinverse.org
+    service: http://localhost:9000
+
+  # Wilbur Player Page + WebRTC signaling (port 8080)
+  - hostname: ps2.twinverse.org
+    service: http://localhost:8080
+    originRequest:
+      noTLSVerify: true
+
+  # Catch-all (required by cloudflared)
+  - service: http_status:404

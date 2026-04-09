@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
+import axios from "axios";
 import api from "../../services/api";
 import styles from "./DeskLaunch.module.css";
 
@@ -7,8 +8,20 @@ const TVDESK_PS2_URL =
   import.meta.env.VITE_TVDESK_URL || "http://localhost:8080";
 const SIGNALING_URL =
   import.meta.env.VITE_TVDESK_SIGNALING || "ws://localhost:8888";
+// PS2 GPU Server — standalone spawner API (separate from main backend)
+const PS2_API_URL =
+  import.meta.env.VITE_PS2_API_URL || "http://localhost:9000";
+const PS2_API_KEY =
+  import.meta.env.VITE_PS2_API_KEY || "ps2-dev-key-change-me";
 const HEARTBEAT_INTERVAL = 30000; // 30s
 const STATUS_POLL_INTERVAL = 3000; // 3s
+
+// PS2 API client (calls GPU server directly, not Orbitron backend)
+const ps2api = axios.create({ baseURL: PS2_API_URL });
+ps2api.interceptors.request.use((config) => {
+  config.headers["X-PS2-API-Key"] = PS2_API_KEY;
+  return config;
+});
 
 const REQUIREMENTS = [
   { label: "브라우저", value: "Chrome 90+ / Edge 90+ / Firefox 100+" },
@@ -52,11 +65,11 @@ export default function DeskLaunch() {
   const pollRef = useRef(null);
   const isLoggedIn = !!localStorage.getItem("token");
 
-  // Check spawner health on mount
+  // Check spawner health on mount (calls GPU server directly)
   useEffect(() => {
     const fetchHealth = async () => {
       try {
-        const res = await api.get("/api/ps2/health");
+        const res = await ps2api.get("/api/ps2/health");
         setHealth(res.data);
       } catch { /* spawner unavailable */ }
     };
@@ -68,9 +81,10 @@ export default function DeskLaunch() {
   // Check if user already has an active session
   useEffect(() => {
     if (!isLoggedIn) return;
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
     const checkExisting = async () => {
       try {
-        const res = await api.get("/api/ps2/sessions");
+        const res = await ps2api.get("/api/ps2/sessions", { params: { user_id: user.id } });
         if (res.data.length > 0) {
           const s = res.data[0];
           setSession(s);
@@ -87,7 +101,7 @@ export default function DeskLaunch() {
     if (pollRef.current) clearInterval(pollRef.current);
     pollRef.current = setInterval(async () => {
       try {
-        const res = await api.get(`/api/ps2/status/${sessionId}`);
+        const res = await ps2api.get(`/api/ps2/status/${sessionId}`);
         setSession(res.data);
         if (res.data.status === "running") {
           clearInterval(pollRef.current);
@@ -111,7 +125,7 @@ export default function DeskLaunch() {
     if (heartbeatRef.current) clearInterval(heartbeatRef.current);
     heartbeatRef.current = setInterval(async () => {
       try {
-        await api.post(`/api/ps2/heartbeat/${sessionId}`);
+        await ps2api.post(`/api/ps2/heartbeat/${sessionId}`);
       } catch { /* session may have been terminated */ }
     }, HEARTBEAT_INTERVAL);
   }, []);
@@ -128,7 +142,8 @@ export default function DeskLaunch() {
     setStatus("spawning");
     setSpawnError(null);
     try {
-      const res = await api.post("/api/ps2/spawn");
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      const res = await ps2api.post("/api/ps2/spawn", { user_id: user.id });
       setSession(res.data);
       setStatus("starting");
       startPolling(res.data.session_id);
@@ -141,7 +156,7 @@ export default function DeskLaunch() {
   const handleTerminate = async () => {
     if (!session) return;
     try {
-      await api.post(`/api/ps2/terminate/${session.session_id}`);
+      await ps2api.post(`/api/ps2/terminate/${session.session_id}`);
     } catch { /* ignore */ }
     if (heartbeatRef.current) clearInterval(heartbeatRef.current);
     if (pollRef.current) clearInterval(pollRef.current);

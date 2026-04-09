@@ -16,6 +16,7 @@ UE_EDITOR = os.getenv("UE_EDITOR_PATH", r"D:\Program Files\UE_5.7\Engine\Binarie
 UE_PROJECT = os.getenv("UE_PROJECT_PATH", r"C:\WORK\TwinverseDesk\TwinverseDesk.uproject")
 UE_MAP = os.getenv("UE_MAP", "/Game/PCG/PCG_Study_Modern")
 WILBUR_PLAYER_URL = os.getenv("WILBUR_PLAYER_URL", "http://localhost:8080")
+WILBUR_PLAYER_EXTERNAL_URL = os.getenv("WILBUR_PLAYER_EXTERNAL_URL", "")  # e.g. https://ps2.twinverse.org
 WILBUR_SIGNALING_URL = os.getenv("WILBUR_SIGNALING_URL", "ws://127.0.0.1:8888")
 MAX_INSTANCES = int(os.getenv("PS2_MAX_INSTANCES", "3"))
 HEARTBEAT_TIMEOUT_SECONDS = int(os.getenv("PS2_HEARTBEAT_TIMEOUT", "90"))
@@ -118,7 +119,8 @@ def spawn_session(user_id: int, db: Session) -> PS2Session:
 
     # Generate unique session/streamer ID
     session_id = f"session_{uuid.uuid4().hex[:12]}"
-    player_url = f"{WILBUR_PLAYER_URL}?StreamerId={session_id}"
+    base_url = WILBUR_PLAYER_EXTERNAL_URL or WILBUR_PLAYER_URL
+    player_url = f"{base_url}?StreamerId={session_id}"
 
     # Build UE5 command
     cmd = [
