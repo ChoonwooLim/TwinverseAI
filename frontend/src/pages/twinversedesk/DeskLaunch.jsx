@@ -8,6 +8,25 @@ const TVDESK_PS2_URL =
 const HEARTBEAT_INTERVAL = 30000; // 30s
 const STATUS_POLL_INTERVAL = 3000; // 3s
 
+const LEVELS = [
+  {
+    id: "pcg_modern",
+    name: "Modern Office",
+    map: "/Game/PCG/PCG_Study_Modern",
+    desc: "PCG 기반 모던 오피스 — 절차적 생성으로 매번 새로운 공간",
+    gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+    icon: "🏢",
+  },
+  {
+    id: "newyork",
+    name: "New York City",
+    map: "/Game/Maps/NewYork",
+    desc: "뉴욕 시티스케이프 — 도심 속 가상 오피스 환경",
+    gradient: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+    icon: "🌆",
+  },
+];
+
 const REQUIREMENTS = [
   { label: "브라우저", value: "Chrome 90+ / Edge 90+ / Firefox 100+" },
   { label: "네트워크", value: "최소 10Mbps (권장 50Mbps+)" },
@@ -43,6 +62,7 @@ export default function DeskLaunch() {
   const [status, setStatus] = useState("idle"); // idle | spawning | starting | running | error
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [session, setSession] = useState(null); // { session_id, player_url, status }
+  const [selectedLevel, setSelectedLevel] = useState(LEVELS[0]);
   const [spawnError, setSpawnError] = useState(null);
   const [health, setHealth] = useState(null); // { available, active_instances, max_instances }
   const streamRef = useRef(null);
@@ -126,7 +146,7 @@ export default function DeskLaunch() {
     setStatus("spawning");
     setSpawnError(null);
     try {
-      const res = await ps2api.post("/api/ps2/spawn");
+      const res = await ps2api.post("/api/ps2/spawn", { map: selectedLevel.map });
       setSession(res.data);
       setStatus("starting");
       startPolling(res.data.session_id);
@@ -227,6 +247,37 @@ export default function DeskLaunch() {
           )}
         </div>
       </header>
+
+      {/* Level Selector */}
+      {status !== "running" && (
+        <section className={styles.levelSection}>
+          <h2 className={styles.levelSectionTitle}>Select Environment</h2>
+          <div className={styles.levelGrid}>
+            {LEVELS.map((level) => (
+              <button
+                key={level.id}
+                className={`${styles.levelCard} ${selectedLevel.id === level.id ? styles.levelCardActive : ""}`}
+                onClick={() => setSelectedLevel(level)}
+              >
+                <div className={styles.levelThumb} style={{ background: level.gradient }}>
+                  <span className={styles.levelIcon}>{level.icon}</span>
+                </div>
+                <div className={styles.levelInfo}>
+                  <h3 className={styles.levelName}>{level.name}</h3>
+                  <p className={styles.levelDesc}>{level.desc}</p>
+                </div>
+                {selectedLevel.id === level.id && (
+                  <div className={styles.levelCheck}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* PS2 Stream Viewer */}
       <section className={styles.streamSection} ref={streamRef}>

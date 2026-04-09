@@ -15,6 +15,10 @@ router = APIRouter()
 
 # ── Response Models ──
 
+class SpawnRequest(BaseModel):
+    map: Optional[str] = None
+
+
 class SpawnResponse(BaseModel):
     session_id: str
     streamer_id: str
@@ -45,12 +49,13 @@ class SpawnerHealthResponse(BaseModel):
 @limiter.limit("3/minute")
 def spawn_instance(
     request: Request,
+    body: SpawnRequest = SpawnRequest(),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_session),
 ):
     """Spawn a new UE5 instance for the current user. Idempotent."""
     try:
-        record = ps2_service.spawn_session(user.id, db)
+        record = ps2_service.spawn_session(user.id, db, map_path=body.map)
     except RuntimeError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
     return SpawnResponse(

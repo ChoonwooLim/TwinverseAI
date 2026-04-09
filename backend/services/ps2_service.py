@@ -95,21 +95,33 @@ def get_active_count(db: Session) -> int:
     return len(db.exec(select(PS2Session).where(_active_filter())).all())
 
 
-def spawn_session(user_id: int, db: Session) -> PS2Session:
+def spawn_session(user_id: int, db: Session, map_path: str | None = None) -> PS2Session:
     """Spawn a new UE5 instance for the user. Idempotent — returns existing if active."""
-    # Return existing active session for this user
+    effective_map = map_path or UE_MAP
+
+    # Return existing active session for this user (or terminate if map changed)
     existing = db.exec(
         select(PS2Session).where(PS2Session.user_id == user_id, _active_filter())
     ).first()
     if existing:
         if existing.pid and _is_process_alive(existing.pid):
-            return existing
-        # Process died, clean it up
-        existing.status = "stopped"
-        existing.stopped_at = datetime.now()
-        existing.error_message = "Process died unexpectedly"
-        db.add(existing)
-        db.commit()
+            # Same map → reuse session
+            if existing.map_path == effective_map:
+                return existing
+            # Different map → terminate old session first
+            _kill_process(existing.pid)
+            existing.status = "stopped"
+            existing.stopped_at = datetime.now()
+            existing.error_message = "Map changed, restarting"
+            db.add(existing)
+            db.commit()
+        else:
+            # Process died, clean it up
+            existing.status = "stopped"
+            existing.stopped_at = datetime.now()
+            existing.error_message = "Process died unexpectedly"
+            db.add(existing)
+            db.commit()
 
     # Clean stale sessions before checking capacity
     cleanup_stale_sessions(db)
@@ -128,30 +140,21 @@ def spawn_session(user_id: int, db: Session) -> PS2Session:
 
     # Build UE5 command — packaged build or editor
     # UE5.7 PS2 command line args: PixelStreamingConnectionURL (was SignallingURL), PixelStreamingID (was PixelStreaming2.ID)
+    ps2_args = [
+        f"-PixelStreamingConnectionURL={WILBUR_SIGNALING_URL}",
+        f"-PixelStreamingID={session_id}",
+        f"-MapOverride={effective_map}",
+        "-RenderOffScreen",
+        "-ResX=1280", "-ResY=720", "-ForceRes",
+        "-AudioMixer", "-Unattended", "-NoPause", "-log",
+    ]
     if _use_packaged():
-        cmd = [
-            _PACKAGED_EXE,
-            f"-PixelStreamingConnectionURL={WILBUR_SIGNALING_URL}",
-            f"-PixelStreamingID={session_id}",
-            "-RenderOffScreen",
-            "-ResX=1280", "-ResY=720", "-ForceRes",
-            "-AudioMixer", "-Unattended", "-NoPause", "-log",
-        ]
+        cmd = [_PACKAGED_EXE, *ps2_args]
     else:
-        cmd = [
-            _EDITOR_EXE,
-            UE_PROJECT,
-            UE_MAP,
-            "-game",
-            f"-PixelStreamingConnectionURL={WILBUR_SIGNALING_URL}",
-            f"-PixelStreamingID={session_id}",
-            "-RenderOffScreen",
-            "-ResX=1280", "-ResY=720", "-ForceRes",
-            "-AudioMixer", "-Unattended", "-NoPause", "-log",
-        ]
+        cmd = [_EDITOR_EXE, UE_PROJECT, effective_map, "-game", *ps2_args]
 
     ue_path = _PACKAGED_EXE if _use_packaged() else _EDITOR_EXE
-    logger.info(f"Spawning UE5 ({'packaged' if _use_packaged() else 'editor'}): session={session_id}, user={user_id}")
+    logger.info(f"Spawning UE5 ({'packaged' if _use_packaged() else 'editor'}): session={session_id}, user={user_id}, map={effective_map}")
 
     # Packaged build must run from its own directory (relative pak paths)
     cwd = os.path.dirname(_PACKAGED_EXE) if _use_packaged() else None
@@ -174,6 +177,7 @@ def spawn_session(user_id: int, db: Session) -> PS2Session:
         streamer_id=session_id,
         status="starting",
         pid=proc.pid,
+        map_path=effective_map,
         player_url=player_url,
         last_heartbeat=now,
         created_at=now,

@@ -12,6 +12,7 @@ class PS2Session(SQLModel, table=True):
     streamer_id: str = Field(unique=True)
     status: str = Field(default="starting")  # starting | running | stopping | stopped | error
     pid: Optional[int] = None
+    map_path: Optional[str] = None
     player_url: str = ""
     last_heartbeat: Optional[datetime] = None
     created_at: datetime = Field(default_factory=datetime.now)
