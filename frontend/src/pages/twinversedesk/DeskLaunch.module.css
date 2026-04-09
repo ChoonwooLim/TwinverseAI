@@ -319,6 +319,59 @@
   border: none;
 }
 
+.streamLaunched {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-4, 1rem);
+  color: var(--text-secondary, #aaa);
+}
+
+.launchedIcon {
+  color: #00e676;
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.7; filter: drop-shadow(0 0 8px rgba(0, 230, 118, 0.3)); }
+  50% { opacity: 1; filter: drop-shadow(0 0 20px rgba(0, 230, 118, 0.6)); }
+}
+
+.launchedTitle {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary, #fff);
+  margin: 0;
+}
+
+.launchedDesc {
+  font-size: 0.875rem;
+  color: var(--text-tertiary, #888);
+  margin: 0;
+  text-align: center;
+}
+
+.openStreamBtn {
+  margin-top: var(--sp-2, 0.5rem);
+  padding: 0.75rem 2rem;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.openStreamBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+}
+
 .streamPlaceholder {
   width: 100%;
   height: 100%;

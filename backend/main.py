@@ -451,9 +451,14 @@ app = FastAPI(title="TwinverseAI API", lifespan=lifespan)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-_allowed_origins = ["http://localhost:5173"]
+_allowed_origins = [
+    "http://localhost:5173",
+    "https://twinverseai.twinverse.org",
+    "https://ps2-api.twinverse.org",
+    "https://ps2.twinverse.org",
+]
 _frontend_url = os.getenv("FRONTEND_URL", "").strip()
-if _frontend_url:
+if _frontend_url and _frontend_url not in _allowed_origins:
     _allowed_origins.append(_frontend_url)
 
 app.add_middleware(

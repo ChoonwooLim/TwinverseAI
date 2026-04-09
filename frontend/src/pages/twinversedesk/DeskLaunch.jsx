@@ -303,12 +303,26 @@ export default function DeskLaunch() {
       <section className={styles.streamSection} ref={streamRef}>
         <div className={styles.streamContainer}>
           {status === "running" && session ? (
-            <iframe
-              src={session.player_url}
-              className={styles.streamFrame}
-              allow="autoplay; fullscreen; microphone; gamepad"
-              title="TwinverseDesk Pixel Streaming"
-            />
+            <>
+              <div className={styles.streamLaunched}>
+                <div className={styles.launchedIcon}>
+                  <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <circle cx="12" cy="12" r="10" />
+                    <polygon points="10 8 16 12 10 16" fill="currentColor" stroke="none" />
+                  </svg>
+                </div>
+                <h3 className={styles.launchedTitle}>Pixel Streaming 실행 중</h3>
+                <p className={styles.launchedDesc}>
+                  세션이 활성화되었습니다. 아래 버튼으로 스트리밍 화면을 열어주세요.
+                </p>
+                <button
+                  onClick={() => window.open(session.player_url, "TwinverseDesk", "width=1920,height=1080,menubar=no,toolbar=no,location=no,status=no")}
+                  className={styles.openStreamBtn}
+                >
+                  스트리밍 열기
+                </button>
+              </div>
+            </>
           ) : (
             <div className={styles.streamPlaceholder}>
               <div className={styles.placeholderIcon}>
