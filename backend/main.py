@@ -14,7 +14,7 @@ from slowapi.errors import RateLimitExceeded
 from rate_limit import limiter
 import database
 from database import create_db_and_tables
-from routers import auth, admin, docs, skills, plugins, boards, comments, files, news, ps2_spawner
+from routers import auth, admin, docs, skills, plugins, boards, comments, files, news, ps2_spawner, npc
 
 
 def _get_uploads_dir() -> Path:
@@ -474,6 +474,7 @@ app.include_router(comments.router, prefix="/api/comments", tags=["comments"])
 app.include_router(files.router, prefix="/api/files", tags=["files"])
 app.include_router(news.router, prefix="/api/news", tags=["news"])
 app.include_router(ps2_spawner.router, prefix="/api/ps2", tags=["ps2-spawner"])
+app.include_router(npc.router, prefix="/api/npc", tags=["npc"])
 
 @app.get("/health")
 def health_check():

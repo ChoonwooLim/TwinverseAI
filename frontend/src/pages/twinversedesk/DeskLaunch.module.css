@@ -257,6 +257,20 @@
   font-weight: 700;
   color: #ffffff;
   margin: 0 0 var(--sp-1, 0.25rem);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.multiplayerBadge {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: linear-gradient(135deg, #00d2ff, #3a47d5);
+  color: #fff;
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
 }
 
 .levelDesc {

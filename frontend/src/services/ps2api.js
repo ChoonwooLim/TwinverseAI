@@ -17,4 +17,12 @@ ps2api.interceptors.request.use((config) => {
   return config;
 });
 
+// Office multiplayer helpers
+export const officeApi = {
+  join: (officeId, map) =>
+    ps2api.post("/api/ps2/office/join", { office_id: officeId, map }),
+  status: (officeId) =>
+    ps2api.get(`/api/ps2/office/${officeId}`),
+};
+
 export default ps2api;

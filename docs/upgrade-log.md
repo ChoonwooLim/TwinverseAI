@@ -48,3 +48,9 @@
 | 2026-04-09 | DeskLaunch UI — Pixel Streaming 2 실행 + 멀티 레벨 선택 (썸네일 카드) | feat | DeskLaunch.jsx, DeskLaunch.module.css |
 | 2026-04-09 | UE5 GameInstance 맵 오버라이드 (-MapOverride CLI → OpenLevel) | feat | TwinverseDeskGameInstance.cpp/h |
 | 2026-04-09 | 어드민 Unreal Engine 문서 섹션 (5개 기술 문서 + 사이드바 메뉴) | feat | docs/ue-*.md, Sidebar.jsx, main.py |
+| 2026-04-09 | UE5 Office 기반 구조 — GameMode(AGameMode), Character, Controller, Furniture, Minimap (Phase 1) | feat | Office/*.h/cpp, Build.cs, TwinverseDeskGameMode.h/cpp |
+| 2026-04-09 | 멀티플레이어 + MetaHuman — GameState, PlayerState, AnimInstance, AvatarTypes (Phase 2) | feat | Office/OfficeGameState, OfficePlayerState, OfficeAnimInstance, OfficeAvatarTypes |
+| 2026-04-09 | PS2 Dedicated Server 모델 + 서비스 (멀티플레이어 아키텍처) | feat | ps2_dedicated_server.py, ps2_dedicated_service.py, ps2_spawner.py |
+| 2026-04-09 | AI NPC 시스템 — NPC, LLM Conversation, Manager, TaskBoard, MeetingRoom (Phase 3) | feat | Office/OfficeNPC*, OfficeTaskBoard, OfficeMeetingRoom |
+| 2026-04-09 | NPC Chat API (Anthropic/OpenAI LLM 지원) | feat | backend/routers/npc.py, main.py |
+| 2026-04-09 | DeskLaunch Office 멀티플레이어 모드 + ChatWidget + MapEditor + HUD (Phase 4) | feat | DeskLaunch.jsx, ps2api.js, OfficeChatWidget, OfficeMapEditor, OfficeHUD |

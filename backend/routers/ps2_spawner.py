@@ -9,6 +9,7 @@ from deps import get_current_user, get_optional_user, require_admin
 from rate_limit import limiter
 from services import ps2_service
 from services import ps2_launcher
+from services import ps2_dedicated_service
 
 router = APIRouter()
 
@@ -217,3 +218,98 @@ def start_servers(
 ):
     """Start Wilbur + PS2 Spawner if not running. Requires login."""
     return ps2_launcher.start_all()
+
+
+# ── Office Multiplayer Endpoints ──
+
+class OfficeSpawnRequest(BaseModel):
+    office_id: str
+    map: Optional[str] = None
+
+
+class DedicatedServerResponse(BaseModel):
+    office_id: str
+    port: int
+    status: str
+    player_count: int
+    max_players: int
+
+
+@router.post("/office/join", response_model=SpawnResponse)
+@limiter.limit("3/minute")
+def join_office(
+    request: Request,
+    body: OfficeSpawnRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_session),
+):
+    """Join an office room. Spawns dedicated server if needed, then a PS2 client."""
+    try:
+        record = ps2_dedicated_service.spawn_office_client(
+            user.id, body.office_id, db, map_path=body.map
+        )
+    except RuntimeError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+    return SpawnResponse(
+        session_id=record.session_id,
+        streamer_id=record.streamer_id,
+        player_url=record.player_url,
+        status=record.status,
+    )
+
+
+@router.get("/office/{office_id}", response_model=DedicatedServerResponse)
+@limiter.limit("10/minute")
+def office_status(
+    office_id: str,
+    request: Request,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_session),
+):
+    """Get office dedicated server status."""
+    servers = ps2_dedicated_service.list_dedicated_servers(db, active_only=True)
+    server = next((s for s in servers if s.office_id == office_id), None)
+    if not server:
+        raise HTTPException(status_code=404, detail="Office not active")
+    return DedicatedServerResponse(
+        office_id=server.office_id,
+        port=server.port,
+        status=server.status,
+        player_count=server.player_count,
+        max_players=server.max_players,
+    )
+
+
+@router.get("/admin/offices")
+@limiter.limit("10/minute")
+def admin_list_offices(
+    request: Request,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_session),
+):
+    """List all active dedicated servers (admin only)."""
+    servers = ps2_dedicated_service.list_dedicated_servers(db, active_only=True)
+    return [
+        {
+            "office_id": s.office_id,
+            "port": s.port,
+            "status": s.status,
+            "player_count": s.player_count,
+            "pid": s.pid,
+            "created_at": s.created_at,
+        }
+        for s in servers
+    ]
+
+
+@router.post("/admin/office/terminate/{office_id}")
+@limiter.limit("5/minute")
+def admin_terminate_office(
+    office_id: str,
+    request: Request,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_session),
+):
+    """Terminate an office dedicated server (admin only)."""
+    ps2_dedicated_service.terminate_dedicated_server(office_id, db)
+    return {"ok": True, "office_id": office_id}

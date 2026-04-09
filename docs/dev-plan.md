@@ -19,7 +19,7 @@
 | 3 | TwinverseDesk UE5 프로젝트 초기화 + 서버 GPU 환경 구성 | 완료 | 2026-04-07 |
 | 4 | 프로젝트 비전 수립 + AI 방침 문서화 | 완료 | 2026-04-08 |
 | 5 | Pixel Streaming 로컬 테스트 연동 | 완료 | 2026-04-09 |
-| 6 | AI 에이전트 통합 (TwinverseDesk 내) | 예정 | - |
+| 6 | 3D 오피스 메타버스 (DeskRPG→UE5 재구현) | 진행중 | - |
 
 ## 기능 목록
 
@@ -51,3 +51,7 @@
 | UE5 맵 오버라이드 | GameInstance -MapOverride CLI → OpenLevel 맵 전환 | 높음 | 완료 |
 | Cloudflare Tunnel PS2 | ps2-api/ps2.twinverse.org 외부 접근 | 높음 | 완료 |
 | 어드민 UE 문서 | Unreal Engine 5개 기술 문서 + 사이드바 메뉴 | 중간 | 완료 |
+| 3D 오피스 C++ 프레임워크 | Office/ 17개 클래스 — Character, NPC, Chat, Task, Meeting, Editor | 최상 | 완료 |
+| PS2 Dedicated Server | 멀티플레이어 오피스 전용 서버 모델 + 서비스 | 최상 | 완료 |
+| NPC Chat API | LLM 기반 NPC 대화 API (Anthropic/OpenAI) | 높음 | 완료 |
+| Office 멀티플레이어 UI | DeskLaunch Office 모드 + Multiplayer 뱃지 | 높음 | 완료 |

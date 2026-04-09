@@ -387,3 +387,53 @@
   - `backend/main.py` _seed_docs()에 등록, 사이드바 "Unreal Engine" 드롭다운 메뉴 추가
 
 ---
+
+### 작업 요약 (세션 3 — Ultra Plan: DeskRPG 2D→3D 재구현)
+
+| 카테고리 | 작업 내용 | 상태 |
+|----------|----------|------|
+| feat | Phase 1: UE5 Office 기반 구조 — GameMode, Character, Controller, Furniture, Minimap | 완료 |
+| feat | Phase 2: 멀티플레이어 + MetaHuman — GameState, PlayerState, AnimInstance, AvatarTypes, DedicatedServer | 완료 |
+| feat | Phase 3: AI NPC 시스템 — NPC, Conversation(LLM), NPCManager, TaskBoard, MeetingRoom | 완료 |
+| feat | Phase 4: 프론트엔드 연동 — DeskLaunch Office 모드, ChatWidget, MapEditor, HUD, NPC API | 완료 |
+| feat | PS2 Dedicated Server 모델 + 서비스 (멀티플레이어 아키텍처) | 완료 |
+| feat | NPC Chat API (/api/npc/chat — Anthropic/OpenAI LLM) | 완료 |
+
+### 세부 내용 (세션 3)
+
+- **Ultra Plan Deep Mode 실행**: DeskRPG 2D 가상 오피스를 UE5 3D 메타버스 오피스로 100% 재구현
+  - 4 Phase, 22 Step, 17개 C++ 클래스 (34파일) + 3개 백엔드 파일 + 2개 프론트엔드 수정
+
+- **Phase 1 — UE5 기반 구조** (Office/ 서브폴더, 기존 코드 무수정):
+  - `Build.cs` +6 모듈 (NavigationSystem, NetCore, HTTP, Json, JsonUtilities, Niagara)
+  - `TwinverseDeskGameMode` AGameModeBase→AGameMode (ServerTravel, PostLogin/Logout)
+  - `OfficeCharacter` 리플리케이션, FAvatarAppearance, 클릭이동+WASD, 300 UU/s
+  - `OfficePlayerController` Enhanced Input, 마우스커서, 줌(400~1500)
+  - `OfficeGameMode` Office 전용 (Desk 스폰, HUD/GameState/PlayerState 연결)
+  - `OfficeFurniture` 8종 가구 타입, 오버랩 상호작용
+  - `OfficeMinimap` SceneCapture2D 직교 투영 10FPS
+
+- **Phase 2 — 멀티플레이어 + MetaHuman**:
+  - `OfficeGameState` 채팅 히스토리 + Multicast RPC (Socket.IO 대체)
+  - `OfficePlayerState` 아바타/상태/데스크 리플리케이션
+  - `OfficeAvatarTypes` MetaHuman 커스터마이징 (LPC 7그룹→MetaHuman 매핑)
+  - `OfficeAnimInstance` Speed/Direction/ActionState 동기화
+  - `PS2DedicatedServer` 모델 + `ps2_dedicated_service.py` (포트 자동 할당, 자동 종료)
+  - PS2 Spawner API 4개 Office 엔드포인트 추가
+
+- **Phase 3 — AI NPC 시스템**:
+  - `OfficeNPC` 6 행동 상태, NavMesh 이동, 3초 재탐색, 홈 복귀
+  - `OfficeNPCConversation` HTTP Async → /api/npc/chat → LLM (2초 쿨다운)
+  - `OfficeNPCManager` 고용/해고, 데스크 할당, 5종 프리셋 페르소나
+  - `OfficeTaskBoard` 5단계 상태, 60초 자동스캔, 5분 stall 감지
+  - `OfficeMeetingRoom` 3모드(auto/manual/directed), 투표, 회의록 내보내기
+  - `backend/routers/npc.py` NPC Chat API (Anthropic Claude / OpenAI 지원)
+
+- **Phase 4 — 프론트엔드 연동**:
+  - `ps2api.js` officeApi.join/status 추가
+  - `DeskLaunch.jsx` Office 멀티플레이어 레벨 + Multiplayer 뱃지 + 진행률 업데이트
+  - `OfficeChatWidget` UMG 채팅 (4채널, NPC 1:1, 500자 제한)
+  - `OfficeMapEditor` 런타임 가구 배치 (그리드 스냅 50UU, 회전, Server RPC)
+  - `OfficeHUD` 7개 위젯 통합 관리
+
+---

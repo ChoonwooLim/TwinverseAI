@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
-import ps2api from "../../services/ps2api";
+import ps2api, { officeApi } from "../../services/ps2api";
 import styles from "./DeskLaunch.module.css";
 
 const TVDESK_PS2_URL =
@@ -10,16 +10,26 @@ const STATUS_POLL_INTERVAL = 3000; // 3s
 
 const LEVELS = [
   {
+    id: "office_main",
+    name: "3D Virtual Office",
+    map: "/Game/Maps/Office/OfficeMain",
+    desc: "멀티플레이어 3D 가상 오피스 — MetaHuman + AI NPC + 회의실",
+    gradient: "linear-gradient(135deg, #00d2ff 0%, #3a47d5 100%)",
+    icon: "🏢",
+    isOffice: true,
+    officeId: "main_office",
+  },
+  {
     id: "pcg_modern",
-    name: "Modern Office",
+    name: "Modern Office (Solo)",
     map: "/Game/PCG/PCG_Study_Modern",
     desc: "PCG 기반 모던 오피스 — 절차적 생성으로 매번 새로운 공간",
     gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-    icon: "🏢",
+    icon: "🔬",
   },
   {
     id: "newyork",
-    name: "New York City",
+    name: "New York City (Solo)",
     map: "/Game/Maps/NewYork",
     desc: "뉴욕 시티스케이프 — 도심 속 가상 오피스 환경",
     gradient: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
@@ -146,7 +156,14 @@ export default function DeskLaunch() {
     setStatus("spawning");
     setSpawnError(null);
     try {
-      const res = await ps2api.post("/api/ps2/spawn", { map: selectedLevel.map });
+      let res;
+      if (selectedLevel.isOffice) {
+        // Office multiplayer mode — joins shared dedicated server
+        res = await officeApi.join(selectedLevel.officeId, selectedLevel.map);
+      } else {
+        // Solo mode — spawns independent instance
+        res = await ps2api.post("/api/ps2/spawn", { map: selectedLevel.map });
+      }
       setSession(res.data);
       setStatus("starting");
       startPolling(res.data.session_id);
@@ -263,7 +280,10 @@ export default function DeskLaunch() {
                   <span className={styles.levelIcon}>{level.icon}</span>
                 </div>
                 <div className={styles.levelInfo}>
-                  <h3 className={styles.levelName}>{level.name}</h3>
+                  <h3 className={styles.levelName}>
+                    {level.name}
+                    {level.isOffice && <span className={styles.multiplayerBadge}>Multiplayer</span>}
+                  </h3>
                   <p className={styles.levelDesc}>{level.desc}</p>
                 </div>
                 {selectedLevel.id === level.id && (
@@ -382,11 +402,38 @@ export default function DeskLaunch() {
         <div className={styles.progressGrid}>
           <div className={styles.progressItem}>
             <div className={styles.progressBar}>
-              <div className={styles.progressFill} style={{ width: "5%" }} />
+              <div className={styles.progressFill} style={{ width: "100%" }} />
             </div>
             <div className={styles.progressMeta}>
-              <span>Phase 1: 코어 엔진</span>
-              <span>5%</span>
+              <span>Phase 1: UE5 기반 구조</span>
+              <span>100%</span>
+            </div>
+          </div>
+          <div className={styles.progressItem}>
+            <div className={styles.progressBar}>
+              <div className={styles.progressFill} style={{ width: "100%" }} />
+            </div>
+            <div className={styles.progressMeta}>
+              <span>Phase 2: 멀티플레이어 + MetaHuman</span>
+              <span>100%</span>
+            </div>
+          </div>
+          <div className={styles.progressItem}>
+            <div className={styles.progressBar}>
+              <div className={styles.progressFill} style={{ width: "100%" }} />
+            </div>
+            <div className={styles.progressMeta}>
+              <span>Phase 3: AI NPC 시스템</span>
+              <span>100%</span>
+            </div>
+          </div>
+          <div className={styles.progressItem}>
+            <div className={styles.progressBar}>
+              <div className={styles.progressFill} style={{ width: "80%" }} />
+            </div>
+            <div className={styles.progressMeta}>
+              <span>Phase 4: 프론트엔드 연동</span>
+              <span>80%</span>
             </div>
           </div>
           <div className={styles.progressItem}>
@@ -394,34 +441,7 @@ export default function DeskLaunch() {
               <div className={styles.progressFill} style={{ width: "0%" }} />
             </div>
             <div className={styles.progressMeta}>
-              <span>Phase 2: 캐릭터 시스템</span>
-              <span>0%</span>
-            </div>
-          </div>
-          <div className={styles.progressItem}>
-            <div className={styles.progressBar}>
-              <div className={styles.progressFill} style={{ width: "0%" }} />
-            </div>
-            <div className={styles.progressMeta}>
-              <span>Phase 3: 멀티플레이어</span>
-              <span>0%</span>
-            </div>
-          </div>
-          <div className={styles.progressItem}>
-            <div className={styles.progressBar}>
-              <div className={styles.progressFill} style={{ width: "0%" }} />
-            </div>
-            <div className={styles.progressMeta}>
-              <span>Phase 4: AI 에이전트</span>
-              <span>0%</span>
-            </div>
-          </div>
-          <div className={styles.progressItem}>
-            <div className={styles.progressBar}>
-              <div className={styles.progressFill} style={{ width: "0%" }} />
-            </div>
-            <div className={styles.progressMeta}>
-              <span>Phase 5: 맵 에디터</span>
+              <span>Phase 5: Blueprint + 콘텐츠 빌드</span>
               <span>0%</span>
             </div>
           </div>
