@@ -315,3 +315,34 @@
 - /end 스킬: 세션 종료 시 서버 상태 변경 감지 → 문서 자동 업데이트
 
 ---
+
+## 2026-04-09
+
+### 작업 요약
+
+| 카테고리 | 작업 내용 | 상태 |
+|----------|----------|------|
+| feat | Claw Code 분석 페이지 (01_instructkr 프로젝트 정밀 분석 보고서) | 완료 |
+| feat | Claude Code 공식 레포 분석 페이지 (02_anthropics 프로젝트 정밀 분석 보고서) | 완료 |
+| feat | 프론트엔드 npm run dev 시 백엔드 자동 실행 (concurrently) | 완료 |
+
+### 세부 내용
+
+- **Claw Code 분석 페이지** (`/admin/claw-code`):
+  - D:\00_AI_ALL\01_instructkr 프로젝트 완전 분석 (Rust 재구현 Claude Code CLI)
+  - 10개 섹션: 개요, 아키텍처 흐름, 10개 크레이트 상세, 9개 기능 카테고리, 기술 스택(12 라이브러리 + 7 프로토콜), Python 참조 구현, 빌드 커맨드, 패리티 상태, 프로젝트 철학, CI/CD
+  - AdminClawCode.jsx + AdminClawCode.module.css (Dark Glass Neon 테마)
+  - 사이드바 Claude Code > "Claw Code 분석" 서브메뉴 추가
+
+- **Claude Code 공식 레포 분석 페이지** (`/admin/claude-code-repo`):
+  - D:\00_AI_ALL\02_anthropics 프로젝트 완전 분석 (Anthropic 공식 Claude Code CLI)
+  - 10개 섹션: 개요(설치 방법 4종), 아키텍처 흐름, 디렉토리 구조, 12개 공식 플러그인 상세, 14개 에이전트 테이블, 6종 훅 시스템(hookify 규칙 예시), 13개 슬래시 커맨드, 기술 스택, 4종 보안 기능, 11개 GitHub Actions
+  - AdminClaudeCodeRepo.jsx + AdminClaudeCodeRepo.module.css (Dark Glass Neon 테마)
+  - 사이드바 Claude Code > "공식 레포 분석" 서브메뉴 추가
+
+- **백엔드 자동 실행**:
+  - concurrently 패키지 설치 (devDependencies)
+  - `npm run dev` → 백엔드(uvicorn) + 프론트엔드(vite) 동시 실행
+  - `npm run dev:front` / `npm run dev:back` 개별 실행 스크립트 추가
+
+---

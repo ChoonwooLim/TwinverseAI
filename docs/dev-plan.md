@@ -43,3 +43,6 @@
 | Ultra Plan 스킬 | 멀티에이전트 심층 계획 수립 스킬 | 높음 | 완료 |
 | 최근정보 시스템 | Claude Code 최신 뉴스 관리 (AdminNews) | 중간 | 완료 |
 | 비전 페이지 | 시네마틱 비전 페이지 (/vision) + 상단 메뉴 | 높음 | 완료 |
+| Claw Code 분석 | Rust 재구현 Claude Code CLI 정밀 분석 보고서 (/admin/claw-code) | 중간 | 완료 |
+| 공식 레포 분석 | Anthropic 공식 Claude Code 정밀 분석 보고서 (/admin/claude-code-repo) | 중간 | 완료 |
+| 개발 환경 통합 실행 | npm run dev로 프론트+백엔드 동시 실행 (concurrently) | 중간 | 완료 |

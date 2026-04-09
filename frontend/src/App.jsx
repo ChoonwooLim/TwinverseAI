@@ -19,6 +19,7 @@ const AdminSkills = lazy(() => import("./pages/admin/AdminSkills"));
 const AdminPlugins = lazy(() => import("./pages/admin/AdminPlugins"));
 const AdminNews = lazy(() => import("./pages/admin/AdminNews"));
 const AdminClawCode = lazy(() => import("./pages/admin/AdminClawCode"));
+const AdminClaudeCodeRepo = lazy(() => import("./pages/admin/AdminClaudeCodeRepo"));
 const DeskAnalysis = lazy(() => import("./pages/twinversedesk/DeskAnalysis"));
 const DeskPlan = lazy(() => import("./pages/twinversedesk/DeskPlan"));
 const DeskLaunch = lazy(() => import("./pages/twinversedesk/DeskLaunch"));
@@ -57,6 +58,7 @@ export default function App() {
             <Route path="/admin/plugins" element={<ProtectedRoute requiredRole="admin"><AdminPlugins /></ProtectedRoute>} />
             <Route path="/admin/news" element={<ProtectedRoute requiredRole="admin"><AdminNews /></ProtectedRoute>} />
             <Route path="/admin/claw-code" element={<ProtectedRoute requiredRole="admin"><AdminClawCode /></ProtectedRoute>} />
+            <Route path="/admin/claude-code-repo" element={<ProtectedRoute requiredRole="admin"><AdminClaudeCodeRepo /></ProtectedRoute>} />
           </Route>
         </Routes>
     </BrowserRouter>

@@ -25,6 +25,7 @@ const SIDEBAR_CONFIG = {
           { label: "플러그인", path: "/admin/plugins" },
           { label: "최근정보", path: "/admin/news" },
           { label: "Claw Code 분석", path: "/admin/claw-code" },
+          { label: "공식 레포 분석", path: "/admin/claude-code-repo" },
         ],
       },
       {

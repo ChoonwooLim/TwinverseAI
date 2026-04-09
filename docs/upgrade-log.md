@@ -38,3 +38,6 @@
 | 2026-04-08 | /ultraplan 스킬 신규 생성 (멀티 에이전트 심층 계획 수립, 4-Phase) | feat | .claude/skills/ultraplan/SKILL.md |
 | 2026-04-08 | 프로젝트 비전 페이지 — 시네마틱 디자인 (별빛 파티클, 스크롤 reveal, 3D 목업) | feat | VisionPage.jsx, VisionPage.module.css |
 | 2026-04-08 | 프로젝트 비전 문서 + CLAUDE.md 최상위 방침 추가 | docs | docs/vision.md, CLAUDE.md |
+| 2026-04-09 | Claw Code 분석 페이지 (Rust 재구현 CLI 정밀 분석 보고서, 10개 섹션) | feat | AdminClawCode.jsx, AdminClawCode.module.css |
+| 2026-04-09 | Claude Code 공식 레포 분석 페이지 (Anthropic 공식 CLI 정밀 분석 보고서, 10개 섹션) | feat | AdminClaudeCodeRepo.jsx, AdminClaudeCodeRepo.module.css |
+| 2026-04-09 | 프론트엔드 npm run dev 시 백엔드 자동 실행 (concurrently 패키지) | feat | frontend/package.json |
