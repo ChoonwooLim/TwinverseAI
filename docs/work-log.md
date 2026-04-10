@@ -465,3 +465,33 @@
   - `ACharacter::Mesh` 멤버와 이름 충돌 해결 (error C4458)
 
 ---
+
+## 2026-04-10
+
+### 작업 요약 (세션 1 — 배포 안정성)
+
+| 카테고리 | 작업 내용 | 상태 |
+|----------|----------|------|
+| fix | Dockerfile SECRET_KEY/DATABASE_URL 기본값 + HEALTHCHECK 추가 | 완료 |
+| fix | lifespan 시작 작업 try-catch — 개별 실패 시에도 서버 기동 (크래시 루프 방지) | 완료 |
+| fix | database.py pool_pre_ping=True — DB 연결 끊김 자동 복구 | 완료 |
+
+### 작업 요약 (세션 2 — Office 맵 빌드 사양서)
+
+| 카테고리 | 작업 내용 | 상태 |
+|----------|----------|------|
+| docs | Office/ C++ 17 클래스 정밀 분석 → 맵 요구사항 추출 | 완료 |
+| docs | docs/office-map-spec.md 신규 작성 — UE5 OfficeMain 13단계 빌드 가이드 | 완료 |
+
+### 세부 내용 (세션 2)
+
+- **C++ 코드 분석**: OfficeGameMode, OfficeCharacter, OfficeFurniture, OfficeMeetingRoom, OfficeNPCManager, OfficeMapEditor, OfficeTaskBoard 등 핵심 클래스 정독
+- **핵심 발견**:
+  - `DefaultEngine.ini:15`에 `ServerDefaultMap=/Game/Maps/Office/OfficeMain.OfficeMain` 이미 등록됨 → 맵을 정확히 이 경로에 만들면 DS 자동 로드
+  - `OfficeGameMode::ChoosePlayerStart_Implementation`이 PlayerStartTag = "Desk" 액터만 round-robin 사용
+  - `GlobalDefaultGameMode`가 아직 GM_SuperheroFlight → 전역 변경 금지, World Settings로만 override
+  - Content/Office/, Content/Maps/Office/ 둘 다 미생성 (깨끗한 출발선)
+- **사양서 13단계**: 디렉토리 → BP wrapper 12개 (BP_OfficeGameMode, BP_OfficeCharacter, BP_OfficeNPC, BP_Desk/Chair/Whiteboard/MeetingTable/Bookshelf/Plant/Monitor, BP_OfficeMeetingRoom) → World Settings → Geometry → PlayerStart 20개 (Desk 태그) → 데스크/의자/모니터 → MeetingRoom ×2 (Auto/Manual) → TaskBoard/장식 → NPC Home Points ×10 → 라이팅(Rect Light + 네온 톤) → NavMesh(Dynamic) → Pixel Streaming(Forward Shading) → PIE 검증
+- **검증 체크리스트 9개 항목** + **후속 작업 6개** (MetaHuman, DS 패키징, BehaviorTree, TaskBoard UMG, MapEditor UI, 에셋 폴리싱) 명시
+
+---

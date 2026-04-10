@@ -22,3 +22,4 @@
 | 2026-04-09 | PCG 이주 레벨에서 클래식카 로드 불가 | ChaosVehiclesPlugin 미활성화 + 에셋 폴더 누락 | .uproject에 ChaosVehiclesPlugin + PCG 플러그인 5종 추가 | TwinverseDesk.uproject |
 | 2026-04-09 | ABP_Dashboard 컴파일 에러 (VehicleMovementComponent) | Parent Class가 AnimInstance여서 차량 함수 없음 | Parent Class → VehicleAnimationInstance + Cast 노드 재생성 | ABP_Dashboard.uasset |
 | 2026-04-09 | UE5 패키징 실패 C4458 | 로컬 변수 Mesh가 ACharacter::Mesh 멤버 숨김 | Mesh → CharMesh로 변수명 변경 | OfficeCharacter.cpp, OfficeNPC.cpp |
+| 2026-04-10 | Orbitron 배포 시 크래시 루프 | lifespan 시작 작업 중 하나 실패 시 컨테이너 전체 종료, 재시작 반복 | 모든 시작 작업 try-catch로 감싸 개별 실패에도 서버 기동 + Dockerfile에 SECRET_KEY/DATABASE_URL 기본값 + HEALTHCHECK | Dockerfile, backend/main.py, backend/database.py |
