@@ -2,7 +2,7 @@ import os
 from sqlmodel import SQLModel, create_engine, Session
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://localhost:5432/twinverseai")
-engine = create_engine(DATABASE_URL, echo=False)
+engine = create_engine(DATABASE_URL, echo=False, pool_pre_ping=True)
 
 def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
