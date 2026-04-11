@@ -494,4 +494,30 @@
 - **사양서 13단계**: 디렉토리 → BP wrapper 12개 (BP_OfficeGameMode, BP_OfficeCharacter, BP_OfficeNPC, BP_Desk/Chair/Whiteboard/MeetingTable/Bookshelf/Plant/Monitor, BP_OfficeMeetingRoom) → World Settings → Geometry → PlayerStart 20개 (Desk 태그) → 데스크/의자/모니터 → MeetingRoom ×2 (Auto/Manual) → TaskBoard/장식 → NPC Home Points ×10 → 라이팅(Rect Light + 네온 톤) → NavMesh(Dynamic) → Pixel Streaming(Forward Shading) → PIE 검증
 - **검증 체크리스트 9개 항목** + **후속 작업 6개** (MetaHuman, DS 패키징, BehaviorTree, TaskBoard UMG, MapEditor UI, 에셋 폴리싱) 명시
 
+### 작업 요약 (세션 3 — DeskLaunch "플랫폼 연결오류" 긴급 수정)
+
+| 카테고리 | 작업 내용 | 상태 |
+|----------|----------|------|
+| fix | GPU PC 백엔드가 .env 한글 주석 → cp949 UnicodeDecodeError로 기동 실패 진단 | 완료 |
+| fix | backend/.env 한글 주석 2줄 제거 (.env 규칙 위반이기도 함) | 완료 |
+| fix | scripts/start_gpu_server.bat에 `set PYTHONUTF8=1` 추가 (영구 방어) | 완료 |
+
+### 세부 내용 (세션 3)
+
+- **증상**: `https://twinverseai.twinverse.org/twinversedesk/launch` 에서 "Start My Session" 클릭 시 CORS 에러 + ERR_FAILED로 "플랫폼 연결오류" 표시
+- **진단 단계**:
+  - 1차: `curl http://localhost:8000/health` → HTTP 000 (응답 없음)
+  - 2차: `curl https://ps2-api.twinverse.org/health` → HTTP 502 (Cloudflare Tunnel은 살아있는데 upstream 죽음)
+  - 3차: `netstat` 포트 8000 LISTENING 없음, `tasklist`에 python.exe 0개 (Wilbur/cloudflared만 생존)
+  - 4차: `python -c "from main import app"` → `UnicodeDecodeError: 'cp949' codec can't decode byte 0xec in position 684` from starlette/config.py
+- **근본 원인**: `backend/.env` line 24의 `# OpenClaw 서버` (UTF-8 한글) → slowapi Limiter 초기화 시 starlette Config가 .env를 읽는데 Windows 기본 cp949로 open → 즉시 크래시 → uvicorn 기동 실패
+- **왜 CORS 에러로 보였나**: 서버가 응답 자체를 못 해서 preflight OPTIONS에 ACAO 헤더가 없음 → 브라우저가 "CORS policy에 의해 차단됨" 메시지 표시. 실제로는 CORS 코드(`main.py:461-466`)는 이미 올바르게 `twinverseai.twinverse.org` 포함 중이었음 (b8a8a24 커밋)
+- **수정**:
+  1. `backend/.env` — 한글 주석 `# https://hpanel.hostinger.com/ ---> VPS Hosting` + `# OpenClaw 서버` 제거 (.env는 local-only, gitignore됨)
+  2. `scripts/start_gpu_server.bat:25` — `start "TwinverseAI Backend" /min cmd /c "set PYTHONUTF8=1&& cd /d ... && uvicorn ..."` — Python 전역 UTF-8 모드 강제
+- **검증**: `start_gpu_server.bat` 재실행 후
+  - `http://localhost:8000/health` → HTTP 200 (python.exe PID 60820 신규 기동)
+  - `https://ps2-api.twinverse.org/health` → HTTP 200 (터널 경유)
+  - OPTIONS preflight → `access-control-allow-origin: https://twinverseai.twinverse.org` ✓
+
 ---

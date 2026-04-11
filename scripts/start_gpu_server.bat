@@ -21,8 +21,10 @@ REM Wait for cleanup
 timeout /t 2 /nobreak >nul
 
 REM 1. Start Backend API
+REM   PYTHONUTF8=1 forces UTF-8 for all file reads (starlette/slowapi .env loader
+REM   otherwise uses cp949 on Korean Windows and crashes on UTF-8 comments).
 echo [1/3] Starting Backend API (port 8000)...
-start "TwinverseAI Backend" /min cmd /c "cd /d C:\WORK\TwinverseAI\backend && uvicorn main:app --host 0.0.0.0 --port 8000"
+start "TwinverseAI Backend" /min cmd /c "set PYTHONUTF8=1&& cd /d C:\WORK\TwinverseAI\backend && uvicorn main:app --host 0.0.0.0 --port 8000"
 timeout /t 5 /nobreak >nul
 
 REM 2. Start Wilbur signaling server
