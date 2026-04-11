@@ -517,6 +517,29 @@
   2. `scripts/start_gpu_server.bat:25` — `start "TwinverseAI Backend" /min cmd /c "set PYTHONUTF8=1&& cd /d ... && uvicorn ..."` — Python 전역 UTF-8 모드 강제
 - **검증**: `start_gpu_server.bat` 재실행 후
   - `http://localhost:8000/health` → HTTP 200 (python.exe PID 60820 신규 기동)
+
+### 작업 요약 (세션 4 — DeskLaunch "Invalid token" 후속 조치)
+
+| 카테고리 | 작업 내용 | 상태 |
+|----------|----------|------|
+| fix | ps2api.js에 401 response interceptor 추가 — stale 토큰 자동 로그아웃 | 완료 |
+
+### 세부 내용 (세션 4)
+
+- **증상**: CORS 해결 직후 새 에러 — 401 Unauthorized "Invalid token" (GET/POST /api/ps2/*)
+- **크로스 검증**:
+  - Orbitron docker exec env → `SECRET_KEY=orbitron-twinverseai-secret-key-2026` (GPU PC .env와 동일)
+  - Orbitron 로그인 API로 방금 발급받은 토큰을 GPU PC 로컬/터널 양쪽 엔드포인트에 전송 → HTTP 200 ✓
+  - 즉 양쪽 서버 완벽 호환, 서버 측 문제 아님
+- **근본 원인**: 사용자 브라우저 localStorage의 토큰이 stale
+  - ef6784c(2026-04-10 오전 SECRET_KEY 기본값 추가) 이전에 발급된 토큰이거나
+  - 8시간 만료(ACCESS_TOKEN_EXPIRE_MINUTES = 60*8)
+- **재발 방지**: [frontend/src/services/ps2api.js](frontend/src/services/ps2api.js)에 401 response interceptor 추가
+  - api.js와 동일한 패턴: 401 → localStorage clear → /login 리다이렉트
+  - 기존에 ps2api는 request interceptor만 있고 response interceptor가 없어서 stale 토큰으로 영원히 막혀 있었음
+- **사용자 즉시 해결법**: 로그아웃 → 재로그인 (또는 Orbitron 재배포 후 자동 리다이렉트)
+
+---
   - `https://ps2-api.twinverse.org/health` → HTTP 200 (터널 경유)
   - OPTIONS preflight → `access-control-allow-origin: https://twinverseai.twinverse.org` ✓
 

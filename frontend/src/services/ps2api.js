@@ -17,6 +17,21 @@ ps2api.interceptors.request.use((config) => {
   return config;
 });
 
+// 401 on PS2 API means the stored token is stale (expired or signed with an
+// old SECRET_KEY). Match api.js behavior: wipe credentials and bounce to login
+// so the user gets a fresh token instead of being stuck on "Invalid token".
+ps2api.interceptors.response.use(
+  (res) => res,
+  (err) => {
+    if (err.response?.status === 401) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      window.location.href = "/login";
+    }
+    return Promise.reject(err);
+  }
+);
+
 // Office multiplayer helpers
 export const officeApi = {
   join: (officeId, map) =>
