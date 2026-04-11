@@ -540,7 +540,49 @@
 - **사용자 즉시 해결법**: 로그아웃 → 재로그인 (또는 Orbitron 재배포 후 자동 리다이렉트)
 
 ---
-  - `https://ps2-api.twinverse.org/health` → HTTP 200 (터널 경유)
-  - OPTIONS preflight → `access-control-allow-origin: https://twinverseai.twinverse.org` ✓
+
+## 2026-04-12
+
+### 작업 요약 (2026-04-10 인시던트 재발 방지 하드닝 + UI 상태 반영)
+
+| 카테고리 | 작업 내용 | 상태 |
+|----------|----------|------|
+| fix | backend load_dotenv 4곳에 `encoding="utf-8"` 명시 (defense-in-depth) | 완료 |
+| fix | scripts/check_backend_ready.py 신규 — .env UTF-8+ASCII 검증 + backend import 테스트 + /health 폴링 | 완료 |
+| fix | start_gpu_server.bat: pre-flight + post-launch health poll 연동, 실패 시 fail-loud | 완료 |
+| style | DeskLaunch: 3D Virtual Office 카드 disabled + "개발중 / 실행 불가" 오버레이 | 완료 |
+| fix | DeskLaunch: 헬스체크 실패를 silent catch에서 visible 오프라인 배너로 전환 | 완료 |
+| docs | CLAUDE.md: .env ASCII-only 강제 규칙 + GPU 서버 기동 규칙 섹션 신설 | 완료 |
+
+### 세부 내용
+
+- **배경**: 2026-04-10 인시던트(.env cp949 크래시 → 터널 502 → 브라우저 CORS 오류) 재발 방지. 당일 즉시 수정은 이미 완료됐지만 사용자 지시 "다시는 재발하지 않게 단단히 조치"에 따라 3중 방어 + 가시성 강화.
+- **3중 방어**:
+  1. **Python 수준**: `load_dotenv(encoding="utf-8")` — [backend/main.py:7](backend/main.py#L7), [backend/ps2_server.py:21](backend/ps2_server.py#L21), [backend/alembic/env.py:11](backend/alembic/env.py#L11), [backend/seed_admin.py:4](backend/seed_admin.py#L4). 이제 PYTHONUTF8 미설정 환경에서도 .env는 UTF-8로 읽힘.
+  2. **프로세스 수준**: `start_gpu_server.bat`가 `set PYTHONUTF8=1` 먼저 설정 후 pre-flight 실행 (이전부터 있던 방어).
+  3. **사전 검증**: [scripts/check_backend_ready.py](scripts/check_backend_ready.py) — .env 바이트를 직접 읽어 UTF-8 검증 + 비-ASCII 바이트 발견 시 줄번호와 함께 거부. 이어서 `backend.main` import까지 수행해 startup-time 크래시를 uvicorn 띄우기 전에 포착.
+- **fail-loud 기동**: [scripts/start_gpu_server.bat](scripts/start_gpu_server.bat) 흐름 재설계 — `[0/3] pre-flight` → `[1/3] uvicorn` → `[1/3 verify] /health 30초 폴링`. 어느 단계든 실패하면 `pause + exit /b 1`로 즉시 중단하고 에러 메시지 표시. 이제 silent crash가 원천적으로 불가능.
+- **Office 카드 비활성화**: 사용자 지적 — OfficeMain.umap + Dedicated Server 모두 미구축 상태인데 카드는 클릭 가능했음. [DeskLaunch.jsx:11-25](frontend/src/pages/twinversedesk/DeskLaunch.jsx#L11-L25)에 `disabled: true`, `statusLabel: "개발중"`, `statusNote: "OfficeMain 맵 + Dedicated Server 구축 중"` 추가. 그레이스케일 필터 + 반투명 오버레이 + 주황색 "개발중 / 실행 불가" 배지. `useState` 기본값을 `LEVELS.find(l => !l.disabled)`로 변경해 Modern Office (Solo)가 기본 선택. `handleSpawn` 진입부에서 disabled 레벨이면 즉시 error + 안내 메시지.
+- **가시성 강화**: DeskLaunch가 `catch { /* spawner unavailable */ }`로 헬스체크 실패를 삼키던 것을 `healthError` state + `offlineBanner` 컴포넌트로 대체. HTTP 상태 코드가 있으면 "HTTP 502"를, 네트워크 오류면 "GPU 서버 연결 불가 — 서버가 꺼져 있거나 Cloudflare 터널이 끊어졌습니다"를 표시. 2026-04-10처럼 사용자가 "플랫폼 연결오류"라는 모호한 문구만 보고 고생할 일 없음.
+- **문서화**: [CLAUDE.md](CLAUDE.md) `.env 규칙` 섹션에 ASCII-only 강제 + 2026-04-10 인시던트 요약 + 3중 방어 명시. 신규 `GPU 서버 기동 규칙` 섹션에 "start_gpu_server.bat 사용 필수 / pre-flight 우회 금지 / CORS 오류 → 먼저 curl /health" 가이드 추가.
+- **검증**: `python scripts/check_backend_ready.py` → 3개 체크 OK. `npm run build` → 프론트 클린 빌드 (DeskLaunch 청크 18.37kB).
+- **커밋**: `9404cb2 fix: GPU 서버 기동 하드닝 + 3D Virtual Office 개발중 표시` → origin/main 푸시 완료.
+
+### 현재 상태 (다음 세션 참고)
+
+- **Office 메타버스 (Milestone 6)**: 코드/사양서는 완성, 실제 자산은 아직 없음.
+  - ✅ [docs/office-map-spec.md](docs/office-map-spec.md) — UE5 에디터에서 `/Game/Maps/Office/OfficeMain` 빌드하는 13단계 가이드
+  - ✅ `DefaultEngine.ini:15`에 `ServerDefaultMap=/Game/Maps/Office/OfficeMain.OfficeMain` 설정됨
+  - ✅ C++ 17 클래스 (OfficeGameMode/Character/NPC/Furniture/MeetingRoom/TaskBoard 등) 컴파일 준비 완료
+  - ❌ OfficeMain.umap 자체가 미존재 → 사양서대로 에디터 작업 필요
+  - ❌ Dedicated Server 빌드/배포 미완 → PS2 backend의 `officeApi.join`이 아직 실행 불가
+  - ❌ GPU PC의 UE5 패키지 빌드(Office 포함)도 미갱신
+- **프론트 UI**: DeskLaunch에서 "3D Virtual Office" 카드는 명시적 개발중 상태. 위 3개 블로커 해소 후 [DeskLaunch.jsx:20](frontend/src/pages/twinversedesk/DeskLaunch.jsx#L20)의 `disabled: true` 제거하면 재활성화.
+- **배포/운영 안정성**: 2026-04-10 인시던트 3중 방어 완료. GPU PC 재부팅 시 `start_gpu_server.bat`가 전부 자동 검증.
+- **Next session 우선순위 제안**:
+  1. 사용자가 UE5 에디터에서 OfficeMain.umap 실제 제작 (사양서 13단계 따라가기)
+  2. Dedicated Server 빌드 파이프라인 구축
+  3. GPU PC PS2 패키지에 Office 맵 포함 → `officeApi.join` 동작 확인
+  4. DeskLaunch 카드 재활성화 + 실제 멀티플레이어 테스트
 
 ---
