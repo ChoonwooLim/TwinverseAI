@@ -45,8 +45,23 @@
 ## .env 규칙
 - .env는 로컬 개발 전용 (.gitignore + .dockerignore에 포함)
 - 형식: `KEY=value` (접두어/설명 금지, `Internal DATABASE_URL=...` ← 파싱 실패)
+- **ASCII 전용 (주석 포함)** — 한글/이모지/비-ASCII 절대 금지.
+  - 이유: 2026-04-10 인시던트 (bugfix-log.md) — .env의 한글 주석 한 줄 때문에
+    한국어 Windows가 cp949로 파일을 읽다가 UnicodeDecodeError, uvicorn이 조용히 죽고
+    Cloudflare 터널이 502 반환 → 브라우저는 이걸 CORS 오류로 표시. 추적에 시간 다수 소요.
+  - 방어 3중: (1) `load_dotenv(encoding="utf-8")` 명시 (2) `start_gpu_server.bat`가
+    `PYTHONUTF8=1` 설정 (3) `scripts/check_backend_ready.py` 사전검증으로 non-ASCII 차단.
+  - 의심스러우면 `python scripts/check_backend_ready.py` 를 먼저 돌려볼 것.
 - Docker 배포는 Dockerfile ENV 또는 Orbitron 대시보드 사용
 - 비환경변수 메모(SSH 정보, 토큰 등)는 .env에 넣지 말 것
+
+## GPU 서버 기동 규칙
+
+- GPU PC(PS2 호스팅)는 반드시 `scripts/start_gpu_server.bat`로 기동 — 직접 `uvicorn`
+  실행 금지. 스크립트가 pre-flight 검사 + PYTHONUTF8=1 + post-launch 헬스폴링까지 수행.
+- pre-flight 실패 시 스크립트는 uvicorn을 띄우지 않고 중단. 이 동작을 우회하지 말 것.
+- 백엔드 크래시는 브라우저에서 CORS 오류로 보이므로, "CORS 오류"가 뜨면 먼저
+  `curl http://localhost:8000/health` 로 서버가 살았는지 확인할 것.
 
 ## 커밋 메시지 규칙
 - `feat:` 새 기능 / `fix:` 버그 수정 / `style:` UI / `refactor:` 리팩토링 / `docs:` 문서 / `infra:` 인프라

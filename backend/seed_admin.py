@@ -1,7 +1,7 @@
 """SuperAdmin 계정 시드 — 최초 1회 실행"""
 import os
 from dotenv import load_dotenv
-load_dotenv()
+load_dotenv(encoding="utf-8")  # cp949 crash guard (2026-04-10)
 
 from sqlmodel import Session, select
 from database import engine, create_db_and_tables

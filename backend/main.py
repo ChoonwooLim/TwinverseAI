@@ -4,7 +4,10 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 
-load_dotenv()
+# encoding='utf-8' prevents cp949 decode crash on Korean Windows when .env
+# contains non-ASCII bytes (incident 2026-04-10: bugfix-log.md). PYTHONUTF8=1
+# in start_gpu_server.bat is the belt; this is the suspenders.
+load_dotenv(encoding="utf-8")
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware

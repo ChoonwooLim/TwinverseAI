@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 # backend/ 디렉토리를 sys.path에 추가
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-load_dotenv()
+load_dotenv(encoding="utf-8")  # cp949 crash guard (2026-04-10)
 
 from sqlmodel import SQLModel
 # 모든 모델 import — autogenerate가 메타데이터를 인식하도록

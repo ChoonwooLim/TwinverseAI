@@ -18,7 +18,8 @@ import logging
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 
-load_dotenv()
+# encoding='utf-8' prevents cp949 decode crash on Korean Windows (2026-04-10).
+load_dotenv(encoding="utf-8")
 
 from fastapi import FastAPI, Depends, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware

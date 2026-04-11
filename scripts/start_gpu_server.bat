@@ -20,12 +20,50 @@ taskkill /F /FI "WINDOWTITLE eq CF Tunnel" >nul 2>&1
 REM Wait for cleanup
 timeout /t 2 /nobreak >nul
 
+REM Force UTF-8 mode for this process tree (belt for the .env cp949 guard)
+set PYTHONUTF8=1
+
+REM [0/3] Pre-flight — fail LOUD before anything else launches.
+REM   Validates .env is UTF-8 + ASCII-only, imports backend.main to catch any
+REM   startup crash upfront. Without this, a silent backend crash manifests as
+REM   a browser CORS error (tunnel returns 502) — see bugfix-log 2026-04-10.
+echo [0/3] Running pre-flight backend readiness check...
+python "%~dp0check_backend_ready.py"
+if errorlevel 1 (
+    echo.
+    echo ============================================================
+    echo  PRE-FLIGHT FAILED — refusing to launch GPU server.
+    echo  Fix the error above, then re-run start_gpu_server.bat.
+    echo ============================================================
+    echo.
+    pause
+    exit /b 1
+)
+echo.
+
 REM 1. Start Backend API
-REM   PYTHONUTF8=1 forces UTF-8 for all file reads (starlette/slowapi .env loader
-REM   otherwise uses cp949 on Korean Windows and crashes on UTF-8 comments).
+REM   PYTHONUTF8=1 forces UTF-8 for all file reads (defense-in-depth — load_dotenv
+REM   also passes encoding='utf-8' explicitly since 2026-04-10).
 echo [1/3] Starting Backend API (port 8000)...
 start "TwinverseAI Backend" /min cmd /c "set PYTHONUTF8=1&& cd /d C:\WORK\TwinverseAI\backend && uvicorn main:app --host 0.0.0.0 --port 8000"
 timeout /t 5 /nobreak >nul
+
+REM Post-launch health poll — confirm the process actually came up.
+REM If uvicorn crashed after start, this surfaces it LOUDLY instead of letting
+REM the tunnel return 502s that look like CORS errors in the browser.
+echo     Verifying backend health...
+python "%~dp0check_backend_ready.py" --health http://localhost:8000/health 30
+if errorlevel 1 (
+    echo.
+    echo ============================================================
+    echo  BACKEND HEALTH CHECK FAILED — uvicorn likely crashed.
+    echo  Open the 'TwinverseAI Backend' window to see the traceback.
+    echo ============================================================
+    echo.
+    pause
+    exit /b 1
+)
+echo.
 
 REM 2. Start Wilbur signaling server
 echo [2/3] Starting Wilbur signaling server (8080/8888)...

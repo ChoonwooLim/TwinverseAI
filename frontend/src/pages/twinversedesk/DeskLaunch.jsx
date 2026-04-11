@@ -18,6 +18,10 @@ const LEVELS = [
     icon: "🏢",
     isOffice: true,
     officeId: "main_office",
+    // OfficeMain.umap 빌드 + Dedicated Server 구축 전까지 실행 불가
+    disabled: true,
+    statusLabel: "개발중",
+    statusNote: "OfficeMain 맵 + Dedicated Server 구축 중",
   },
   {
     id: "pcg_modern",
@@ -72,21 +76,40 @@ export default function DeskLaunch() {
   const [status, setStatus] = useState("idle"); // idle | spawning | starting | running | error
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [session, setSession] = useState(null); // { session_id, player_url, status }
-  const [selectedLevel, setSelectedLevel] = useState(LEVELS[0]);
+  // 비활성화되지 않은 첫 레벨을 기본 선택 (disabled 레벨은 기본값으로 사용 금지)
+  const [selectedLevel, setSelectedLevel] = useState(
+    () => LEVELS.find((l) => !l.disabled) || LEVELS[0]
+  );
   const [spawnError, setSpawnError] = useState(null);
   const [health, setHealth] = useState(null); // { available, active_instances, max_instances }
+  const [healthError, setHealthError] = useState(null); // PS2 API unreachable — visible banner
   const streamRef = useRef(null);
   const heartbeatRef = useRef(null);
   const pollRef = useRef(null);
   const isLoggedIn = !!localStorage.getItem("token");
 
-  // Check spawner health on mount (calls GPU server directly)
+  // Check spawner health on mount (calls GPU server directly).
+  // Failure is shown as a visible banner instead of being silently swallowed —
+  // the 2026-04-10 incident hid a backend crash behind a blank "spawnError".
   useEffect(() => {
     const fetchHealth = async () => {
       try {
         const res = await ps2api.get("/api/ps2/health");
         setHealth(res.data);
-      } catch { /* spawner unavailable */ }
+        setHealthError(null);
+      } catch (err) {
+        const status = err.response?.status;
+        if (status === 401) {
+          // ps2api response interceptor will bounce to /login — no banner needed.
+          return;
+        }
+        setHealth(null);
+        setHealthError(
+          status
+            ? `GPU 서버 응답 오류 (HTTP ${status})`
+            : "GPU 서버 연결 불가 — 서버가 꺼져 있거나 Cloudflare 터널이 끊어졌습니다"
+        );
+      }
     };
     fetchHealth();
     const interval = setInterval(fetchHealth, 30000);
@@ -153,6 +176,14 @@ export default function DeskLaunch() {
   }, []);
 
   const handleSpawn = async () => {
+    // 개발중 레벨은 실행 차단
+    if (selectedLevel.disabled) {
+      setStatus("error");
+      setSpawnError(
+        `"${selectedLevel.name}" 은(는) 아직 개발중입니다. ${selectedLevel.statusNote || ""}`
+      );
+      return;
+    }
     setStatus("spawning");
     setSpawnError(null);
     try {
@@ -265,36 +296,76 @@ export default function DeskLaunch() {
         </div>
       </header>
 
+      {/* GPU Server offline banner — visible, not swallowed */}
+      {healthError && (
+        <div className={styles.offlineBanner} role="alert">
+          <span className={styles.offlineBannerIcon}>⚠</span>
+          <div className={styles.offlineBannerBody}>
+            <strong className={styles.offlineBannerTitle}>GPU 서버 오프라인</strong>
+            <span className={styles.offlineBannerMsg}>{healthError}</span>
+            <span className={styles.offlineBannerHint}>
+              세션 시작은 서버가 복구된 후 가능합니다. 서버 관리자에게 문의하거나 잠시 후 새로고침 해주세요.
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Level Selector */}
       {status !== "running" && (
         <section className={styles.levelSection}>
           <h2 className={styles.levelSectionTitle}>Select Environment</h2>
           <div className={styles.levelGrid}>
-            {LEVELS.map((level) => (
-              <button
-                key={level.id}
-                className={`${styles.levelCard} ${selectedLevel.id === level.id ? styles.levelCardActive : ""}`}
-                onClick={() => setSelectedLevel(level)}
-              >
-                <div className={styles.levelThumb} style={{ background: level.gradient }}>
-                  <span className={styles.levelIcon}>{level.icon}</span>
-                </div>
-                <div className={styles.levelInfo}>
-                  <h3 className={styles.levelName}>
-                    {level.name}
-                    {level.isOffice && <span className={styles.multiplayerBadge}>Multiplayer</span>}
-                  </h3>
-                  <p className={styles.levelDesc}>{level.desc}</p>
-                </div>
-                {selectedLevel.id === level.id && (
-                  <div className={styles.levelCheck}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
+            {LEVELS.map((level) => {
+              const isDisabled = !!level.disabled;
+              const isActive = selectedLevel.id === level.id;
+              return (
+                <button
+                  key={level.id}
+                  className={`${styles.levelCard} ${isActive ? styles.levelCardActive : ""} ${isDisabled ? styles.levelCardDisabled : ""}`}
+                  onClick={() => {
+                    if (isDisabled) return;
+                    setSelectedLevel(level);
+                  }}
+                  disabled={isDisabled}
+                  aria-disabled={isDisabled}
+                  title={isDisabled ? `${level.statusLabel || "개발중"} — ${level.statusNote || "실행 불가"}` : undefined}
+                >
+                  <div className={styles.levelThumb} style={{ background: level.gradient }}>
+                    <span className={styles.levelIcon}>{level.icon}</span>
+                    {isDisabled && (
+                      <div className={styles.levelDisabledOverlay}>
+                        <span className={styles.levelStatusBadge}>
+                          {level.statusLabel || "개발중"}
+                        </span>
+                        <span className={styles.levelStatusSub}>실행 불가</span>
+                      </div>
+                    )}
                   </div>
-                )}
-              </button>
-            ))}
+                  <div className={styles.levelInfo}>
+                    <h3 className={styles.levelName}>
+                      {level.name}
+                      {level.isOffice && <span className={styles.multiplayerBadge}>Multiplayer</span>}
+                    </h3>
+                    <p className={styles.levelDesc}>
+                      {level.desc}
+                      {isDisabled && level.statusNote && (
+                        <>
+                          <br />
+                          <span className={styles.levelStatusNote}>⚠ {level.statusNote}</span>
+                        </>
+                      )}
+                    </p>
+                  </div>
+                  {isActive && !isDisabled && (
+                    <div className={styles.levelCheck}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    </div>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </section>
       )}
