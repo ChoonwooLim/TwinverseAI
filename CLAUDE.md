@@ -1,5 +1,20 @@
 # TwinverseAI
 
+## AI 리소스 공유 규칙 (모든 프로젝트 공통)
+
+> **반드시 `C:\WORK\infra-docs\ai-shared-registry.md`를 단일 진실 원천(SSOT)으로 참조할 것.**
+
+- 오픈소스 AI(Ollama/Flux/Whisper 등)와 유료 API 키(OpenAI·Anthropic·Replicate·R2 등)는
+  Steven의 모든 프로젝트(TwinverseAI · SodamFN · 이후 추가)가 **공동 사용**한다.
+- AI 컴퓨트 전용 서버: **`twinverse-ai` (192.168.219.117)** — Threadripper 3970X + RTX 3090 24GB + Ollama.
+- AI 관련 `.env` / `Orbitron.yaml` / docs 변경 시 반드시 **레지스트리 먼저 업데이트 → 그다음 코드 반영**.
+- 변수명은 레지스트리 섹션 5 네이밍 컨벤션을 그대로 사용 (`AI_GPU_SERVER_URL`, `OLLAMA_URL`, `{PROVIDER}_API_KEY` 등).
+- 포트 할당은 레지스트리 섹션 2 포트 예약표를 먼저 확인. 충돌 방지.
+- API 키 실제 값은 레지스트리에 기입 금지 — **Orbitron secrets만** 사용.
+- 새 AI 키/모델/서비스 추가 시 양쪽(또는 모든) 프로젝트를 **동시에 동기화**. 한쪽만 업데이트 금지.
+
+---
+
 ## 프로젝트 비전 (최상위 방침)
 
 > **반드시 `docs/vision.md`를 읽고 모든 작업에 적용할 것.**

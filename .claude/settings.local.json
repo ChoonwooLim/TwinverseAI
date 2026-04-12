@@ -33,7 +33,11 @@
   },
   "enabledPlugins": {
     "github@claude-plugins-official": true,
-    "figma@claude-plugins-official": true
+    "figma@claude-plugins-official": true,
+    "context7@claude-plugins-official": true,
+    "feature-dev@claude-plugins-official": true,
+    "telegram@claude-plugins-official": true,
+    "supabase@claude-plugins-official": true
   },
   "mcpServers": {
     "context7": {
