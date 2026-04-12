@@ -93,6 +93,26 @@ def update_user_active(
     user = session.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+
+    # Lockout guards (2026-04-12): admin 계정이 is_active=False 로 깨져
+    # 로그인은 되는데 /me 가 401 을 뱉는 사건 재발 방지.
+    if body.is_active is False:
+        # 1) 자기 자신 비활성화 금지 — 즉시 락아웃됨
+        if user.id == admin.id:
+            raise HTTPException(status_code=400, detail="Cannot deactivate your own account")
+        # 2) 마지막 활성 superadmin 비활성화 금지 — 시스템에서 모든 superadmin 접근 상실
+        if user.role == "superadmin" and user.is_active:
+            active_superadmins = session.exec(
+                select(func.count(User.id)).where(
+                    User.role == "superadmin", User.is_active == True
+                )
+            ).one()
+            if active_superadmins <= 1:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Cannot deactivate the last active superadmin",
+                )
+
     user.is_active = body.is_active
     session.add(user)
     session.commit()
