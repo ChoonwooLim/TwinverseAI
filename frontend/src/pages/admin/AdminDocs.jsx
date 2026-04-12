@@ -10,6 +10,7 @@ const DOC_TITLES = {
   "bugfix-log": "버그수정 로그",
   "upgrade-log": "업그레이드 로그",
   "work-log": "작업일지",
+  "pixel-streaming-server": "픽셀스트리밍 서버",
 };
 
 export default function AdminDocs() {

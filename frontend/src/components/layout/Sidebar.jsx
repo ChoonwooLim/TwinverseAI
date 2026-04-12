@@ -48,6 +48,7 @@ const SIDEBAR_CONFIG = {
           { label: "업그레이드 로그", path: "/admin/docs/upgrade-log" },
           { label: "작업일지", path: "/admin/docs/work-log" },
           { label: "Orbitron 서버", path: "/admin/docs/orbitron-server" },
+          { label: "픽셀스트리밍 서버", path: "/admin/docs/pixel-streaming-server" },
         ],
       },
     ],
