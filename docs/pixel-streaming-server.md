@@ -242,3 +242,49 @@ Long-term: Orbitron -> K8s Cluster (auto-scaling, hundreds of users)
 | On-Demand (5h/week) | 20h | ~5,200 KRW |
 
 With spot instances: **60-70% additional discount**.
+
+---
+
+## Future: Orbitron Platform Integration
+
+Current pipeline is Steven-only (CLI + git push). The goal is to evolve this into an **Orbitron platform feature** that any developer can use.
+
+### Target UX (Orbitron Dashboard)
+
+```
+[Orbitron Dashboard] -> New Project -> Deploy Type: Pixel Streaming
+
+Step 1: Interactive guide for UE5 Linux packaging
+        (including Linux toolchain install instructions)
+
+Step 2: Build upload via web UI (drag & drop or folder select)
+        Orbitron auto-creates: Git repo + LFS + Dockerfile + Orbitron.yaml
+
+Step 3: Automatic pipeline
+        Docker build -> GPU server deploy -> health check
+
+Step 4: Streaming URL issued
+        https://{app-name}.twinverse.org
+```
+
+### Automation Scope
+
+| Step | Developer | Orbitron (Auto) |
+|------|-----------|-----------------|
+| Repo creation | - | gh repo create + LFS + Dockerfile + Orbitron.yaml |
+| Build upload | Select folder only | git add + commit + push (web UI or CLI) |
+| Docker build | - | Image build + GPU server transfer |
+| Tunnel setup | - | Auto subdomain assignment (xxx.twinverse.org) |
+| Deploy | - | docker compose up --gpus all |
+| Monitoring | View dashboard | Health check, logs, GPU usage |
+
+### Developer Knowledge Required
+
+- How to package UE5 for Linux (guided by Orbitron dashboard)
+- Everything else is automated
+
+### Implementation Order
+
+1. **Now**: Steven-only CLI pipeline (validate infrastructure)
+2. **Next**: Orbitron CLI tool (`orbitron deploy --type pixel-streaming`)
+3. **Later**: Orbitron web dashboard UI with interactive guide
