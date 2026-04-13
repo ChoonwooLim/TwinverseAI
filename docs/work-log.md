@@ -586,3 +586,28 @@
   4. DeskLaunch 카드 재활성화 + 실제 멀티플레이어 테스트
 
 ---
+
+## 2026-04-13 (추가 세션 — PS2 GPU 서버 이전 + 고급 영상 앱 사양)
+
+### 작업 요약
+
+| 카테고리 | 작업 내용 | 상태 |
+|----------|----------|------|
+| docs | 고급 영상 애플리케이션 기술 사양서 추가 (`.claude/specs/2026-04-13-high-end-video-app-spec.md`) | 완료 |
+| infra | **별도 리포지토리 `TwinversePS2-Deploy` 에서 UE5 GPU 서버 twinverse-ai 이전** | 진행중 |
+
+### 세부 내용
+
+- **고급 영상 앱 사양**: 별도 스펙 문서 97줄 추가. 향후 UE5 Pixel Streaming 기반 영상 편집/협업
+  애플리케이션 설계 근거.
+- **PS2-Deploy 세션 (주 작업, 별도 리포)**: 상세 내역은 `C:\WORK\TwinversePS2-Deploy\docs\work-log.md`
+  참고. 요약 — 자동 로그아웃 루프 해결(JWT), 컨테이너 non-root 전환, UE5 패키지 레이아웃 보존,
+  최종 블로커: Linux cook 에 `/Game/PCG` 누락으로 맵 로드 실패. Windows Editor 에서 재패키지 필요.
+
+### 다음 세션 참고
+
+- **크로스 프로젝트 의존성**: TwinversePS2-Deploy 의 UE5 빌드가 재패키지되면 GPU 서버가 완전 동작.
+  DeskLaunch 페이지의 Solo / Office 카드 둘 다 영향받음.
+- Office 메타버스(Milestone 6) 작업은 여전히 위 3개 블로커 유지.
+
+---
