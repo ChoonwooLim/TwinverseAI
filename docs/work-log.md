@@ -611,3 +611,39 @@
 - Office 메타버스(Milestone 6) 작업은 여전히 위 3개 블로커 유지.
 
 ---
+
+## 2026-04-14
+
+### 작업 요약
+
+| 카테고리 | 작업 내용 | 상태 |
+|----------|----------|------|
+| infra | **UE5 Linux cook 근본 원인 규명** (`TwinverseDesk/Config/DefaultGame.ini`) | 진행중 |
+| chore | 포트포워딩 가이드(`iiff.twinverse.org`) 논의 — 진행 보류 | 보류 |
+
+### 세부 내용
+
+- **Linux cook 미동작 근본 원인 2건 식별 (별도 리포 TwinverseDesk)**:
+  1. `+DirectoriesToNeverCook=(Path="")` — **빈 문자열이 "모든 경로"로 해석**되어 /Game/ 전체가
+     쿡에서 제외되던 버그. 빈 항목 제거로 해결.
+  2. `ServerDefaultMap=/Game/Maps/Office/OfficeMain` 이 존재하지 않는 맵을 가리켜 실패.
+     `PCG_Study_Modern` 으로 교정(이전 세션).
+- **효과 검증**: Cook 결과 594 packages(전부 Engine) → **3816 packages(/Game/ 전부 포함)**.
+  PCG_Study_Modern 본체와 의존 에셋 정상 쿡 확인.
+- **남은 이슈**: PCG 제너레이터가 `RainforestPack/NeoDubai/Fab` 를 하드 레퍼런스함 → 해당 디렉토리
+  NeverCook 지정 시 "Content is missing from cook" 에러. NeverCook 목록에서 제거 필요.
+  또한 `Variant_*` UE5 템플릿이 누락된 `/Script/TP_ThirdPerson` C++ 모듈을 참조해 StateTree 컴파일
+  실패. Variant_* 는 NeverCook 유지 대상.
+- **네트워크 작업 보류**: LG U+ 공유기(192.168.219.1) 에 `iiff.twinverse.org → 192.168.219.101:443`
+  포트포워딩 가이드 제시했으나 사용자 판단으로 중단.
+
+### 다음 세션 참고
+
+- **TwinverseDesk `DefaultGame.ini` 최종 정리 필요**: NeverCook 에서 RainforestPack/NeoDubai/Fab
+  제거, Variant_* / Maps 만 유지. 재패키지 → Linux pak 에 .umap 실존 확인.
+- **이후 TwinversePS2-Deploy 배포**: 새 pak 으로 `build/` 덮어쓰기 → commit → `twinverse-ai`
+  에서 `docker compose` 재기동 → Pixel Streaming 엔드투엔드 검증 (PS2-Deploy Milestone 5→6).
+- **iiff 도메인 노출 방식 결정 필요**: Cloudflare Tunnel(ps2 방식) vs 직접 포트포워딩 — 보안/DDNS
+  관점에서 터널 권장.
+
+---
