@@ -1,0 +1,105 @@
+.page { max-width: 1200px; }
+
+.pageHeader {
+  padding: var(--sp-8, 2.5rem) 0 var(--sp-6, 1.75rem);
+  border-bottom: 1px solid var(--border-default, rgba(255,255,255,0.1));
+  margin-bottom: var(--sp-6, 1.75rem);
+}
+
+.overline {
+  display: block;
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-tertiary, #888);
+  margin-bottom: 0.5rem;
+}
+
+.title {
+  font-size: clamp(1.75rem, 3vw, 2.75rem);
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 0.75rem;
+}
+
+.desc { color: var(--text-secondary, #ccc); font-size: 0.9rem; line-height: 1.6; }
+.desc code { background: rgba(255,255,255,0.08); padding: 0.1em 0.4em; border-radius: 4px; font-size: 0.85em; }
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.btn {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: #fff;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+.btn:hover:not(:disabled) { background: rgba(255,255,255,0.14); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.okMsg { color: #4ade80; font-size: 0.875rem; }
+.errMsg { color: #f87171; font-size: 0.875rem; }
+
+.section { margin-bottom: 2.5rem; }
+
+.sectionTitle {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #fff;
+  margin: 0 0 0.75rem;
+  letter-spacing: 0.02em;
+}
+
+.empty {
+  color: var(--text-tertiary, #888);
+  font-size: 0.875rem;
+  padding: 1rem 0;
+}
+
+.table { width: 100%; border-collapse: collapse; }
+
+.table th {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-tertiary, #888);
+  border-bottom: 1px solid rgba(255,255,255,0.15);
+}
+
+.table td {
+  padding: 0.75rem;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  font-size: 0.875rem;
+  color: var(--text-secondary, #ccc);
+  vertical-align: middle;
+}
+
+.mono {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.8rem;
+  color: #ddd;
+}
+
+.approveBtn {
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  border: none;
+  color: #fff;
+  padding: 0.4rem 0.9rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+.approveBtn:hover:not(:disabled) { opacity: 0.9; }
+.approveBtn:disabled { opacity: 0.5; cursor: not-allowed; }

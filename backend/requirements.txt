@@ -11,3 +11,4 @@ alembic==1.16.4
 slowapi==0.1.9
 psutil==7.0.0
 httpx
+paramiko==3.5.0

@@ -17,6 +17,7 @@ const SIDEBAR_CONFIG = {
       { label: "대시보드", path: "/admin" },
       { label: "사용자 관리", path: "/admin/users" },
       { label: "게시판 관리", path: "/admin/boards" },
+      { label: "OpenClaw 디바이스", path: "/admin/openclaw-devices" },
       {
         label: "Claude Code",
         path: "/admin/skills",
