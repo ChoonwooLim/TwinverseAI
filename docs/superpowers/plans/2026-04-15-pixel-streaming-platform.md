@@ -231,6 +231,35 @@ Orbitron 개발 AI 에게 전달하는 버전에서는 Track A 항목을 "외부
 
 **Phase 0.5 완료 게이트:** 템플릿으로 패키징 → 로컬 실행 → 2인 접속 → 채팅·이모트 확인.
 
+### Task 0.5.12: NPC 듀얼 모델 통합 — **Track A (내부 작업)**
+
+스펙 부록 C 참조. Tier 1 (소셜, Ollama) + Tier 2 (에이전트, OpenClaw) 를 UE5 템플릿에 모두 심는다.
+
+**Files (UE5 템플릿 레포):**
+
+- Modify: `Source/TwinverseDesk/Office/OfficeNPCConversation.h/.cpp` — 기존 그대로 Tier 1 용
+- Create: `Source/TwinverseDesk/Office/OfficeNPCAgentConversation.h/.cpp` — Tier 2 WebSocket 스트리밍
+- Modify: `Source/TwinverseDesk/Office/OfficeNPCManager.h/.cpp` — `ENPCTier { Social, Agent }` 필드 추가, 스폰 시 Tier 에 맞는 Component 부착
+- Test: `Source/TwinverseDeskTests/OfficeNPCAgentConversationTest.cpp`
+
+**Files (TwinverseAI 백엔드):**
+
+- Modify: `backend/routers/npc.py` — 기존 Ollama 경로 그대로 유지 (Tier 1)
+- Create: `backend/routers/npc_agent.py` — `WebSocket /api/npc/agent/stream` OpenClaw RPC 프록시
+- Modify: `backend/main.py` — 라우터 등록 `/api/npc/agent`
+- Test: `backend/tests/test_npc_agent.py` — 모킹된 OpenClaw 게이트웨이로 스트리밍 검증
+
+- [ ] **Step 1: Tier enum + Manager 필드 (TDD)** — 실패 테스트부터
+- [ ] **Step 2: OfficeNPCAgentConversation 스켈레톤 (WebSocket client + 델타 수신 → Multicast RPC)**
+- [ ] **Step 3: backend `npc_agent.py` — ws 라이브러리로 OpenClaw 연결, chat.send 프록시, 스트리밍 delta passthrough**
+- [ ] **Step 4: Ollama 응답 시간 벤치 (gemma3:12b, 6 동시) — 목표 p95 < 3초**
+- [ ] **Step 5: OpenClaw 스트리밍 E2E (단일 NPC, 30초 내 최종 응답 완료)**
+- [ ] **Step 6: manifest 에 `npcs: [{ name, role, tier, system_prompt }]` 필드 추가**
+- [ ] **Step 7: 페일오버 정책 검증 — Tier 2 게이트웨이 다운 시 "잠시 자리를 비웠습니다" 표시**
+- [ ] **Step 8: 커밋** — `feat(npc): Tier 1 (Ollama) + Tier 2 (OpenClaw) 듀얼 모델`
+
+**완료 게이트:** 단일 슬롯에 소셜 NPC 3명 + 에이전트 NPC 1명 스폰 → 각각 대화 성공 → 에이전트 NPC 가 간단 도구 사용(파일 읽기) 결과를 말풍선으로 표시.
+
 ---
 
 ## Phase 1 — 백엔드 스키마 + 슬롯 CRUD

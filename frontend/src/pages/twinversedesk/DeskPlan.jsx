@@ -30,7 +30,8 @@ const PHASES = [
       "이모트 AnimMontage + 복제",
       "의자 상호작용 (Interactable interface)",
       "어드민 HTTP 엔드포인트 (Kick/Mute) — C++ HttpListener",
-      "AI NPC 10명 통합 (OfficeNPCConversation → twinverse-ai Ollama)",
+      "Tier 1 소셜 NPC 10명 (OfficeNPCConversation → Ollama gemma3:12b, 잡담)",
+      "Tier 2 에이전트 NPC 3명 (OfficeNPCAgentConversation → OpenClaw gateway, 업무 수행)",
     ],
   },
   {
@@ -105,7 +106,7 @@ const COMPARE_ITEMS = [
   { feature: "GPU 자원", old: "6명 = RTX 3090 2장+", now: "6명 = RTX 3090 1장 (VRAM ~10 GB)" },
   { feature: "프로세스 수", old: "N+1 (DS + 클라 N)", now: "1 (호스트 = 서버 겸 플레이어)" },
   { feature: "입장 지연", old: "~10초 (클라 프로세스 부팅)", now: "~1초 (뷰포트 추가)" },
-  { feature: "AI NPC LLM", old: "Anthropic / OpenAI 외부 API 직접 호출", now: "twinverse-ai Ollama (gemma3:12b) 1차, 외부 폴백" },
+  { feature: "AI NPC LLM", old: "Anthropic / OpenAI 외부 API 직접 호출 (stateless)", now: "Tier 1 Ollama gemma3:12b (소셜, 10명) + Tier 2 OpenClaw gateway CLI 에이전트 (업무, 3명) 듀얼 모델" },
   { feature: "배포 단위", old: "단일 프로젝트 (수작업 배포)", now: "Orbitron 슬롯 파이프라인 (템플릿 업로드 → atomic swap)" },
   { feature: "UE 버전", old: "5.5", now: "5.7.4" },
   { feature: "식별 체계", old: "JWT 로그인만", now: "로그인 + HMAC 서명 게스트 링크 하이브리드" },
@@ -136,7 +137,7 @@ const ARCHITECTURE = [
   {
     layer: "AI 게이트웨이",
     tech: "twinverse-ai 192.168.219.117 Ollama",
-    desc: "NPC 대화 1차: Ollama gemma3:12b (로컬, 무료). 폴백: Anthropic Claude (필요 시). OpenAI / Gemini 는 선택적. ai-shared-registry SSOT 준수.",
+    desc: "Tier 1 (소셜): Ollama gemma3:12b 로컬 무료. Tier 2 (에이전트): OpenClaw gateway (ws://host:18789) → ChatGPT/Claude Code CLI 에이전트 세션, 도구 사용·persistent. DeskRPG 검증 스택 재사용. ai-shared-registry SSOT 준수.",
   },
   {
     layer: "네트워크",
@@ -168,8 +169,12 @@ const UE_FEATURES = [
     desc: "근접 거리 감쇠 공간 음향. OnlineSubsystemVoice 또는 WebRTC mesh 중 조사 후 선택 (Phase 0).",
   },
   {
-    title: "AI NPC 10명",
-    desc: "슬롯당 NPC 최대 10명. UOfficeNPCConversation ActorComponent 가 Server RPC 로 메시지 수신 → backend /api/npc/chat HTTP 호출 → Ollama(gemma3:12b) 응답 → Multicast 로 말풍선/채팅 표시. 히스토리 20턴, 쿨다운 2초.",
+    title: "Tier 1 소셜 NPC (Ollama)",
+    desc: "슬롯당 최대 10명. UOfficeNPCConversation 이 /api/npc/chat → Ollama gemma3:12b 호출 → 말풍선/채팅. stateless, 2초 쿨다운, 응답 <3초. 잡담/분위기 전용 저비용 계층.",
+  },
+  {
+    title: "Tier 2 에이전트 NPC (OpenClaw)",
+    desc: "슬롯당 최대 3명. UOfficeNPCAgentConversation 이 /api/npc/agent/stream (WebSocket) → OpenClaw gateway(port 18789) chat.send RPC → CLI 에이전트(gpt-5 / Claude Code 등) 스트리밍 응답. persistent session, 도구 사용 가능 (AI 비서·AI 개발자 업무 위임). DeskRPG (tvdesk.twinverse.org) 검증 방식 계승.",
   },
   {
     title: "어드민 제어",

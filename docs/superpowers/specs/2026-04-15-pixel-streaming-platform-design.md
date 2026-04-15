@@ -579,5 +579,49 @@ Phase C 는 별도 스펙.
 | 이모트 | 1~9 단축키 | 3인칭 애니메이션, 타인 가시 |
 | 의자 | 상호작용 키(E) | 앉기 포즈 |
 | 어드민 킥/뮤트 | admin_key 보유 웹 UI | 해당 유저 즉시 퇴장 |
+| **소셜 NPC** (Tier 1) | 슬롯당 최대 10명, HTTP `/api/npc/chat` → Ollama `gemma3:12b` | 말풍선(200자 이하), 전체 채팅 |
+| **에이전트 NPC** (Tier 2) | 슬롯당 최대 3명, WS `/api/npc/agent/stream` → OpenClaw gateway (port 18789) | 스트리밍 말풍선, 전체 채팅, 도구 사용 결과 표시 |
 
 상세 구현은 템플릿 레포 README 참조.
+
+## 부록 C. NPC 듀얼 모델 (Tier 1 / Tier 2)
+
+DeskRPG(tvdesk.twinverse.org) 의 검증된 OpenClaw 게이트웨이 방식을 Tier 2 로 계승하고,
+잡담/분위기용 저비용 Tier 1 을 추가해 **용도별 분리** 한다.
+
+### Tier 1 — 소셜 NPC (Ollama)
+
+- **목적**: 분위기 · 잡담 · NPC 10명 동시 배치로 빈 오피스 방지
+- **백엔드**: `POST /api/npc/chat` → Ollama `gemma3:12b` (twinverse-ai:11434)
+- **세션**: stateless, 매 호출마다 클라이언트가 history 20턴 재전송
+- **응답 시간**: < 3초 (단발성)
+- **비용**: 무료 (로컬 Ollama)
+- **UE5 컴포넌트**: `UOfficeNPCConversation` (기존, 변경 없음)
+- **쿨다운**: 2초, rate limit 120/min
+
+### Tier 2 — 에이전트 NPC (OpenClaw Gateway)
+
+- **목적**: 실제 업무 수행 — AI 비서, AI 개발자, AI 분석가 등 "일하는 동료"
+- **백엔드**: `WebSocket /api/npc/agent/stream` — OpenClaw RPC gateway 프록시
+- **게이트웨이**: OpenClaw (DeskRPG 에서 포팅) — `ws://<host>:18789`, `OPENCLAW_TOKEN` 인증
+- **프로토콜**: `chat.send` RPC (스트리밍 delta) · `agents.list/create` · pairing 플로우
+- **세션**: **persistent** — NPC 별 agent session 유지, history 는 에이전트 내부 보관
+- **모델**: `openai-codex/gpt-5.4` 또는 `anthropic-claude-code/sonnet-4-6` 등 CLI 에이전트
+- **도구 사용**: 에이전트가 파일 read/write · 웹 검색 · 코드 실행 가능 (OpenClaw 정책에 따름)
+- **응답 시간**: 초기 ~5초 + 스트리밍 delta
+- **비용**: 외부 API 키 소비 (또는 로컬 CLI 에이전트)
+- **UE5 컴포넌트**: `UOfficeNPCAgentConversation` (신규) — WebSocket 스트리밍 + 말풍선 점진적 갱신
+- **쿨다운**: 5초, 동시 요청 슬롯당 3건 제한
+
+### 선택 기준 (맵 디자이너 가이드)
+
+- "커피 마시며 잡담하는 동료" → Tier 1
+- "보고서 요약해줘", "이 코드 리뷰", "회의록 작성" → Tier 2
+- 슬롯 manifest 에서 NPC 별 `tier: "social" | "agent"` 로 지정
+- Tier 2 는 `admin_key` 보유자만 생성/관리 (비용 이슈)
+
+### 보안 · 운영
+
+- OpenClaw gateway 는 `ai-shared-registry.md` §2 에 등재 (포트 18789 예약)
+- `OPENCLAW_TOKEN` 은 Orbitron secrets 전용, UE5 컨테이너는 토큰을 직접 보지 않음 (백엔드 프록시만 접근)
+- 장애 폴백: Tier 2 게이트웨이 다운 → NPC 가 "잠시 자리를 비웠습니다" 상태 표시, Tier 1 으로 자동 강등하지 **않음** (도구 사용이 필요한 태스크는 Tier 1 으로 수행 불가)
