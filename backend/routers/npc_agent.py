@@ -17,7 +17,7 @@ DeskRPG (tvdesk.twinverse.org) 에서 검증된 OpenClaw 방식을 계승:
 import os
 import json
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
@@ -25,7 +25,10 @@ logger = logging.getLogger("twinverse.npc.agent")
 
 router = APIRouter()
 
-OPENCLAW_WS_URL = os.getenv("OPENCLAW_WS_URL", "")
+OPENCLAW_WS_URL = os.getenv(
+    "OPENCLAW_WS_URL",
+    "wss://openclaw-apco.srv1557851.hstgr.cloud/openclaw",
+)
 OPENCLAW_TOKEN = os.getenv("OPENCLAW_TOKEN", "")
 OPENCLAW_MODEL = os.getenv("OPENCLAW_MODEL", "openai-codex/gpt-5.4")
 
