@@ -54,3 +54,7 @@
 | 2026-04-09 | AI NPC 시스템 — NPC, LLM Conversation, Manager, TaskBoard, MeetingRoom (Phase 3) | feat | Office/OfficeNPC*, OfficeTaskBoard, OfficeMeetingRoom |
 | 2026-04-09 | NPC Chat API (Anthropic/OpenAI LLM 지원) | feat | backend/routers/npc.py, main.py |
 | 2026-04-09 | DeskLaunch Office 멀티플레이어 모드 + ChatWidget + MapEditor + HUD (Phase 4) | feat | DeskLaunch.jsx, ps2api.js, OfficeChatWidget, OfficeMapEditor, OfficeHUD |
+| 2026-04-15 | NPC 듀얼 모델 — Tier 1 Ollama 소셜 + Tier 2 OpenClaw 에이전트 라우터 스켈레톤 | feat | backend/routers/npc.py, backend/routers/npc_agent.py, main.py |
+| 2026-04-15 | Pixel Streaming 멀티플레이어 피벗 동기화 (Track A/B 분리) | feat | docs/superpowers/specs/*, docs/superpowers/plans/* |
+| 2026-04-15 | Office NPC Tier 2 → LAN twinverse-ai OpenClaw(Ollama qwen2.5:7b) 이관 | feat | backend/.env, backend/routers/npc_agent.py, ai-shared-registry.md |
+| 2026-04-15 | 어드민 OpenClaw 디바이스 페어링 승인 UI + API 프록시 (paramiko SSH) | feat | backend/routers/admin_openclaw.py, frontend/src/pages/admin/AdminOpenClawDevices.jsx, Sidebar.jsx, App.jsx, requirements.txt |

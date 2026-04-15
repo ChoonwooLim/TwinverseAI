@@ -689,3 +689,55 @@
 - **스펙 열린 질문**: spec 섹션 11 에 미해결 질문 목록 있음 — Phase 0 조사와 함께 해소.
 
 ---
+
+## 2026-04-15 (추가 세션 — Office NPC OpenClaw LAN 이관 + 어드민 UI)
+
+### 작업 요약
+
+| 카테고리 | 작업 내용 | 상태 |
+|----------|----------|------|
+| feat | NPC Tier 2 OpenClaw 게이트웨이를 Hostinger(Codex)에서 LAN twinverse-ai(Ollama qwen2.5:7b)로 이관 | 완료 |
+| feat | LAN OpenClaw 를 Cloudflare Tunnel 로 `wss://openclaw.twinverse.org` 공개, DeskRPG 연결 성공 | 완료 |
+| feat | TwinverseAI 어드민에 OpenClaw 디바이스 페어링 승인 UI + API 프록시 추가 (superadmin/admin 전용) | 완료 |
+| docs | 메모리 `reference_openclaw_instances.md` 에 `docker restart` 금지 + agents.create 재시작 이슈 기록 | 완료 |
+
+### 세부 내용
+
+- **Hostinger Codex OAuth 고장 우회**: `OAuth token refresh failed for openai-codex` 에러
+  (refresh token reuse) 때문에 DeskRPG NPC 응답 불가. Hostinger 인스턴스는 그대로 두고
+  LAN twinverse-ai(192.168.219.117)에 두 번째 OpenClaw 컨테이너를 독립 기동
+  (`ghcr.io/hostinger/hvps-openclaw:latest`, host network, `/srv/openclaw/data` 볼륨).
+- **Ollama provider + qwen2.5:7b**: `gemma3:12b` / `gemma4:*` 는 Ollama tools 미지원이라
+  Agent 용도 불가. `ollama/qwen2.5:7b` 로 전환, `contextWindow: 32768`, thinkingDefault=off.
+- **Cloudflare Tunnel**: twinverse-ai `/etc/cloudflared/config.yml` 에
+  `openclaw.twinverse.org → http://localhost:18789` ingress rule 추가. `systemctl restart
+  cloudflared` 로 반영 (SIGHUP 미지원).
+- **페어링 디버깅 절차**: Origin not allowed → `gateway.controlUi.allowedOrigins` 에
+  `tvdesk.twinverse.org` 추가 / token_mismatch → `gateway.remote.token = gateway.auth.token` /
+  pairing auto-approve 실패 → `openclaw devices approve <requestId>` 수동 승인.
+- **어드민 UI (커밋 087b8e1)**: `backend/routers/admin_openclaw.py` 신규 (paramiko SSH →
+  `docker exec openclaw openclaw devices list/approve`), `frontend/src/pages/admin/
+  AdminOpenClawDevices.jsx` 신규, 사이드바 "OpenClaw 디바이스" 메뉴 추가. 앞으로 SSH 없이
+  웹에서 페어링 승인 가능.
+- **DeskRPG NPC 생성 이슈**: `agents.create` RPC 가 per-agent 플러그인 slot(`plugins.entries.
+  browser.config`, `ollama.config`, `memory-core`)을 추가해 SIGUSR1 전체 재시작을 유발 →
+  DeskRPG 의 follow-up `agents.files.set` 이 끊어져 "네트워크 오류"로 보임. 완화책으로
+  `browser.enabled=false`, `memory-core.enabled=false` 로 전환.
+- **`docker restart openclaw` 금지 규칙 확립**: 컨테이너 entrypoint 의 "Fixing data
+  permissions" 단계가 EACCES 경합으로 `openclaw.json` 을 재생성 → 토큰 로테이트. 앞으로는
+  `openclaw config set ...` CLI 만 사용 (내부 SIGUSR1 으로 토큰 보존).
+
+### 다음 세션 참고
+
+- **NPC 생성 재테스트 대기**: 새 토큰 `c96fc3c6148057…` 반영 후 DeskRPG 에서 NPC 생성 재시도.
+  rate-limit(5분 창) 해제 기다리고 저장 → 에이전트 생성 성공 여부 확인.
+- **browser/memory-core 비활성화 검증**: 이 설정으로 agents.create 재시작이 실제로 발생하지
+  않는지(또는 빈도 감소) 확인. 여전히 재시작한다면 DeskRPG 의 create-agent flow 자체를 재시도
+  tolerant 하게 바꾸는 것도 검토.
+- **토큰 로테이트 대응**: LAN OpenClaw 는 docker restart 가 토큰 로테이트를 유발하므로,
+  admin UI 에 "현재 토큰 조회" / ".env 자동 갱신" 기능 추가 검토.
+- **Orbitron 배포본 동기화**: 지금 변경은 GPU PC 로컬 backend/.env 기반. Orbitron 배포본
+  재빌드 시 어드민 UI 와 paramiko 의존성이 포함되는지 확인(`requirements.txt` 에 paramiko
+  3.5.0 추가 완료).
+
+---
