@@ -13,15 +13,15 @@ const LEVELS = [
     id: "office_main",
     name: "3D Virtual Office",
     map: "/Game/Maps/Office/OfficeMain",
-    desc: "멀티플레이어 3D 가상 오피스 — MetaHuman + AI NPC + 회의실",
+    desc: "Listen Server 6인 멀티플레이어 — AI NPC(Ollama) + 공간 음성 + 채팅",
     gradient: "linear-gradient(135deg, #00d2ff 0%, #3a47d5 100%)",
     icon: "🏢",
     isOffice: true,
     officeId: "main_office",
-    // OfficeMain.umap 빌드 + Dedicated Server 구축 전까지 실행 불가
+    // Track A: UE5 5.7.4 Listen Server + PixelStreaming2 멀티 스트리머 템플릿 제작 중
     disabled: true,
     statusLabel: "개발중",
-    statusNote: "OfficeMain 맵 + Dedicated Server 구축 중",
+    statusNote: "UE5 5.7.4 Listen Server 템플릿 + Orbitron 슬롯 파이프라인 구축 중",
   },
   {
     id: "pcg_modern",

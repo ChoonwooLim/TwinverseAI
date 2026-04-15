@@ -5,6 +5,27 @@
 > **대상 프로젝트**: `C:\WORK\TwinverseDesk` (UE5 5.7.4)
 > **최종 산출 경로**: `Content/Maps/Office/OfficeMain.umap`
 > **참조 C++**: `Source/TwinverseDesk/Office/` (17개 클래스, 컴파일 전)
+>
+> **⚠ 2026-04-15 피벗 적용**: Pixel Streaming 플랫폼 설계 개정(`docs/superpowers/specs/2026-04-15-pixel-streaming-platform-design.md`)으로
+> 멀티플레이 모델이 **Dedicated Server → Listen Server + PixelStreaming2 멀티 스트리머**로 변경되었고,
+> 슬롯당 동시 접속 상한은 **20명 → 6명** 으로 축소됐다. 이 문서의 일부 기술 기술(Dedicated Server / 20명) 은
+> 신 스펙과 충돌하며, 그 부분은 아래 "피벗 영향" 섹션을 우선 따른다.
+
+---
+
+## 0-1. 피벗 영향 (2026-04-15)
+
+아래 항목은 Pixel Streaming 플랫폼 신 스펙과 맞춰 **이 문서 본문보다 우선** 적용한다.
+
+| 영역 | 이 문서(구) | 신 스펙(우선) | 조치 |
+|------|-------------|---------------|------|
+| 멀티플레이 모델 | Dedicated Server | **Listen Server + 6 뷰포트 단일 UE5 프로세스** | `OfficeGameMode` 를 Listen 호스트 권위로 재구성, `TwinverseDesk.Target.cs` 의 `Server` 타겟은 Phase B 에서 미사용 |
+| 동시 접속 상한 | 20명 | **6명** | `OfficeGameMode::MaxPlayersPerOffice = 6` 으로 하향 |
+| NPC LLM | 미지정 (백엔드 위임) | **twinverse-ai (192.168.219.117) Ollama gemma3:12b 1차 / Anthropic 폴백** | `OfficeNPCConversation` 의 `/api/npc/chat` 호출은 변경 없음, 백엔드 라우터만 Ollama 로 재작성됨 |
+| 씬 분리 | 회의실 A/B 별 레벨 스트리밍 고려 | **단일 World 공유** (Listen Server 특성상 불가능) | 회의실은 "물리적 이동 + 공간 음향" 으로 표현 |
+| UE 빌드 타겟 | `Client` + `Server` 2종 | `Game` 단일 (Listen Server 로도 기능) | 패키징 스크립트 단순화 |
+
+본문의 수치(`20명`, `Dedicated Server`)는 역사적 기록으로만 간주한다. 구현 시 이 표가 규범이다.
 
 ---
 
