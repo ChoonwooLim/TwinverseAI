@@ -1,1586 +1,845 @@
-# Orbitron Pixel Streaming Platform Implementation Plan
+# Pixel Streaming 멀티플레이어 플랫폼 구현 계획 (개정판)
 
-> **대상**: Orbitron 플랫폼 개발자 (Orbitron 서버 `/home/stevenlim/WORK/orbitron/` 에서 작업). 외부 엔지니어가 이 문서 하나만 보고 구현할 수 있도록 작성.
->
-> **연관 스펙**: `docs/superpowers/specs/2026-04-15-pixel-streaming-platform-design.md`
->
-> **Goal:** TwinverseAI 프로젝트 안에 멀티슬롯 Pixel Streaming 업로드/배포 기능 구현 (Phase B).
->
-> **Architecture:** Orbitron (Node.js + PG) 이 tus 프로토콜로 UE5 Linux 패키지 zip 수신 → 검증 · Docker 이미지 빌드 → twinverse-ai GPU 호스트로 전송 · on-demand 기동. Cloudflare DNS 자동화 + 슬롯별 서브도메인. 최근 3개 버전 유지 · 원클릭 롤백.
->
-> **Tech Stack:** Node.js (기존 Orbitron), PostgreSQL, `tus-node-server`, `tus-js-client`, Docker CLI (`save`/`load`), ssh/rsync, Cloudflare API (`cloudflare` npm), cloudflared SIGHUP, Wilbur Pixel Streaming, React(TwinverseAI 랜딩).
+> **For agentic workers:** 이 계획은 외부 Orbitron 개발자(또는 개발 AI)에게 전달하는 문서입니다. Claude 자동 실행 대상이 아닙니다. 각 task 는 TDD · bite-sized · 커밋 단위로 설계되어 있으므로 task 단위로 PR 또는 커밋을 만들 것.
+
+## 책임 분리 (중요, 2026-04-15 개정)
+
+이 계획은 **두 트랙**으로 분리됩니다:
+
+- **Track A (내부 · Steven + Claude, TwinverseAI 저장소 근처에서 작업)**: Phase 0.5 (UE5 템플릿 셸 프로젝트), Phase 6.5 (TwinverseAI 랜딩 `/pixel-streaming` 페이지), Phase 7.2 (기존 맵 템플릿 포팅).
+- **Track B (Orbitron 개발 AI, `/home/stevenlim/WORK/orbitron/`)**: Phase 0 (사전 조사), Phase 1~5 (백엔드·세션·큐), Phase 6.1~6.4 (Orbitron 대시보드 UI), Phase 7.1/7.3~7.6 (마이그레이션·인프라 cutover).
+
+Orbitron 개발 AI 에게 전달하는 버전에서는 Track A 항목을 "외부 의존성(Steven 측 제공)" 으로만 표기하며, 구현 내용은 요구하지 않습니다. Track B 는 Track A 가 제공할 **템플릿 v1.0.0 Package zip 샘플**을 전제로 E2E 테스트를 진행합니다.
+
+**교환 인터페이스:**
+
+- Track A → Track B: 템플릿 v1.0.0 Package zip + `template_manifest.json` 스펙 + 컨테이너 내부 admin HTTP 엔드포인트 계약
+- Track B → Track A: 공개 API (`/api/public/projects/:slug/ps-slots`, `POST /api/ps-slots/:id/join`, SSE 이벤트 스트림) · 게스트 링크 URL 포맷
 
 ---
 
-## Phase 0 — 사전 조사 & 스캐폴딩
+**Goal:** TwinverseAI 프로젝트 내부에 **멀티플레이어 Pixel Streaming 슬롯** 기능을 추가. 슬롯당 6명 동시 접속 + FIFO 대기열. 유저는 Twinverse 표준 UE5 템플릿 기반 패키지를 업로드 → 자동 빌드·배포 → 브라우저에서 6인이 같은 맵에 접속해 서로 보며 대화.
 
-외부 엔지니어는 Orbitron 내부 구조를 모르므로 먼저 기존 패턴을 파악해야 한다. 이 단계의 산출물은 **결정 메모** (`docs/orbitron/pixel-streaming-prereqs.md`) 하나 + 개발 브랜치 생성.
+**Architecture:** 슬롯 = 1 UE5 프로세스 = 6 뷰포트 + 6 PS2 스트리머 + 리슨 서버 모드 멀티플레이어. Orbitron 이 업로드·이미지 빌드·twinverse-ai 배포·Cloudflare DNS·세션/큐 관리를 맡고, 런타임은 twinverse-ai 의 Docker 컨테이너에서 UE5 실행.
 
-### Task 0-1: 브랜치 생성 & 작업 공간 준비
+**Tech Stack:** Node.js (Orbitron 기존), PostgreSQL, tus-node-server, tus-js-client, Docker + NVIDIA runtime, UE5 5.7.4 + PixelStreaming2 + OnlineSubsystemVoice, Cloudflare API + cloudflared tunnel, React (TwinverseAI 랜딩).
 
-**Files:**
-- Create: `feature/pixel-streaming` 브랜치
+**Spec 참조:** [`../specs/2026-04-15-pixel-streaming-platform-design.md`](../specs/2026-04-15-pixel-streaming-platform-design.md) — 본 계획은 spec 의 결정사항을 전제로 함.
 
-- [ ] Orbitron repo 클론 상태 확인: `cd /home/stevenlim/WORK/orbitron && git status`
-- [ ] main 에서 브랜치 분기:
-  ```bash
-  git checkout main && git pull
-  git checkout -b feature/pixel-streaming
-  ```
-- [ ] 원격 push:
-  ```bash
-  git push -u origin feature/pixel-streaming
-  ```
-- [ ] Commit (빈 README 추가): `git commit --allow-empty -m "chore: start pixel-streaming feature branch"`
+---
 
-### Task 0-2: Orbitron 프론트/백 스택 조사 메모 작성
+## 실행 방식
 
-**Files:**
-- Create: `docs/orbitron/pixel-streaming-prereqs.md`
+- 총 8개 Phase, 각 Phase 별 리뷰 게이트.
+- Phase 0 (사전 조사) 완료 → Steven 승인 → Phase 0.5 착수.
+- 각 task 완료마다 `test → impl → pass → commit`. `feat:` / `test:` / `refactor:` 접두어.
+- branch 전략: `main` 에서 `feature/ps-multiplayer` 분기, Phase 별 sub-branch 권장.
+- **병렬성:** Phase 0.5 (UE5 템플릿) 와 Phase 1~5 (Orbitron 백엔드) 는 병렬 가능. Phase 6 UI 는 API 확정 후, Phase 7 cutover 는 전체 완료 후.
 
-- [ ] 다음 항목을 실제 코드 확인 후 메모에 기록:
-  1. **프론트 스택**: `server.js`/`public/`/`routes/` 를 훑어 SSR(EJS 등) vs SPA 판단.
-     ```bash
-     ls public/ && grep -r "res.render" routes/ | head -5
-     ```
-  2. **인증 미들웨어**: `routes/auth.js` 에서 JWT 검증 방식 확인. 재사용 가능한 `requireAdmin` 미들웨어 존재 여부.
-  3. **프로젝트 상세 페이지 라우트**: `routes/projects.js` 에서 프로젝트 상세 조회 엔드포인트 구조.
-  4. **Cloudflare DNS 자동화 코드 존재 여부**:
-     ```bash
-     grep -r "cloudflare" --include="*.js" . | grep -v node_modules | head -10
-     grep -r "CNAME\|DNS" routes/ services/ | head -10
-     ```
-     → 있으면 재활용 함수 경로 기록. 없으면 "신규 구현 필요" 기록.
-  5. **기존 배포(deployments/) 패턴**: `services/` 하위에 이미 SSH + Docker 배포 로직 있는지 확인.
-  6. **cloudflared config 경로**: `/home/stevenlim/.cloudflared/config.yml` ingress 구조 확인.
-- [ ] 메모에 각 항목별 "재사용 가능" / "신규 구현" / "확장 필요" 분류 명시.
-- [ ] Commit:
-  ```bash
-  git add docs/orbitron/pixel-streaming-prereqs.md
-  git commit -m "docs: pre-implementation recon for pixel streaming"
-  ```
+---
 
-### Task 0-3: Wilbur admin API 조사
+## Phase 0 — 사전 조사 (착수 전 필수)
 
-**Files:**
-- Modify: `docs/orbitron/pixel-streaming-prereqs.md` (섹션 추가)
+목적: 구현 가정이 깨지지 않는지 먼저 확인. 결과를 **조사 메모**로 Steven 에게 보고 후 승인 받아 Phase 0.5 진행.
 
-- [ ] 기존 `/opt/twinverse-ps2` 컨테이너 내 Wilbur 설정 파악:
-  ```bash
-  ssh twinverse-ai "docker exec twinverse-ps2 ls /opt/wilbur && docker exec twinverse-ps2 cat /opt/wilbur/config/default.json" 2>/dev/null | head -50
-  ```
-- [ ] Wilbur admin 엔드포인트 존재 여부(`/api/streamers`, `/api/players` 등) curl 테스트:
-  ```bash
-  ssh twinverse-ai "curl -s http://localhost:8080/api/streamers"
-  ```
-- [ ] 없으면 대안 확인 (signaling WebSocket 로그 파싱, player 포트 TCP 연결 수 기반 등).
-- [ ] 메모의 "세션 수 조회 방법" 섹션 채우기.
-- [ ] Commit: `git commit -am "docs: record wilbur admin API discovery"`
+### Task 0.1: PixelStreaming2 멀티 스트리머 POC
 
-### Task 0-4: 디렉토리/포트/상수 상수 파일 생성
+**파일:**
+- Create: `docs/research/ps2-multi-streamer-poc.md`
 
-**Files:**
-- Create: `services/pixelStreaming/constants.js`
+- [ ] **Step 1: Epic PixelStreaming2 샘플 프로젝트 준비**
+- [ ] **Step 2: 단일 UE5 프로세스에서 6 뷰포트 + 6 스트리머 구동 시도** (Editor 플레이모드 아닌 Packaged Listen Server)
+- [ ] **Step 3: RTX 3090 에서 720p 30fps 유지 여부 측정** — 유휴 맵 / 복잡 맵 2 케이스
+- [ ] **Step 4: Wilbur signaling server 가 6 스트리머 동시 관리 가능한지 확인**
+- [ ] **Step 5: 결과 문서화**: 실측 FPS/VRAM/CPU, 장애 요소, 회피 방안
+- [ ] **Step 6: Steven 에게 보고 → max_players 확정 (6 유지 또는 하향)**
 
-- [ ] 다음 내용으로 파일 작성:
-  ```js
-  // Orbitron Pixel Streaming 상수 — 전역적으로 참조
-  module.exports = {
-    // 서브도메인 루트
+### Task 0.2: Wilbur admin API 분석
+
+**파일:**
+- Create: `docs/research/wilbur-admin-api.md`
+
+- [ ] **Step 1: Wilbur 소스 `SignallingWebServer` 디렉토리 검색**
+- [ ] **Step 2: streamer 목록 조회 / streamer 예약·해제 엔드포인트 확인** (없으면 REST 대체안: signaling WS 메시지 감청)
+- [ ] **Step 3: 인증 방식 (API key / IP 화이트리스트 / 없음)**
+- [ ] **Step 4: 결과 문서화**
+
+### Task 0.3: Orbitron 기존 배포 파이프라인 내부 구조
+
+**파일:**
+- Create: `docs/research/orbitron-internals.md`
+
+- [ ] **Step 1: `/home/stevenlim/WORK/orbitron/services/deployer.js` 분석** — 기존 프로젝트 배포 훅 위치
+- [ ] **Step 2: Cloudflare DNS 자동화 기존 코드 확인** — 있으면 함수명/경로, 없으면 `cloudflare` npm 사용 결정
+- [ ] **Step 3: `nginxService` 동작 방식 및 Pixel Streaming 은 cloudflared 경유하므로 nginx 우회 여부 결정**
+- [ ] **Step 4: 결과 문서화**
+
+### Task 0.4: Cloudflare 토큰 권한 조사
+
+**파일:**
+- Create: `docs/research/cloudflare-token-scope.md`
+
+- [ ] **Step 1: 기존 Orbitron 에 저장된 Cloudflare API token 조회** (secrets 테이블)
+- [ ] **Step 2: 권한 범위 확인**: DNS Edit, Cloudflare Tunnel configuration 쓰기
+- [ ] **Step 3: 부족하면 신규 토큰 발급 요청 Steven 에게**
+- [ ] **Step 4: 결과 문서화**
+
+### Task 0.5: UE5 근접 음성 구현 방식 결정
+
+**파일:**
+- Create: `docs/research/ue5-voice-choice.md`
+
+- [ ] **Step 1: Epic OnlineSubsystemVoice vs 별도 WebRTC 메쉬 비교**
+- [ ] **Step 2: 6명 기준 리소스/지연/복잡도 분석**
+- [ ] **Step 3: 템플릿 v1 에서 채택할 방식 결정 + 근거 문서화**
+
+**Phase 0 완료 게이트:** 5개 메모 + Steven 승인.
+
+---
+
+## Phase 0.5 — 템플릿 UE5 프로젝트 (별도 레포) — **Track A (내부 작업)**
+
+> Orbitron 개발 AI 는 이 Phase 를 직접 수행하지 않습니다. Steven + Claude 가 TwinverseDesk/TwinverseAI 저장소 주변에서 작업하며, 완성된 템플릿 v1.0.0 Package zip 을 Orbitron 에 "샘플"로 전달합니다. Track B (Orbitron) 는 Phase 1~5 를 템플릿 완성 전에도 병렬 진행 가능합니다 (E2E 테스트만 템플릿 완료 후).
+
+**레포:** `github.com/ChoonwooLim/twinverse-ps-template` (Steven 이 Phase 0 완료 후 생성)
+
+### Task 0.5.1: 레포 초기화 + 기본 UE5 5.7.4 프로젝트
+
+**파일:**
+- Create: `twinverse-ps-template/TwinverseShell.uproject`
+- Create: `twinverse-ps-template/.gitignore`
+- Create: `twinverse-ps-template/README.md` (업로더용 가이드)
+
+- [ ] **Step 1: UE5 5.7.4 C++ 빈 프로젝트 생성 (프로젝트명 `TwinverseShell`)**
+- [ ] **Step 2: PixelStreaming2 + OnlineSubsystem (Voice) + CommonUI 플러그인 활성화**
+- [ ] **Step 3: `.gitignore` (`Binaries/`, `Intermediate/`, `Saved/`, `DerivedDataCache/`)**
+- [ ] **Step 4: README 에 업로더 워크플로우 기술** (fork → 맵 교체 → 빌드 → zip)
+- [ ] **Step 5: 초기 커밋 + tag `v1.0.0-alpha.1`**
+
+### Task 0.5.2: 리슨 서버 GameMode + 6인 스폰
+
+**파일:**
+- Create: `Source/TwinverseShell/TwinverseShellGameMode.{h,cpp}`
+- Create: `Source/TwinverseShell/TwinverseShellPlayerController.{h,cpp}`
+
+- [ ] **Step 1: 테스트 — 리슨 서버 시작 시 HostMigration 없이 최대 6 클라이언트 접속 허용 확인 (자동화 어려우면 수동 체크리스트 문서화)**
+- [ ] **Step 2: `AGameModeBase` 상속, `bUseSeamlessTravel=false`, `DefaultPawnClass=ATwinverseCharacter`, `MaxPlayers=6`**
+- [ ] **Step 3: PreLogin 에서 `MaxPlayers` 초과 시 거부 (서버 레벨 방어, 1차 방어선은 Orbitron 큐)**
+- [ ] **Step 4: PlayerController 기본 입력 바인딩**
+- [ ] **Step 5: 커밋 `feat: listen server GameMode with 6-player cap`**
+
+### Task 0.5.3: 캐릭터 + 이동 + 카메라
+
+**파일:**
+- Create: `Source/TwinverseShell/TwinverseCharacter.{h,cpp}`
+- Create: `Content/Input/IA_Move.uasset`, `IA_Look.uasset`, `IA_Jump.uasset` (Enhanced Input)
+
+- [ ] **Step 1: ACharacter 상속, SpringArm + Camera, CharacterMovementComponent 기본값**
+- [ ] **Step 2: Enhanced Input: WASD 이동, 마우스 룩, Space 점프, Shift 달리기**
+- [ ] **Step 3: 네트워크 replication 확인 (Movement, Rotation)**
+- [ ] **Step 4: 커밋 `feat: third-person character with replication`**
+
+### Task 0.5.4: 이름표 컴포넌트
+
+**파일:**
+- Create: `Source/TwinverseShell/Components/TwinverseNameplateComponent.{h,cpp}`
+- Create: `Content/UI/W_Nameplate.uasset`
+
+- [ ] **Step 1: `UWidgetComponent` 상속, 3D world-space, 3m 이내만 가시**
+- [ ] **Step 2: `PlayerState` 의 PlayerName 바인딩 (서버가 join 시 설정)**
+- [ ] **Step 3: 거리 기반 fade out**
+- [ ] **Step 4: 커밋 `feat: nameplate component with 3m visibility`**
+
+### Task 0.5.5: 텍스트 채팅
+
+**파일:**
+- Create: `Source/TwinverseShell/Components/TwinverseChatComponent.{h,cpp}`
+- Create: `Content/UI/W_Chat.uasset`
+
+- [ ] **Step 1: 서버 RPC `ServerSendMessage(FString)`, 전체 브로드캐스트 NetMulticast**
+- [ ] **Step 2: T 키로 입력창 토글, Enter 전송, Esc 닫기**
+- [ ] **Step 3: 최근 20 메시지 버퍼, 5초 후 페이드**
+- [ ] **Step 4: 커밋 `feat: global text chat`**
+
+### Task 0.5.6: 근접 음성
+
+**파일:**
+- Create: `Source/TwinverseShell/Components/TwinverseVoiceComponent.{h,cpp}`
+- Modify: `Config/DefaultEngine.ini` (VoIP 설정)
+
+- [ ] **Step 1: Phase 0.5 조사 결과에 따라 OnlineSubsystemVoice 또는 WebRTC 메쉬 구현**
+- [ ] **Step 2: 10m 반경 거리 감쇠 (`AttenuationSettings`)**
+- [ ] **Step 3: 자동 on, 마이크 권한 요청은 브라우저 측에서**
+- [ ] **Step 4: 커밋 `feat: proximity voice chat`**
+
+### Task 0.5.7: 이모트 9종
+
+**파일:**
+- Create: `Content/Animations/Emotes/` (AM_Wave, Dance, Clap, Point, Bow, ThumbsUp, Sit_Idle, Cry, Laugh)
+- Modify: `TwinverseCharacter.cpp`
+
+- [ ] **Step 1: 1~9 키 바인딩, Server RPC → Multicast, AnimMontage play**
+- [ ] **Step 2: 애니메이션 리플리케이션 확인**
+- [ ] **Step 3: 커밋 `feat: 9 emote animations`**
+
+### Task 0.5.8: 의자 상호작용
+
+**파일:**
+- Create: `Source/TwinverseShell/Interactables/TwinverseChair.{h,cpp}`
+- Create: `Content/Interactables/BP_Chair.uasset`
+
+- [ ] **Step 1: E 키 상호작용, 카메라 근처 의자 탐지 (trace), 앉기 상태 전환 (이동 잠금, 앉기 애님)**
+- [ ] **Step 2: 다시 E 로 해제**
+- [ ] **Step 3: 의자 점유 동기화 (다른 유저가 같은 의자 사용 불가)**
+- [ ] **Step 4: 커밋 `feat: chair interaction with occupancy sync`**
+
+### Task 0.5.9: 어드민 킥/뮤트
+
+**파일:**
+- Create: `Source/TwinverseShell/Components/TwinverseAdminComponent.{h,cpp}`
+- Modify: `TwinverseShellGameMode.cpp`
+
+- [ ] **Step 1: 환경변수 `TWINVERSE_ADMIN_KEY` 로 입력 받아 서버 검증**
+- [ ] **Step 2: HTTP 엔드포인트 (UE5 내장 `Http` 모듈로 간이 서버) `/admin/kick/:playerId`, `/admin/mute/:playerId`**
+- [ ] **Step 3: 인증: Header `X-Admin-Key`**
+- [ ] **Step 4: Orbitron 에서 이 엔드포인트 호출**
+- [ ] **Step 5: 커밋 `feat: admin kick/mute endpoints`**
+
+### Task 0.5.10: PixelStreaming2 6 뷰포트 설정
+
+**파일:**
+- Modify: `Config/DefaultEngine.ini`
+- Create: `Source/TwinverseShell/TwinverseShellViewportClient.{h,cpp}`
+
+- [ ] **Step 1: PS2 설정: 멀티 스트리머 모드, streamer_id 자동 할당**
+- [ ] **Step 2: 플레이어 접속 시 전용 Viewport 생성 → 각 Viewport 를 독립 스트리머에 바인딩**
+- [ ] **Step 3: Phase 0 POC 에서 측정한 설정값(해상도, 비트레이트) 반영**
+- [ ] **Step 4: 커밋 `feat: PS2 multi-streamer with 6 viewports`**
+
+### Task 0.5.11: 예제 맵 + v1.0.0 릴리스
+
+**파일:**
+- Create: `Content/Maps/ExampleOffice.umap` (Epic Office Sample 기반 간단 맵)
+- Create: `Scripts/build-linux.sh` (업로더용 헬퍼)
+- Create: `template_manifest.json` (템플릿 레포 루트)
+
+- [ ] **Step 1: 간단한 오피스 맵 (책상, 의자 6개, 화이트보드)**
+- [ ] **Step 2: build-linux.sh: UE5 CLI 로 Linux Shipping 패키징**
+- [ ] **Step 3: template_manifest.json 스키마 정의 및 예제**
+- [ ] **Step 4: README 업데이트: 업로더가 따라하는 end-to-end 워크플로우**
+- [ ] **Step 5: tag `v1.0.0` 릴리스, GitHub Release 에 예제 Package zip 첨부**
+
+**Phase 0.5 완료 게이트:** 템플릿으로 패키징 → 로컬 실행 → 2인 접속 → 채팅·이모트 확인.
+
+---
+
+## Phase 1 — 백엔드 스키마 + 슬롯 CRUD
+
+### Task 1.1: DB 마이그레이션
+
+**파일:**
+- Create: `orbitron/db/migrations/20260415_ps_slots.sql`
+
+- [ ] **Step 1: spec 섹션 3의 SQL 그대로 작성** (ps_slot_templates, ps_slots, ps_versions, ps_sessions + 인덱스)
+- [ ] **Step 2: `BEGIN; ... COMMIT;` 래핑**
+- [ ] **Step 3: seed: `INSERT INTO ps_slot_templates (version,ue5_version,description,docker_base_image,features,git_ref) VALUES ('v1.0.0','5.7.4','Initial multiplayer shell','nvidia/cuda:12.6.0-base-ubuntu22.04','{"chat":true,"voice":true,"emote":true,"sit":true,"kick":true}', '<commit_sha>');`**
+- [ ] **Step 4: staging DB 에 적용 후 확인**
+- [ ] **Step 5: 커밋 `feat: PS platform schema with sessions/templates`**
+
+### Task 1.2: slotDao.js — CRUD
+
+**파일:**
+- Create: `orbitron/db/slotDao.js`
+- Create: `orbitron/db/__tests__/slotDao.test.js`
+
+- [ ] **Step 1: 테스트 작성** (create 시 project_id · name · display_name 필수, subdomain 유니크 충돌, max_players 범위 1~12)
+- [ ] **Step 2: 테스트 실행 → FAIL**
+- [ ] **Step 3: 구현** — `create/listByProject/getById/updateMeta/remove`, `allocatePort()` (8081~8999 중 미사용 탐색), `allocateSubdomain()` (기본 `<name>.ps.twinverse.org`)
+- [ ] **Step 4: 테스트 → PASS**
+- [ ] **Step 5: 커밋 `feat: slotDao with port/subdomain allocation`**
+
+### Task 1.3: versionDao.js
+
+**파일:**
+- Create: `orbitron/db/versionDao.js`
+- Create: `orbitron/db/__tests__/versionDao.test.js`
+
+- [ ] **Step 1: 테스트** (createNext 시 version_label 자동 증분, listBySlot 최신순, pruneOldVersions 시 active 제외 N-3 삭제)
+- [ ] **Step 2: FAIL 확인**
+- [ ] **Step 3: 구현**
+- [ ] **Step 4: PASS**
+- [ ] **Step 5: 커밋 `feat: versionDao with FIFO pruning`**
+
+### Task 1.4: sessionDao.js
+
+**파일:**
+- Create: `orbitron/db/sessionDao.js`
+- Create: `orbitron/db/__tests__/sessionDao.test.js`
+
+- [ ] **Step 1: 테스트 작성**
+  - `createActive(slot_id, user)` — active_count < max_players 일 때만 성공
+  - `createQueued` — queue_position = 현재 대기 수+1
+  - `promoteFirstQueued(slot_id)` — TX 원자적, 동시 호출 시 1명만 성공
+  - `removeSession(id)` — state=active 이면 큐 1명 자동 승격 + promoted 이벤트 리턴
+  - `pruneGhostSessions(threshold)` — last_heartbeat_at 초과 세션 제거
+  - `heartbeat(id)` — 갱신
+- [ ] **Step 2: FAIL**
+- [ ] **Step 3: 구현** (트랜잭션 + `SELECT ... FOR UPDATE` 로 경합 방어)
+- [ ] **Step 4: PASS**
+- [ ] **Step 5: 커밋 `feat: sessionDao with atomic queue promotion`**
+
+### Task 1.5: templateDao.js
+
+**파일:**
+- Create: `orbitron/db/templateDao.js`
+- Create: `orbitron/db/__tests__/templateDao.test.js`
+
+- [ ] **Step 1: 테스트** (listActive = not deprecated, getByVersion)
+- [ ] **Step 2: 구현 → PASS**
+- [ ] **Step 3: 커밋 `feat: templateDao`**
+
+### Task 1.6: 라우터 — slot CRUD
+
+**파일:**
+- Create: `orbitron/routes/psSlots.js`
+- Modify: `orbitron/server.js` (마운트 `/api/projects/:projectId/ps-slots`)
+- Create: `orbitron/routes/__tests__/psSlots.test.js`
+
+- [ ] **Step 1: 테스트** (POST 필수 필드, 잘못된 template_version 400, 중복 name 409, admin 권한)
+- [ ] **Step 2: 구현** (GET/POST/PATCH/DELETE, DELETE 에서 연관 이미지/DNS/파일 정리 훅은 Phase 4 에서 연결)
+- [ ] **Step 3: PASS**
+- [ ] **Step 4: 커밋 `feat: slot CRUD routes`**
+
+### Task 1.7: 템플릿 라우터
+
+**파일:**
+- Create: `orbitron/routes/psTemplates.js`
+- Modify: `orbitron/server.js`
+
+- [ ] **Step 1: GET /api/ps-templates 테스트**
+- [ ] **Step 2: 구현 (목록만, POST 는 Phase C)**
+- [ ] **Step 3: 커밋 `feat: templates listing endpoint`**
+
+### Task 1.8: 상수 & 설정
+
+**파일:**
+- Create: `orbitron/services/ps/constants.js`
+
+```js
+module.exports = {
     SUBDOMAIN_ROOT: 'ps.twinverse.org',
-
-    // 슬롯 컨테이너 포트 풀 (외부 충돌 피해서 8081~8999)
     PORT_RANGE: { min: 8081, max: 8999 },
-
-    // 최근 유지할 버전 수 (FIFO)
+    MAX_PLAYERS_PER_SLOT: 6,
+    MAX_PLAYERS_HARD_CAP: 12,
     MAX_VERSIONS_PER_SLOT: 3,
-
-    // 업로드 크기 하드 리밋 (20GB)
     MAX_UPLOAD_BYTES: 20 * 1024 * 1024 * 1024,
-
-    // 유휴 감지 워커 주기 (초)
     IDLE_SWEEP_INTERVAL_S: 30,
-
-    // 기본 유휴 타임아웃 (초)
+    SESSION_HEARTBEAT_INTERVAL_S: 30,
+    SESSION_HEARTBEAT_GRACE_S: 90,
     DEFAULT_IDLE_TIMEOUT_S: 600,
-
-    // 콜드 스타트 최대 대기 (초)
     START_TIMEOUT_S: 90,
-
-    // Orbitron 서버 측 스토리지 루트
     STORAGE_ROOT: '/srv/pixelstreaming',
-
-    // 원격 GPU 호스트
-    GPU_HOST: 'twinverse-ai',
+    GPU_HOST: '192.168.219.117',
     GPU_USER: 'stevenlim',
     GPU_SLOTS_ROOT: '/opt/ps-slots',
-
-    // Docker 이미지 네임스페이스
     IMAGE_NAMESPACE: 'twinverse/ps',
+    GUEST_LINK_DEFAULT_EXPIRES_H: 24,
+    GUEST_LINK_MAX_USES_DEFAULT: 10,
+};
+```
 
-    // 빌드 상태 enum
-    BUILD_STATUS: {
-      UPLOADING: 'uploading',
-      EXTRACTING: 'extracting',
-      BUILDING: 'building',
-      READY: 'ready',
-      FAILED: 'failed',
-    },
-
-    // 슬롯 상태 enum
-    SLOT_STATE: {
-      DRAFT: 'draft',
-      RUNNING: 'running',
-      STOPPED: 'stopped',
-      ERROR: 'error',
-    },
-  };
-  ```
-- [ ] Commit: `git add services/pixelStreaming/constants.js && git commit -m "feat(ps): add pixel streaming constants"`
+- [ ] **Step 1: 파일 작성**
+- [ ] **Step 2: 커밋 `feat: PS platform constants`**
 
 ---
 
-## Phase 1 — 데이터 모델 & 슬롯 CRUD
+## Phase 2 — 업로드 (tus) + 매니페스트 검증
 
-### Task 1-1: PG 스키마 마이그레이션 작성
+### Task 2.1: tus-node-server 마운트
 
-**Files:**
-- Create: `db/migrations/20260415_pixel_streaming.sql`
+**파일:**
+- Modify: `orbitron/package.json` (`"tus-node-server": "^0.10"`)
+- Create: `orbitron/services/ps/tusServer.js`
+- Modify: `orbitron/server.js`
 
-- [ ] 마이그레이션 SQL 작성:
-  ```sql
-  BEGIN;
+- [ ] **Step 1: `npm i tus-node-server`**
+- [ ] **Step 2: Server 초기화, storage 디렉토리 = `${STORAGE_ROOT}/.tus-uploads/`**
+- [ ] **Step 3: 업로드 크기 제한 (MAX_UPLOAD_BYTES) 미들웨어**
+- [ ] **Step 4: `/api/uploads` 마운트 (인증 미들웨어 통과 후)**
+- [ ] **Step 5: 커밋 `feat: tus-node-server mount`**
 
-  CREATE TABLE ps_slots (
-      id              SERIAL PRIMARY KEY,
-      project_id      INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-      name            VARCHAR(50) NOT NULL,
-      display_name    VARCHAR(100) NOT NULL,
-      description     TEXT DEFAULT '',
-      thumbnail_url   VARCHAR(500),
-      subdomain       VARCHAR(150) UNIQUE NOT NULL,
-      container_port  INTEGER NOT NULL UNIQUE,
-      active_version  INTEGER,
-      state           VARCHAR(20) DEFAULT 'draft',
-      idle_timeout_s  INTEGER DEFAULT 600,
-      last_activity_at TIMESTAMP,
-      owner_user_id   INTEGER REFERENCES users(id),
-      tenant_id       INTEGER,
-      pinned          BOOLEAN DEFAULT false,
-      created_at      TIMESTAMP DEFAULT NOW(),
-      updated_at      TIMESTAMP DEFAULT NOW(),
-      UNIQUE (project_id, name)
-  );
+### Task 2.2: initiate/finalize 라우트
 
-  CREATE TABLE ps_versions (
-      id              SERIAL PRIMARY KEY,
-      slot_id         INTEGER NOT NULL REFERENCES ps_slots(id) ON DELETE CASCADE,
-      version_label   VARCHAR(50) NOT NULL,
-      upload_size_b   BIGINT NOT NULL DEFAULT 0,
-      image_tag       VARCHAR(200),
-      build_status    VARCHAR(20) DEFAULT 'uploading',
-      build_log       TEXT,
-      uploaded_at     TIMESTAMP DEFAULT NOW(),
-      uploaded_by     INTEGER REFERENCES users(id),
-      UNIQUE (slot_id, version_label)
-  );
+**파일:**
+- Modify: `orbitron/routes/psSlots.js`
 
-  ALTER TABLE ps_slots
-      ADD CONSTRAINT ps_slots_active_version_fk
-      FOREIGN KEY (active_version) REFERENCES ps_versions(id)
-      DEFERRABLE INITIALLY DEFERRED;
+- [ ] **Step 1: 테스트** (initiate → upload_id 반환, 인증 필수, slot 존재 확인)
+- [ ] **Step 2: 구현** — initiate 는 tus Create 프록시 + DB 에 ps_versions row 생성(status='uploading'), finalize 는 tus 완료 hook 후 build 파이프라인 트리거
+- [ ] **Step 3: PASS**
+- [ ] **Step 4: 커밋 `feat: upload initiate/finalize`**
 
-  CREATE INDEX idx_ps_slots_project ON ps_slots(project_id);
-  CREATE INDEX idx_ps_versions_slot ON ps_versions(slot_id);
+### Task 2.3: extractor.js + 매니페스트 검증
 
-  COMMIT;
-  ```
-- [ ] 롤백 SQL 같은 파일 하단에 주석으로 명시:
-  ```sql
-  -- ROLLBACK:
-  -- DROP TABLE ps_versions;
-  -- DROP TABLE ps_slots;
-  ```
+**파일:**
+- Create: `orbitron/services/ps/extractor.js`
+- Create: `orbitron/services/ps/__tests__/extractor.test.js`
 
-### Task 1-2: 마이그레이션 실행 확인 (통합 테스트)
+- [ ] **Step 1: 테스트 작성**
+  - path traversal (zip 에 `..` 경로) → 거부
+  - `template_manifest.json` 누락 → 거부
+  - `template_version` 슬롯 설정과 불일치 → 거부
+  - 필수 바이너리 `Package/Linux/<GameName>/Binaries/Linux/<GameName>-Linux-Shipping` 부재 → 거부
+  - 정상 케이스 → `{manifest, packageDir}` 리턴
+- [ ] **Step 2: FAIL**
+- [ ] **Step 3: 구현** (`adm-zip` 기존 사용 중 활용, path 정규화 후 STORAGE_ROOT 벗어나지 않는지 검증)
+- [ ] **Step 4: PASS**
+- [ ] **Step 5: 커밋 `feat: extractor with manifest validation`**
 
-**Files:**
-- Test: `tests/db/pixelStreamingSchema.test.js`
+### Task 2.4: SSE build-log 엔드포인트
 
-- [ ] Orbitron 테스트 DB 에 마이그레이션 적용 후 테이블 존재 검증:
-  ```js
-  const { Pool } = require('pg');
-  const fs = require('fs');
+**파일:**
+- Modify: `orbitron/routes/psSlots.js`
+- Create: `orbitron/services/ps/buildLogStream.js`
 
-  test('ps_slots and ps_versions tables exist', async () => {
-    const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
-    const sql = fs.readFileSync('db/migrations/20260415_pixel_streaming.sql', 'utf8');
-    await pool.query(sql);
-    const res = await pool.query(`
-      SELECT table_name FROM information_schema.tables
-      WHERE table_name IN ('ps_slots', 'ps_versions')
-      ORDER BY table_name
-    `);
-    expect(res.rows.map(r => r.table_name)).toEqual(['ps_slots', 'ps_versions']);
-    await pool.end();
-  });
-  ```
-- [ ] 실행: `npm test -- tests/db/pixelStreamingSchema.test.js`
-- [ ] Expected: PASS.
-- [ ] Commit: `git add db/migrations/ tests/db/ && git commit -m "feat(ps): schema migration for slots and versions"`
-
-### Task 1-3: 슬롯 DAO (CRUD 순수 함수)
-
-**Files:**
-- Create: `services/pixelStreaming/slotDao.js`
-- Test: `tests/pixelStreaming/slotDao.test.js`
-
-- [ ] 테스트 먼저 작성:
-  ```js
-  const dao = require('../../services/pixelStreaming/slotDao');
-
-  describe('slotDao', () => {
-    let projectId;
-    beforeEach(async () => {
-      projectId = await createTestProject();
-    });
-
-    test('create slot assigns next free port', async () => {
-      const s = await dao.create({ projectId, name: 'office', displayName: 'Office' });
-      expect(s.container_port).toBeGreaterThanOrEqual(8081);
-      expect(s.subdomain).toBe('office.ps.twinverse.org');
-    });
-
-    test('create twice with same name rejects', async () => {
-      await dao.create({ projectId, name: 'office', displayName: 'Office' });
-      await expect(
-        dao.create({ projectId, name: 'office', displayName: 'Office' })
-      ).rejects.toThrow(/unique/i);
-    });
-
-    test('listByProject returns only own slots', async () => {
-      await dao.create({ projectId, name: 'a', displayName: 'A' });
-      const other = await createTestProject();
-      await dao.create({ projectId: other, name: 'b', displayName: 'B' });
-      const rows = await dao.listByProject(projectId);
-      expect(rows).toHaveLength(1);
-    });
-  });
-  ```
-- [ ] 실행하여 실패 확인: `npm test -- tests/pixelStreaming/slotDao.test.js` → FAIL (module not found).
-- [ ] 구현:
-  ```js
-  const pool = require('../../db/db');
-  const { PORT_RANGE, SUBDOMAIN_ROOT } = require('./constants');
-
-  async function allocatePort() {
-    const { rows } = await pool.query('SELECT container_port FROM ps_slots');
-    const used = new Set(rows.map(r => r.container_port));
-    for (let p = PORT_RANGE.min; p <= PORT_RANGE.max; p++) {
-      if (!used.has(p)) return p;
-    }
-    throw new Error('No free port in range');
-  }
-
-  async function create({ projectId, name, displayName, description = '', thumbnailUrl = null }) {
-    if (!/^[a-z0-9-]{1,50}$/.test(name)) {
-      throw new Error('name must match [a-z0-9-]{1,50}');
-    }
-    const port = await allocatePort();
-    const subdomain = `${name}.${SUBDOMAIN_ROOT}`;
-    const { rows } = await pool.query(
-      `INSERT INTO ps_slots
-         (project_id, name, display_name, description, thumbnail_url, subdomain, container_port)
-       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
-      [projectId, name, displayName, description, thumbnailUrl, subdomain, port]
-    );
-    return rows[0];
-  }
-
-  async function listByProject(projectId) {
-    const { rows } = await pool.query(
-      'SELECT * FROM ps_slots WHERE project_id=$1 ORDER BY created_at',
-      [projectId]
-    );
-    return rows;
-  }
-
-  async function getById(id) {
-    const { rows } = await pool.query('SELECT * FROM ps_slots WHERE id=$1', [id]);
-    return rows[0] || null;
-  }
-
-  async function updateMeta(id, patch) {
-    const allowed = ['display_name', 'description', 'thumbnail_url', 'idle_timeout_s', 'pinned'];
-    const sets = [], vals = [];
-    for (const [k, v] of Object.entries(patch)) {
-      if (!allowed.includes(k)) continue;
-      vals.push(v); sets.push(`${k}=$${vals.length}`);
-    }
-    if (!sets.length) return getById(id);
-    vals.push(id);
-    const { rows } = await pool.query(
-      `UPDATE ps_slots SET ${sets.join(',')}, updated_at=NOW() WHERE id=$${vals.length} RETURNING *`,
-      vals
-    );
-    return rows[0];
-  }
-
-  async function remove(id) {
-    await pool.query('DELETE FROM ps_slots WHERE id=$1', [id]);
-  }
-
-  module.exports = { create, listByProject, getById, updateMeta, remove, allocatePort };
-  ```
-- [ ] 실행: PASS.
-- [ ] Commit: `git add services/pixelStreaming/slotDao.js tests/pixelStreaming/slotDao.test.js && git commit -m "feat(ps): slot DAO with port allocation"`
-
-### Task 1-4: 버전 DAO
-
-**Files:**
-- Create: `services/pixelStreaming/versionDao.js`
-- Test: `tests/pixelStreaming/versionDao.test.js`
-
-- [ ] 테스트 작성 — version_label 자동 증가 ("v1", "v2"), FIFO 삭제 (N=3):
-  ```js
-  const dao = require('../../services/pixelStreaming/versionDao');
-
-  test('createNext increments version label', async () => {
-    const slotId = await createTestSlot();
-    const v1 = await dao.createNext({ slotId, uploadedBy: 1 });
-    expect(v1.version_label).toBe('v1');
-    const v2 = await dao.createNext({ slotId, uploadedBy: 1 });
-    expect(v2.version_label).toBe('v2');
-  });
-
-  test('pruneOldVersions keeps only MAX_VERSIONS_PER_SLOT', async () => {
-    const slotId = await createTestSlot();
-    for (let i = 0; i < 5; i++) await dao.createNext({ slotId, uploadedBy: 1 });
-    await dao.pruneOldVersions(slotId);
-    const rows = await dao.listBySlot(slotId);
-    expect(rows).toHaveLength(3);
-    expect(rows.map(r => r.version_label)).toEqual(['v5', 'v4', 'v3']);
-  });
-  ```
-- [ ] 실행 → FAIL.
-- [ ] 구현:
-  ```js
-  const pool = require('../../db/db');
-  const { MAX_VERSIONS_PER_SLOT, BUILD_STATUS } = require('./constants');
-
-  async function createNext({ slotId, uploadedBy }) {
-    const { rows: prev } = await pool.query(
-      `SELECT version_label FROM ps_versions WHERE slot_id=$1
-       ORDER BY id DESC LIMIT 1`, [slotId]
-    );
-    const nextN = prev.length ? parseInt(prev[0].version_label.slice(1), 10) + 1 : 1;
-    const { rows } = await pool.query(
-      `INSERT INTO ps_versions (slot_id, version_label, build_status, uploaded_by)
-       VALUES ($1,$2,$3,$4) RETURNING *`,
-      [slotId, `v${nextN}`, BUILD_STATUS.UPLOADING, uploadedBy]
-    );
-    return rows[0];
-  }
-
-  async function updateStatus(versionId, status, logAppend = null) {
-    await pool.query(
-      `UPDATE ps_versions SET build_status=$1,
-         build_log = COALESCE(build_log,'') || COALESCE($2,'')
-       WHERE id=$3`,
-      [status, logAppend, versionId]
-    );
-  }
-
-  async function listBySlot(slotId) {
-    const { rows } = await pool.query(
-      'SELECT * FROM ps_versions WHERE slot_id=$1 ORDER BY id DESC',
-      [slotId]
-    );
-    return rows;
-  }
-
-  async function pruneOldVersions(slotId) {
-    // 활성 버전은 절대 삭제하지 않음
-    const { rows: toDelete } = await pool.query(
-      `SELECT v.id FROM ps_versions v
-       LEFT JOIN ps_slots s ON s.active_version = v.id
-       WHERE v.slot_id=$1 AND s.id IS NULL
-       ORDER BY v.id DESC OFFSET $2`,
-      [slotId, MAX_VERSIONS_PER_SLOT]
-    );
-    if (!toDelete.length) return [];
-    const ids = toDelete.map(r => r.id);
-    await pool.query('DELETE FROM ps_versions WHERE id = ANY($1)', [ids]);
-    return ids;
-  }
-
-  module.exports = { createNext, updateStatus, listBySlot, pruneOldVersions };
-  ```
-- [ ] 실행 → PASS.
-- [ ] Commit: `git commit -am "feat(ps): version DAO with FIFO pruning"`
-
-### Task 1-5: 슬롯 CRUD 라우트
-
-**Files:**
-- Create: `routes/pixelStreaming.js`
-- Modify: `server.js` (라우터 mount)
-- Test: `tests/routes/pixelStreaming.test.js`
-
-- [ ] 테스트 먼저 — 인증 없음 401, admin 으로 POST 성공:
-  ```js
-  const request = require('supertest');
-  const app = require('../../server').app;
-
-  describe('POST /api/projects/:id/ps-slots', () => {
-    test('requires auth', async () => {
-      const r = await request(app).post('/api/projects/1/ps-slots').send({ name: 'x', display_name: 'X' });
-      expect(r.status).toBe(401);
-    });
-
-    test('admin can create slot', async () => {
-      const token = await loginAsAdmin();
-      const r = await request(app)
-        .post('/api/projects/1/ps-slots')
-        .set('Authorization', `Bearer ${token}`)
-        .send({ name: 'office', display_name: 'Office' });
-      expect(r.status).toBe(201);
-      expect(r.body.subdomain).toBe('office.ps.twinverse.org');
-    });
-  });
-  ```
-- [ ] 실행 → FAIL.
-- [ ] 구현:
-  ```js
-  const express = require('express');
-  const router = express.Router({ mergeParams: true });
-  const slotDao = require('../services/pixelStreaming/slotDao');
-  const versionDao = require('../services/pixelStreaming/versionDao');
-  const { requireAdmin } = require('../middleware/auth'); // Task 0-2 에서 경로 확인
-
-  router.get('/', requireAdmin, async (req, res) => {
-    const rows = await slotDao.listByProject(req.params.projectId);
-    res.json(rows);
-  });
-
-  router.post('/', requireAdmin, async (req, res) => {
-    try {
-      const slot = await slotDao.create({
-        projectId: req.params.projectId,
-        name: req.body.name,
-        displayName: req.body.display_name,
-        description: req.body.description,
-        thumbnailUrl: req.body.thumbnail_url,
-      });
-      res.status(201).json(slot);
-    } catch (e) {
-      if (/unique/i.test(e.message)) return res.status(409).json({ error: 'slot name taken' });
-      res.status(400).json({ error: e.message });
-    }
-  });
-
-  router.patch('/:slotId', requireAdmin, async (req, res) => {
-    const slot = await slotDao.updateMeta(req.params.slotId, req.body);
-    if (!slot) return res.status(404).end();
-    res.json(slot);
-  });
-
-  router.delete('/:slotId', requireAdmin, async (req, res) => {
-    // 실제 teardown 은 Phase 4 에서 추가. Phase 1 은 DB row 삭제만.
-    await slotDao.remove(req.params.slotId);
-    res.status(204).end();
-  });
-
-  router.get('/:slotId/versions', requireAdmin, async (req, res) => {
-    res.json(await versionDao.listBySlot(req.params.slotId));
-  });
-
-  module.exports = router;
-  ```
-- [ ] `server.js` 에서 마운트:
-  ```js
-  const psRouter = require('./routes/pixelStreaming');
-  app.use('/api/projects/:projectId/ps-slots', psRouter);
-  ```
-- [ ] 실행 → PASS.
-- [ ] Commit: `git commit -am "feat(ps): slot CRUD routes"`
+- [ ] **Step 1: EventEmitter 기반 로그 버스 (slotId,versionId 키)**
+- [ ] **Step 2: GET build-log 라우트 → res.setHeader text/event-stream, 버스에 리스너 등록**
+- [ ] **Step 3: 클라이언트 disconnect 시 정리**
+- [ ] **Step 4: 테스트 (supertest + sse-stream)**
+- [ ] **Step 5: 커밋 `feat: build log SSE stream`**
 
 ---
 
-## Phase 2 — 업로드 & 압축 해제 검증
+## Phase 3 — Docker 템플릿 + 이미지 빌드·전송
 
-### Task 2-1: tus-node-server 설치 & 업로드 초기화
+### Task 3.1: Dockerfile 템플릿 (6 스트리머)
 
-**Files:**
-- Modify: `package.json`
-- Create: `services/pixelStreaming/uploadService.js`
-- Test: `tests/pixelStreaming/uploadService.test.js`
+**파일:**
+- Create: `orbitron/templates/pixel-streaming/Dockerfile`
 
-- [ ] 설치:
-  ```bash
-  npm install @tus/server @tus/file-store
-  ```
-- [ ] 업로드 디렉토리 보장 — `/srv/pixelstreaming/uploads-incoming/` (tus 임시 저장).
-- [ ] 구현:
-  ```js
-  const { Server } = require('@tus/server');
-  const { FileStore } = require('@tus/file-store');
-  const path = require('path');
-  const fs = require('fs');
-  const { STORAGE_ROOT, MAX_UPLOAD_BYTES } = require('./constants');
+```dockerfile
+FROM nvidia/cuda:12.6.0-base-ubuntu22.04
 
-  const INCOMING = path.join(STORAGE_ROOT, 'uploads-incoming');
-  fs.mkdirSync(INCOMING, { recursive: true });
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y \
+    xvfb ffmpeg curl ca-certificates libvulkan1 mesa-vulkan-drivers \
+    nodejs npm \
+ && rm -rf /var/lib/apt/lists/*
 
-  const tusServer = new Server({
-    path: '/api/uploads',
-    datastore: new FileStore({ directory: INCOMING }),
-    maxSize: MAX_UPLOAD_BYTES,
-    namingFunction: (req) => {
-      // upload_id = uuid + slotId metadata
-      const meta = req.headers['upload-metadata'] || '';
-      const uuid = require('crypto').randomUUID();
-      return uuid;
-    },
-  });
+RUN curl -L https://github.com/EpicGamesExt/PixelStreamingInfrastructure/releases/download/v5.7/Wilbur-linux.tar.gz \
+ | tar -xz -C /opt && mv /opt/Wilbur* /opt/wilbur
 
-  module.exports = { tusServer, INCOMING };
-  ```
-- [ ] `server.js` 에 연결:
-  ```js
-  const { tusServer } = require('./services/pixelStreaming/uploadService');
-  app.all('/api/uploads/*', (req, res) => tusServer.handle(req, res));
-  app.all('/api/uploads', (req, res) => tusServer.handle(req, res));
-  ```
-- [ ] 테스트 — curl 로 빈 POST → 201 Location 헤더 확인:
-  ```js
-  test('tus creation returns Location', async () => {
-    const r = await request(app)
-      .post('/api/uploads')
-      .set('Tus-Resumable', '1.0.0')
-      .set('Upload-Length', '1024')
-      .set('Upload-Metadata', 'filename dGVzdC56aXA='); // "test.zip" base64
-    expect(r.status).toBe(201);
-    expect(r.headers.location).toMatch(/\/api\/uploads\/[a-f0-9-]+/);
-  });
-  ```
-- [ ] 실행 → PASS.
-- [ ] Commit: `git commit -am "feat(ps): tus upload server mounted"`
+WORKDIR /app
+COPY Package/ /app/Package/
 
-### Task 2-2: 업로드 초기화 라우트 (슬롯 연동)
+ENV MAX_PLAYERS=6
+ENV STREAMER_COUNT=6
+ENV DISPLAY=:0
+ENV TWINVERSE_ADMIN_KEY=""
 
-**Files:**
-- Modify: `routes/pixelStreaming.js`
-- Modify: `services/pixelStreaming/uploadService.js`
-- Test: `tests/pixelStreaming/uploadService.test.js`
+EXPOSE 8080 8888-8893
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
+```
 
-- [ ] `POST /api/projects/:projectId/ps-slots/:slotId/upload/initiate` 라우트 추가.
-  - 응답: `{upload_id, upload_url: '/api/uploads', chunk_size: 64*1024*1024}`.
-  - upload_id 와 slotId 매핑 메모리/DB 저장 (간단하게 `ps_pending_uploads` 테이블 or 인메모리 Map + cleanup).
-- [ ] 선택: 단순화 위해 tus metadata 에 `slot_id=<N>` 를 포함하도록 클라이언트에 강제. 서버는 finalize 시 metadata 에서 slot_id 추출.
-- [ ] 구현:
-  ```js
-  router.post('/:slotId/upload/initiate', requireAdmin, async (req, res) => {
-    const slot = await slotDao.getById(req.params.slotId);
-    if (!slot) return res.status(404).end();
-    res.json({
-      upload_url: '/api/uploads',
-      required_metadata: {
-        slot_id: String(slot.id),
-        filename: 'must include .zip',
-      },
-      chunk_size: 64 * 1024 * 1024,
-    });
-  });
-  ```
-- [ ] Commit: `git commit -am "feat(ps): upload initiate endpoint"`
+- [ ] **Step 1: Dockerfile + entrypoint.sh 작성** (entrypoint: xvfb 기동 → Wilbur 기동 → UE5 Listen Server launch with `-PixelStreamingURL=ws://localhost:8888` 등 6 스트리머 URL)
+- [ ] **Step 2: 빈 Package/ 로 docker build 테스트 (실패하지 않는지만 확인)**
+- [ ] **Step 3: 커밋 `feat: multiplayer PS Dockerfile template`**
 
-### Task 2-3: finalize 훅 — 업로드 완료 감지
+### Task 3.2: docker-compose 템플릿
 
-**Files:**
-- Modify: `services/pixelStreaming/uploadService.js`
-- Create: `services/pixelStreaming/pipeline.js`
-- Test: `tests/pixelStreaming/pipeline.test.js`
+**파일:**
+- Create: `orbitron/templates/pixel-streaming/docker-compose.yml.tpl`
 
-- [ ] tus-node-server 의 `POST_FINISH` 이벤트에 훅 연결:
-  ```js
-  tusServer.on('POST_FINISH', async (req, res, upload) => {
-    const meta = upload.metadata || {};
-    const slotId = parseInt(meta.slot_id, 10);
-    if (!slotId) return; // invalid upload, ignore
-    const pipeline = require('./pipeline');
-    pipeline.run({
-      slotId,
-      uploadPath: path.join(INCOMING, upload.id),
-      uploadedBy: /* JWT 에서 추출 필요 — Task 2-4 에서 처리 */ 1,
-    }).catch(err => console.error('pipeline failed', err));
-  });
-  ```
-- [ ] `pipeline.js` 스켈레톤:
-  ```js
-  const path = require('path');
-  const fs = require('fs/promises');
-  const versionDao = require('./versionDao');
-  const { STORAGE_ROOT, BUILD_STATUS } = require('./constants');
-  const slotDao = require('./slotDao');
+```yaml
+services:
+  ps:
+    image: "{{IMAGE_TAG}}"
+    container_name: "ps-{{SLOT_NAME}}"
+    restart: on-failure:3
+    runtime: nvidia
+    read_only: true
+    tmpfs:
+      - /tmp
+    environment:
+      MAX_PLAYERS: "{{MAX_PLAYERS}}"
+      TWINVERSE_ADMIN_KEY: "{{ADMIN_KEY}}"
+    ports:
+      - "{{CONTAINER_PORT}}:8080"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+```
 
-  async function run({ slotId, uploadPath, uploadedBy }) {
-    const slot = await slotDao.getById(slotId);
-    const version = await versionDao.createNext({ slotId, uploadedBy });
-    const versionDir = path.join(STORAGE_ROOT, `project-${slot.project_id}`, slot.name, 'versions', version.version_label);
-    await fs.mkdir(versionDir, { recursive: true });
-    const zipDest = path.join(versionDir, 'upload.zip');
-    await fs.rename(uploadPath, zipDest);
-    // 다음 단계: extract → build → deploy. 다음 태스크에서 채움.
-    await versionDao.updateStatus(version.id, BUILD_STATUS.EXTRACTING);
-    // TODO: Task 2-4에서 extractor 호출
-    return version;
-  }
+- [ ] **Step 1: 템플릿 + 치환 헬퍼 작성**
+- [ ] **Step 2: 커밋 `feat: compose template with GPU + read-only`**
 
-  module.exports = { run };
-  ```
-- [ ] 테스트: 더미 zip 업로드 시 `versionDir/upload.zip` 생성 + status=extracting:
-  ```js
-  test('pipeline moves upload and creates version row', async () => {
-    const slotId = await createTestSlot();
-    const tmp = await makeTempZip();
-    const v = await pipeline.run({ slotId, uploadPath: tmp, uploadedBy: 1 });
-    expect(fs.existsSync(path.join(STORAGE_ROOT, `project-${...}/v1/upload.zip`))).toBe(true);
-    expect(v.build_status).toBe('uploading'); // createNext 초기값
-  });
-  ```
-- [ ] Commit: `git commit -am "feat(ps): pipeline skeleton + finalize hook"`
+### Task 3.3: imageBuilder.js
 
-### Task 2-4: zip 검증 & 추출 (보안 포함)
+**파일:**
+- Create: `orbitron/services/ps/imageBuilder.js`
+- Create: `orbitron/services/ps/__tests__/imageBuilder.test.js`
 
-**Files:**
-- Create: `services/pixelStreaming/extractor.js`
-- Test: `tests/pixelStreaming/extractor.test.js`
+- [ ] **Step 1: 테스트** (mock child_process, 성공 시 tag 반환, 실패 시 stderr 로그 포함 에러)
+- [ ] **Step 2: 구현** — `buildImage({versionDir, imageTag, onLog})`. `docker build` 실시간 stdout/stderr → onLog 콜백 + ps_versions.build_log 누적
+- [ ] **Step 3: PASS**
+- [ ] **Step 4: 커밋 `feat: image builder with log streaming`**
 
-- [ ] `npm install yauzl` (path traversal 안전한 zip 라이브러리).
-- [ ] 테스트 먼저:
-  ```js
-  const { extractAndValidate } = require('../../services/pixelStreaming/extractor');
+### Task 3.4: imageTransfer.js (save | load)
 
-  test('rejects zip with path traversal', async () => {
-    const zip = await makeZipWithEntry('../../etc/passwd', 'bad');
-    await expect(extractAndValidate(zip, '/tmp/test-extract')).rejects.toThrow(/unsafe/);
-  });
+**파일:**
+- Create: `orbitron/services/ps/imageTransfer.js`
 
-  test('requires Shipping binary', async () => {
-    const zip = await makeZipWithEntry('Package/Linux/Foo/Content/Paks/a.ucas', 'x'.repeat(100));
-    await expect(extractAndValidate(zip, '/tmp/test-extract')).rejects.toThrow(/Shipping/);
-  });
+- [ ] **Step 1: 테스트 (mock ssh spawn, 3회 재시도)**
+- [ ] **Step 2: 구현** — `transferToGpu(imageTag)`: `docker save ${tag} | ssh ${GPU_USER}@${GPU_HOST} 'docker load'`
+- [ ] **Step 3: 커밋 `feat: image transfer via save|load pipe`**
 
-  test('requires at least one .ucas', async () => {
-    const zip = await makeZipWithEntry('Package/Linux/Foo/Binaries/Linux/Foo-Linux-Shipping', 'bin');
-    await expect(extractAndValidate(zip, '/tmp/test-extract')).rejects.toThrow(/ucas/);
-  });
+### Task 3.5: remoteDeploy.js
 
-  test('valid package extracts successfully', async () => {
-    const zip = await makeValidPackageZip(); // 헬퍼
-    await extractAndValidate(zip, '/tmp/test-extract');
-    expect(fs.existsSync('/tmp/test-extract/Package/Linux')).toBe(true);
-  });
-  ```
-- [ ] 실행 → FAIL.
-- [ ] 구현:
-  ```js
-  const yauzl = require('yauzl');
-  const path = require('path');
-  const fs = require('fs/promises');
-  const fsSync = require('fs');
+**파일:**
+- Create: `orbitron/services/ps/remoteDeploy.js`
 
-  async function extractAndValidate(zipPath, destDir) {
-    await fs.mkdir(destDir, { recursive: true });
-    const resolvedDest = path.resolve(destDir);
+- [ ] **Step 1: `deployToGpu({slot, imageTag, adminKey})`**:
+  - compose yaml 렌더 → scp 로 `/opt/ps-slots/<slot>/docker-compose.yml`
+  - 이전 컨테이너 `docker compose down`
+  - on-demand: 이 시점엔 start 안 함
+- [ ] **Step 2: 테스트 (mock ssh)**
+- [ ] **Step 3: 커밋 `feat: remote deploy updater`**
 
-    await new Promise((resolve, reject) => {
-      yauzl.open(zipPath, { lazyEntries: true }, (err, zip) => {
-        if (err) return reject(err);
-        zip.on('entry', async (entry) => {
-          const target = path.resolve(path.join(destDir, entry.fileName));
-          if (!target.startsWith(resolvedDest + path.sep)) {
-            return reject(new Error(`unsafe entry: ${entry.fileName}`));
-          }
-          if (/\/$/.test(entry.fileName)) {
-            await fs.mkdir(target, { recursive: true });
-            return zip.readEntry();
-          }
-          zip.openReadStream(entry, async (err, rs) => {
-            if (err) return reject(err);
-            await fs.mkdir(path.dirname(target), { recursive: true });
-            const ws = fsSync.createWriteStream(target);
-            rs.pipe(ws);
-            ws.on('finish', () => zip.readEntry());
-            ws.on('error', reject);
-          });
-        });
-        zip.on('end', resolve);
-        zip.on('error', reject);
-        zip.readEntry();
-      });
-    });
+### Task 3.6: 빌드 파이프라인 조립
 
-    // 필수 파일 검증
-    const glob = require('glob');
-    const shipping = glob.sync(path.join(destDir, 'Package/Linux/*/Binaries/Linux/*-Linux-Shipping'));
-    if (!shipping.length) throw new Error('missing *-Linux-Shipping binary');
-    const ucas = glob.sync(path.join(destDir, 'Package/Linux/*/Content/Paks/*.ucas'));
-    if (!ucas.length) throw new Error('missing .ucas files in Content/Paks');
+**파일:**
+- Create: `orbitron/services/ps/buildPipeline.js`
 
-    return { shippingBinary: shipping[0], gameName: path.basename(path.dirname(path.dirname(path.dirname(shipping[0])))) };
-  }
-
-  module.exports = { extractAndValidate };
-  ```
-- [ ] 실행 → PASS.
-- [ ] Commit: `git commit -am "feat(ps): zip extractor with path traversal + content validation"`
-
-### Task 2-5: pipeline 에서 extractor 호출
-
-**Files:**
-- Modify: `services/pixelStreaming/pipeline.js`
-
-- [ ] `run()` 안에서 extractor 호출 + status 갱신 + 실패 처리 추가:
-  ```js
-  const { extractAndValidate } = require('./extractor');
-
-  async function run({ slotId, uploadPath, uploadedBy }) {
-    const slot = await slotDao.getById(slotId);
-    const version = await versionDao.createNext({ slotId, uploadedBy });
-    const versionDir = path.join(STORAGE_ROOT, `project-${slot.project_id}`, slot.name, 'versions', version.version_label);
-    await fs.mkdir(versionDir, { recursive: true });
-    const zipDest = path.join(versionDir, 'upload.zip');
-    await fs.rename(uploadPath, zipDest);
-
-    try {
-      await versionDao.updateStatus(version.id, BUILD_STATUS.EXTRACTING);
-      const meta = await extractAndValidate(zipDest, versionDir);
-      await versionDao.updateStatus(version.id, BUILD_STATUS.BUILDING,
-        `\nExtracted. game=${meta.gameName}\n`);
-      // Phase 3 에서 빌드 호출
-    } catch (e) {
-      await versionDao.updateStatus(version.id, BUILD_STATUS.FAILED, `\nERROR: ${e.message}\n`);
-      throw e;
-    }
-    return version;
-  }
-  ```
-- [ ] Commit: `git commit -am "feat(ps): wire extractor into pipeline"`
+- [ ] **Step 1: `runBuild(versionId)`**: 상태 전이 `uploading → validating → building → ready`, 실패 시 `failed`. 각 단계마다 buildLogStream 에 publish
+- [ ] **Step 2: finalize 훅에서 `runBuild(versionId)` 백그라운드 실행**
+- [ ] **Step 3: E2E 테스트: 더미 zip(템플릿 샘플) 업로드 → ready 상태 도달 (staging)**
+- [ ] **Step 4: 커밋 `feat: end-to-end build pipeline`**
 
 ---
 
-## Phase 3 — Docker 이미지 빌드 & GPU 호스트 전송
+## Phase 4 — 활성화 · 롤백 · DNS · Tunnel
 
-### Task 3-1: UE5 Pixel Streaming Dockerfile 템플릿
+### Task 4.1: activation.js (atomic symlink)
 
-**Files:**
-- Create: `templates/pixel-streaming/Dockerfile`
-- Create: `templates/pixel-streaming/entrypoint.sh`
+**파일:**
+- Create: `orbitron/services/ps/activation.js`
 
-- [ ] 기존 `TwinversePS2-Deploy/Dockerfile` 을 참고(Orbitron 개발자는 `git clone ChoonwooLim/TwinversePS2-Deploy` 로 확인). 핵심 요소:
-  - Base: `nvidia/cuda:12.6.0-base-ubuntu22.04`
-  - 의존성: xvfb, mesa, vulkan, pulseaudio, ffmpeg, libnss3, libasound2, libxshmfence1
-  - Wilbur Pixel Streaming frontend 복사 (npm install & build)
-  - UE5 Shipping 바이너리 위치: `/opt/ue5/Package/Linux/<GAME>/Binaries/Linux/<GAME>-Linux-Shipping`
-  - ENTRYPOINT: xvfb-run + Shipping 실행, Wilbur signaling, player 구동
-- [ ] Dockerfile 작성 (실제 동작 검증된 기존 파일 베이스로):
-  ```dockerfile
-  FROM nvidia/cuda:12.6.0-base-ubuntu22.04
+- [ ] **Step 1: 테스트** (symlink 원자 교체, 기존 유지 · 롤백 시나리오)
+- [ ] **Step 2: 구현** — `activateVersion(slot, versionId)`: 임시 심볼릭 생성 후 `rename()` 로 atomic 교체, `ps_slots.active_version` 업데이트, 구버전 FIFO 프룬 트리거
+- [ ] **Step 3: 커밋 `feat: atomic version activation`**
 
-  ARG DEBIAN_FRONTEND=noninteractive
-  RUN apt-get update && apt-get install -y --no-install-recommends \
-      xvfb pulseaudio ffmpeg mesa-utils libvulkan1 vulkan-tools \
-      libnss3 libasound2 libxshmfence1 libxkbcommon0 \
-      curl ca-certificates nodejs npm \
-    && rm -rf /var/lib/apt/lists/*
+### Task 4.2: rollback.js
 
-  # Wilbur (Pixel Streaming frontend + signaling)
-  # 버전 고정: Orbitron 개발자가 Phase 3-1 착수 시 Epic 최신 호환 태그 확인
-  RUN git clone --depth 1 --branch 5.5 \
-      https://github.com/EpicGames/PixelStreamingInfrastructure /opt/psi \
-    && cd /opt/psi/Frontend/implementations/typescript && npm ci && npm run build \
-    && cd /opt/psi/SignallingWebServer && npm ci
+**파일:**
+- Create: `orbitron/services/ps/rollback.js`
+- Modify: `orbitron/routes/psSlots.js` (activate endpoint)
 
-  # UE5 패키지 복사 (빌드 context = versions/v<N>/Package)
-  COPY Linux /opt/ue5/Package/Linux
+- [ ] **Step 1: 테스트 (활성 버전과 같은 걸 activate 시도 idempotent, 잘못된 버전 400)**
+- [ ] **Step 2: 구현 (activation.js 재사용)**
+- [ ] **Step 3: 커밋 `feat: rollback endpoint`**
 
-  COPY entrypoint.sh /usr/local/bin/entrypoint.sh
-  RUN chmod +x /usr/local/bin/entrypoint.sh
+### Task 4.3: cloudflareDns.js
 
-  EXPOSE 8080 8888
-  ENV DISPLAY=:99
-  ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-  ```
-- [ ] `entrypoint.sh` 작성 (기존 `TwinversePS2-Deploy/scripts/entrypoint.sh` 베이스):
-  ```bash
-  #!/usr/bin/env bash
-  set -e
-  # Xvfb
-  Xvfb :99 -screen 0 1920x1080x24 +extension GLX +render -noreset &
+**파일:**
+- Create: `orbitron/services/ps/cloudflareDns.js`
 
-  # Signaling
-  node /opt/psi/SignallingWebServer/cirrus.js \
-    --HttpPort=${WILBUR_PLAYER_PORT:-8080} \
-    --StreamerPort=${WILBUR_STREAMER_PORT:-8888} &
+- [ ] **Step 1: 테스트 (nock 으로 CF API mock)**
+- [ ] **Step 2: 구현** — `createCname(subdomain, tunnelTarget)`, `deleteCname(subdomain)`. 이미 존재 시 idempotent
+- [ ] **Step 3: 커밋 `feat: Cloudflare DNS automation`**
 
-  # UE5 Shipping
-  GAME_BIN=$(ls /opt/ue5/Package/Linux/*/Binaries/Linux/*-Linux-Shipping | head -1)
-  exec "$GAME_BIN" \
-    -AudioMixer -RenderOffScreen -ForceRes \
-    -ResX=1920 -ResY=1080 \
-    -PixelStreamingIP=localhost \
-    -PixelStreamingPort=${WILBUR_STREAMER_PORT:-8888}
-  ```
-- [ ] Commit: `git commit -am "feat(ps): Pixel Streaming Dockerfile template"`
+### Task 4.4: cloudflaredIngress.js
 
-### Task 3-2: 이미지 빌드 실행기
+**파일:**
+- Create: `orbitron/services/ps/cloudflaredIngress.js`
 
-**Files:**
-- Create: `services/pixelStreaming/imageBuilder.js`
-- Test: `tests/pixelStreaming/imageBuilder.test.js`
+- [ ] **Step 1: Phase 0 조사로 밝혀진 cloudflared 설정 파일 위치 사용**
+- [ ] **Step 2: `addIngress(subdomain, gpuHost, gpuPort)` / `removeIngress(subdomain)` — yaml 파싱 · 수정 · SIGHUP**
+- [ ] **Step 3: 테스트 (staging config 파일에 적용 후 rollback)**
+- [ ] **Step 4: 커밋 `feat: cloudflared ingress management`**
 
-- [ ] 빌드는 `docker build` 자식 프로세스로 실행. 로그 스트림을 SSE 로 내보낼 수 있어야 함.
-- [ ] 구현:
-  ```js
-  const { spawn } = require('child_process');
-  const path = require('path');
-  const fs = require('fs/promises');
-  const { IMAGE_NAMESPACE } = require('./constants');
+### Task 4.5: 슬롯 생성 시 DNS/ingress 훅
 
-  function buildImage({ versionDir, slotName, versionLabel, onLog }) {
-    return new Promise(async (resolve, reject) => {
-      // 템플릿 파일을 versionDir 에 복사 (Docker build context 한정)
-      const template = path.resolve(__dirname, '../../templates/pixel-streaming');
-      await fs.copyFile(path.join(template, 'Dockerfile'), path.join(versionDir, 'Dockerfile'));
-      await fs.copyFile(path.join(template, 'entrypoint.sh'), path.join(versionDir, 'entrypoint.sh'));
+**파일:**
+- Modify: `orbitron/routes/psSlots.js`
 
-      const tag = `${IMAGE_NAMESPACE}-${slotName}:${versionLabel}`;
-      // build context = versionDir/Package → COPY Linux 경로 유효하려면 context=versionDir/Package
-      const ctx = path.join(versionDir, 'Package');
-      // Dockerfile/entrypoint 도 context 안으로 이동
-      await fs.copyFile(path.join(versionDir, 'Dockerfile'), path.join(ctx, 'Dockerfile'));
-      await fs.copyFile(path.join(versionDir, 'entrypoint.sh'), path.join(ctx, 'entrypoint.sh'));
-
-      const proc = spawn('docker', ['build', '-t', tag, ctx]);
-      proc.stdout.on('data', d => onLog?.(d.toString()));
-      proc.stderr.on('data', d => onLog?.(d.toString()));
-      proc.on('close', code => code === 0 ? resolve(tag) : reject(new Error(`docker build exit ${code}`)));
-    });
-  }
-
-  module.exports = { buildImage };
-  ```
-- [ ] 테스트는 실제 Docker 데몬 필요. CI 에서 건너뛰고 수동 smoke test 만 (문서화):
-  ```js
-  test.skip('buildImage returns tag on success', async () => {
-    // skipped: requires docker, run manually
-  });
-  ```
-- [ ] Commit: `git commit -am "feat(ps): docker image builder"`
-
-### Task 3-3: 이미지 전송 (save | ssh load)
-
-**Files:**
-- Create: `services/pixelStreaming/imageTransfer.js`
-- Test: `tests/pixelStreaming/imageTransfer.test.js`
-
-- [ ] 구현:
-  ```js
-  const { spawn } = require('child_process');
-  const { GPU_HOST, GPU_USER } = require('./constants');
-
-  function transferImage({ tag, onLog }) {
-    return new Promise((resolve, reject) => {
-      const save = spawn('docker', ['save', tag]);
-      const load = spawn('ssh', [`${GPU_USER}@${GPU_HOST}`, 'docker', 'load']);
-      save.stdout.pipe(load.stdin);
-      save.stderr.on('data', d => onLog?.('[save] ' + d));
-      load.stdout.on('data', d => onLog?.('[load] ' + d));
-      load.stderr.on('data', d => onLog?.('[load] ' + d));
-      save.on('error', reject); load.on('error', reject);
-      load.on('close', code => code === 0 ? resolve(tag) : reject(new Error(`load exit ${code}`)));
-    });
-  }
-
-  module.exports = { transferImage };
-  ```
-- [ ] 테스트는 수동(`test.skip`) + smoke 스크립트 `scripts/test-transfer.sh` 로.
-- [ ] Commit: `git commit -am "feat(ps): image transfer via docker save | ssh docker load"`
-
-### Task 3-4: 슬롯 compose 파일 템플릿 & 원격 배포
-
-**Files:**
-- Create: `services/pixelStreaming/remoteDeploy.js`
-- Test: `tests/pixelStreaming/remoteDeploy.test.js`
-
-- [ ] compose 렌더링 + 원격 기록:
-  ```js
-  const { spawn } = require('child_process');
-  const { GPU_HOST, GPU_USER, GPU_SLOTS_ROOT } = require('./constants');
-
-  function renderCompose({ imageTag, slotName, containerPort }) {
-    return `services:
-    ps:
-      image: ${imageTag}
-      container_name: ps-${slotName}
-      restart: "no"
-      runtime: nvidia
-      environment:
-        - NVIDIA_VISIBLE_DEVICES=all
-        - NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics,display,video
-        - WILBUR_PLAYER_PORT=8080
-        - WILBUR_STREAMER_PORT=8888
-      ports:
-        - "${containerPort}:8080"
-      healthcheck:
-        test: ["CMD", "curl", "-f", "http://localhost:8080/"]
-        interval: 10s
-        timeout: 3s
-        retries: 6
-  `;
-  }
-
-  function runSsh(cmd) {
-    return new Promise((resolve, reject) => {
-      const p = spawn('ssh', [`${GPU_USER}@${GPU_HOST}`, cmd]);
-      let out = '', err = '';
-      p.stdout.on('data', d => out += d);
-      p.stderr.on('data', d => err += d);
-      p.on('close', code => code === 0 ? resolve(out) : reject(new Error(err || `exit ${code}`)));
-    });
-  }
-
-  async function writeSlotCompose({ slotName, compose }) {
-    const dir = `${GPU_SLOTS_ROOT}/${slotName}`;
-    await runSsh(`mkdir -p ${dir}`);
-    // compose 를 heredoc 으로 전송
-    const escaped = compose.replace(/'/g, `'\\''`);
-    await runSsh(`cat > ${dir}/docker-compose.yml <<'EOF'\n${escaped}\nEOF`);
-  }
-
-  async function removeSlotRemote(slotName) {
-    await runSsh(`cd ${GPU_SLOTS_ROOT}/${slotName} && docker compose down || true`);
-    await runSsh(`rm -rf ${GPU_SLOTS_ROOT}/${slotName}`);
-  }
-
-  module.exports = { renderCompose, writeSlotCompose, removeSlotRemote, runSsh };
-  ```
-- [ ] 단위 테스트 — `renderCompose` 가 올바른 YAML 생성하는지:
-  ```js
-  test('renderCompose includes image tag and port', () => {
-    const y = renderCompose({ imageTag: 'foo:v1', slotName: 'office', containerPort: 8081 });
-    expect(y).toMatch('image: foo:v1');
-    expect(y).toMatch('"8081:8080"');
-    expect(y).toMatch('container_name: ps-office');
-  });
-  ```
-- [ ] Commit: `git commit -am "feat(ps): remote deploy via ssh + compose"`
-
-### Task 3-5: pipeline.js 에 빌드/전송 단계 연결
-
-**Files:**
-- Modify: `services/pixelStreaming/pipeline.js`
-
-- [ ] `run()` 확장 — extract 성공 후 build → transfer → writeCompose 호출:
-  ```js
-  const { buildImage } = require('./imageBuilder');
-  const { transferImage } = require('./imageTransfer');
-  const { renderCompose, writeSlotCompose } = require('./remoteDeploy');
-
-  async function run({ slotId, uploadPath, uploadedBy }) {
-    const slot = await slotDao.getById(slotId);
-    const version = await versionDao.createNext({ slotId, uploadedBy });
-    const versionDir = ...; // 기존 코드 유지
-    const zipDest = path.join(versionDir, 'upload.zip');
-    await fs.rename(uploadPath, zipDest);
-
-    const appendLog = (txt) => versionDao.updateStatus(version.id, undefined, txt);
-    try {
-      await versionDao.updateStatus(version.id, BUILD_STATUS.EXTRACTING);
-      await extractAndValidate(zipDest, versionDir);
-
-      await versionDao.updateStatus(version.id, BUILD_STATUS.BUILDING);
-      const tag = await buildImage({
-        versionDir, slotName: slot.name, versionLabel: version.version_label,
-        onLog: appendLog,
-      });
-      await pool.query('UPDATE ps_versions SET image_tag=$1 WHERE id=$2', [tag, version.id]);
-
-      await transferImage({ tag, onLog: appendLog });
-      const compose = renderCompose({ imageTag: tag, slotName: slot.name, containerPort: slot.container_port });
-      await writeSlotCompose({ slotName: slot.name, compose });
-
-      await versionDao.updateStatus(version.id, BUILD_STATUS.READY);
-      // Phase 4 에서 active_version 교체 & 기존 컨테이너 정리 추가
-    } catch (e) {
-      await versionDao.updateStatus(version.id, BUILD_STATUS.FAILED, `\nERROR: ${e.message}\n`);
-      throw e;
-    }
-    return version;
-  }
-  ```
-- [ ] Commit: `git commit -am "feat(ps): pipeline runs build+transfer+compose"`
-
-### Task 3-6: 빌드 로그 SSE 엔드포인트
-
-**Files:**
-- Modify: `routes/pixelStreaming.js`
-- Test: `tests/routes/pixelStreaming.test.js`
-
-- [ ] 구현:
-  ```js
-  router.get('/:slotId/versions/:versionId/build-log', requireAdmin, async (req, res) => {
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.flushHeaders();
-
-    let lastLen = 0;
-    const timer = setInterval(async () => {
-      const { rows } = await pool.query(
-        'SELECT build_log, build_status FROM ps_versions WHERE id=$1',
-        [req.params.versionId]
-      );
-      if (!rows.length) return;
-      const v = rows[0];
-      if (v.build_log && v.build_log.length > lastLen) {
-        res.write(`data: ${JSON.stringify({ log: v.build_log.slice(lastLen) })}\n\n`);
-        lastLen = v.build_log.length;
-      }
-      if (['ready','failed'].includes(v.build_status)) {
-        res.write(`event: done\ndata: ${JSON.stringify({ status: v.build_status })}\n\n`);
-        clearInterval(timer);
-        res.end();
-      }
-    }, 1000);
-    req.on('close', () => clearInterval(timer));
-  });
-  ```
-- [ ] 테스트: 짧은 빌드 시뮬레이션 + SSE 수신 확인 (단순 integration).
-- [ ] Commit: `git commit -am "feat(ps): build log SSE stream"`
+- [ ] **Step 1: POST slot 성공 후 cloudflareDns + cloudflaredIngress 호출, 실패 시 slot row rollback**
+- [ ] **Step 2: DELETE slot 에서 역순 정리**
+- [ ] **Step 3: 테스트 + E2E (staging 서브도메인)**
+- [ ] **Step 4: 커밋 `feat: wire DNS/ingress into slot lifecycle`**
 
 ---
 
-## Phase 4 — 버전 활성화, 롤백, Cloudflare DNS
+## Phase 5 — 런타임 · 세션 · 큐
 
-### Task 4-1: symlink 원자적 교체 유틸
+### Task 5.1: runtimeControl.js
 
-**Files:**
-- Create: `services/pixelStreaming/activation.js`
-- Test: `tests/pixelStreaming/activation.test.js`
+**파일:**
+- Create: `orbitron/services/ps/runtimeControl.js`
 
-- [ ] 테스트 먼저:
-  ```js
-  const { activateVersion } = require('../../services/pixelStreaming/activation');
+- [ ] **Step 1: 테스트 (mock ssh)**
+- [ ] **Step 2: 구현**:
+  - `startSlot(slot)`: ssh → docker compose up -d, 헬스폴링 (최대 START_TIMEOUT_S), ps_slots.state='running'
+  - `stopSlot(slot)`: ssh → docker compose stop, state='stopped'
+  - `statusSlot(slot)`: docker ps --filter + /healthz 조회
+- [ ] **Step 3: 커밋 `feat: runtime control for slots`**
 
-  test('activateVersion switches current symlink atomically', async () => {
-    const base = tmpDir();
-    fs.mkdirSync(path.join(base, 'versions/v1'), { recursive: true });
-    fs.mkdirSync(path.join(base, 'versions/v2'), { recursive: true });
-    await activateVersion({ slotRoot: base, versionLabel: 'v1' });
-    expect(fs.readlinkSync(path.join(base, 'current'))).toBe('versions/v1');
-    await activateVersion({ slotRoot: base, versionLabel: 'v2' });
-    expect(fs.readlinkSync(path.join(base, 'current'))).toBe('versions/v2');
-  });
-  ```
-- [ ] 구현:
-  ```js
-  const fs = require('fs/promises');
-  const path = require('path');
+### Task 5.2: wilburClient.js — streamer 예약/해제
 
-  async function activateVersion({ slotRoot, versionLabel }) {
-    const tmp = path.join(slotRoot, `current.tmp.${process.pid}`);
-    try { await fs.unlink(tmp); } catch {}
-    await fs.symlink(`versions/${versionLabel}`, tmp);
-    await fs.rename(tmp, path.join(slotRoot, 'current'));
-  }
+**파일:**
+- Create: `orbitron/services/ps/wilburClient.js`
 
-  module.exports = { activateVersion };
-  ```
-- [ ] Commit: `git commit -am "feat(ps): atomic version activation via symlink rename"`
+- [ ] **Step 1: Phase 0 Wilbur admin API 조사 결과 기반 구현**
+- [ ] **Step 2: `reserveStreamer(slot, sessionId)` / `releaseStreamer(slot, streamerId)`**
+- [ ] **Step 3: 실패 시 예외, 호출 측에서 세션 생성 rollback**
+- [ ] **Step 4: 커밋 `feat: Wilbur streamer reservation client`**
 
-### Task 4-2: 기존 컨테이너 정리 + 활성화 파이프라인
+### Task 5.3: joinService.js — join/leave
 
-**Files:**
-- Modify: `services/pixelStreaming/pipeline.js`
+**파일:**
+- Create: `orbitron/services/ps/joinService.js`
+- Create: `orbitron/routes/psPublic.js`
 
-- [ ] `run()` 마지막에 추가:
-  ```js
-  const { activateVersion } = require('./activation');
-  const { runSsh } = require('./remoteDeploy');
+- [ ] **Step 1: 테스트**
+  - 로그인 유저 join → 슬롯 stopped 면 기동 → active 세션 생성
+  - 6 active 상태에서 7번째 join → queued
+  - 세션 leave → 큐 1명 승격, SSE 이벤트 발행
+  - 게스트 링크 토큰 검증 실패 → 401
+- [ ] **Step 2: 구현** (sessionDao + wilburClient + runtimeControl 조합, 전체 트랜잭션)
+- [ ] **Step 3: 라우트 `POST /api/ps-slots/:slotId/join`, `POST /api/ps-sessions/:id/leave`, `POST /api/ps-sessions/:id/heartbeat`**
+- [ ] **Step 4: 커밋 `feat: join/leave service with queue`**
 
-  // (BUILD_STATUS.READY 직전 블록 안쪽)
-  const slotRoot = path.join(STORAGE_ROOT, `project-${slot.project_id}`, slot.name);
-  await activateVersion({ slotRoot, versionLabel: version.version_label });
+### Task 5.4: 세션 이벤트 SSE
 
-  // 기존 실행 중 컨테이너 있으면 stop (on-demand 라 재시작은 사용자 Play 에 맡김)
-  await runSsh(`cd /opt/ps-slots/${slot.name} && docker compose down || true`);
+**파일:**
+- Create: `orbitron/services/ps/sessionEventBus.js`
+- Modify: `orbitron/routes/psPublic.js`
 
-  // DB active_version 업데이트
-  await pool.query('UPDATE ps_slots SET active_version=$1, state=$2 WHERE id=$3',
-    [version.id, 'stopped', slotId]);
+- [ ] **Step 1: sessionDao 변경 훅에서 EventBus 에 publish (queue_update, promoted, kicked)**
+- [ ] **Step 2: `GET /api/ps-sessions/:id/events` SSE 엔드포인트**
+- [ ] **Step 3: 테스트 (통합)**
+- [ ] **Step 4: 커밋 `feat: session event SSE`**
 
-  // FIFO 오래된 버전 삭제
-  const removed = await versionDao.pruneOldVersions(slotId);
-  for (const vid of removed) {
-    await removeVersionFiles(slotRoot, vid); // 다음 태스크에서 구현
-  }
-  ```
-- [ ] Commit: `git commit -am "feat(ps): activate version + cleanup old containers"`
+### Task 5.5: idleSweeper + ghostSweeper
 
-### Task 4-3: 롤백 API
+**파일:**
+- Create: `orbitron/services/ps/sweepers.js`
+- Modify: `orbitron/server.js` (setInterval 기동)
 
-**Files:**
-- Modify: `routes/pixelStreaming.js`
-- Create: `services/pixelStreaming/rollback.js`
-- Test: `tests/pixelStreaming/rollback.test.js`
+- [ ] **Step 1: 30초 주기**:
+  - pruneGhostSessions (heartbeat 만료)
+  - 슬롯별 active_count=0 이고 idle_timeout 경과 → stopSlot
+  - pinned 제외
+- [ ] **Step 2: 테스트 (시간 조작: sinon.useFakeTimers)**
+- [ ] **Step 3: 커밋 `feat: idle + ghost session sweepers`**
 
-- [ ] 구현:
-  ```js
-  // rollback.js
-  async function rollbackTo({ slotId, versionId }) {
-    const slot = await slotDao.getById(slotId);
-    const v = await pool.query('SELECT * FROM ps_versions WHERE id=$1 AND slot_id=$2',
-      [versionId, slotId]);
-    if (!v.rows.length) throw new Error('version not in slot');
-    if (v.rows[0].build_status !== 'ready') throw new Error('version not ready');
+### Task 5.6: 어드민 킥
 
-    const slotRoot = path.join(STORAGE_ROOT, `project-${slot.project_id}`, slot.name);
-    await activateVersion({ slotRoot, versionLabel: v.rows[0].version_label });
+**파일:**
+- Modify: `orbitron/routes/psSlots.js`
+- Modify: `orbitron/services/ps/joinService.js`
 
-    // compose 파일 재기록 (이미지 태그가 이 버전 것이어야 함)
-    const compose = renderCompose({
-      imageTag: v.rows[0].image_tag,
-      slotName: slot.name,
-      containerPort: slot.container_port,
-    });
-    await writeSlotCompose({ slotName: slot.name, compose });
+- [ ] **Step 1: `POST /api/projects/:pid/ps-slots/:sid/sessions/:sessionId/kick`**
+- [ ] **Step 2: UE5 admin 엔드포인트 호출 (`POST http://gpu-host:port/admin/kick/:playerId` with X-Admin-Key)**
+- [ ] **Step 3: DB session 제거 + SSE 'kicked' publish + 큐 승격**
+- [ ] **Step 4: 커밋 `feat: admin kick endpoint`**
 
-    await runSsh(`cd /opt/ps-slots/${slot.name} && docker compose down || true`);
-    await pool.query('UPDATE ps_slots SET active_version=$1, state=$2 WHERE id=$3',
-      [versionId, 'stopped', slotId]);
-  }
-  module.exports = { rollbackTo };
-  ```
-- [ ] Route:
-  ```js
-  router.post('/:slotId/versions/:versionId/activate', requireAdmin, async (req, res) => {
-    try {
-      await require('../services/pixelStreaming/rollback')
-        .rollbackTo({ slotId: req.params.slotId, versionId: req.params.versionId });
-      res.status(204).end();
-    } catch (e) {
-      res.status(400).json({ error: e.message });
-    }
-  });
-  ```
-- [ ] Commit: `git commit -am "feat(ps): rollback to prior version"`
+### Task 5.7: 게스트 링크
 
-### Task 4-4: Cloudflare DNS 자동화
+**파일:**
+- Create: `orbitron/services/ps/guestLinks.js`
+- Modify: `orbitron/routes/psSlots.js`
 
-**Files:**
-- Create: `services/pixelStreaming/cloudflareDns.js`
-- Test: `tests/pixelStreaming/cloudflareDns.test.js`
+- [ ] **Step 1: HMAC 서명 토큰 (secret=JWT_SECRET), payload={slot_id, exp, uses_left}**
+- [ ] **Step 2: CRUD 라우트 (`POST/GET/DELETE /api/projects/:pid/ps-slots/:sid/guest-links`)**
+- [ ] **Step 3: joinService 에서 token 검증 경로 추가**
+- [ ] **Step 4: 테스트 (만료, uses 소진, 폐기)**
+- [ ] **Step 5: 커밋 `feat: guest link generation and validation`**
 
-> Task 0-2 결과에 따라: 기존 Orbitron 에 Cloudflare 자동화 코드가 있으면 **재사용** (이 태스크는 wrapper 만 작성). 없으면 아래대로 신규 구현.
+### Task 5.8: 공개 세션 상태 API
 
-- [ ] `npm install cloudflare`.
-- [ ] 필요한 env vars: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ZONE_ID`, `CLOUDFLARE_TUNNEL_HOSTNAME` (예: `<uuid>.cfargotunnel.com`).
-- [ ] 구현:
-  ```js
-  const Cloudflare = require('cloudflare');
-  const cf = new Cloudflare({ token: process.env.CLOUDFLARE_API_TOKEN });
-  const ZONE = process.env.CLOUDFLARE_ZONE_ID;
-  const TUNNEL_HOST = process.env.CLOUDFLARE_TUNNEL_HOSTNAME;
+**파일:**
+- Modify: `orbitron/routes/psPublic.js`
 
-  async function ensureCname(subdomain) {
-    const existing = await cf.dnsRecords.browse(ZONE, { name: subdomain });
-    if (existing.result.length) return existing.result[0];
-    const r = await cf.dnsRecords.add(ZONE, {
-      type: 'CNAME', name: subdomain, content: TUNNEL_HOST, proxied: true,
-    });
-    return r.result;
-  }
-
-  async function removeCname(subdomain) {
-    const existing = await cf.dnsRecords.browse(ZONE, { name: subdomain });
-    for (const r of existing.result) {
-      await cf.dnsRecords.del(ZONE, r.id);
-    }
-  }
-
-  module.exports = { ensureCname, removeCname };
-  ```
-- [ ] 테스트는 실제 API 호출 대신 `cloudflare` mock 으로:
-  ```js
-  jest.mock('cloudflare');
-  ```
-- [ ] Commit: `git commit -am "feat(ps): cloudflare DNS automation"`
-
-### Task 4-5: cloudflared ingress 자동 갱신
-
-**Files:**
-- Create: `services/pixelStreaming/cloudflaredIngress.js`
-- Test: `tests/pixelStreaming/cloudflaredIngress.test.js`
-
-> cloudflared config 경로: `/home/stevenlim/.cloudflared/config.yml`. 수정 후 `sudo systemctl kill -s HUP cloudflared` 로 리로드.
-
-- [ ] 구현:
-  ```js
-  const fs = require('fs/promises');
-  const yaml = require('yaml');
-  const { spawn } = require('child_process');
-
-  const CFGD = '/home/stevenlim/.cloudflared/config.yml';
-
-  async function addIngressRule({ hostname, servicePort }) {
-    const doc = yaml.parse(await fs.readFile(CFGD, 'utf8'));
-    doc.ingress = doc.ingress || [];
-    // catch-all (service: http_status:404) 앞에 삽입
-    const idx = doc.ingress.findIndex(r => r.service && r.service.startsWith('http_status'));
-    const rule = { hostname, service: `http://twinverse-ai:${servicePort}` };
-    doc.ingress.splice(idx >= 0 ? idx : doc.ingress.length, 0, rule);
-    await fs.writeFile(CFGD, yaml.stringify(doc));
-    await reload();
-  }
-
-  async function removeIngressRule(hostname) {
-    const doc = yaml.parse(await fs.readFile(CFGD, 'utf8'));
-    doc.ingress = (doc.ingress || []).filter(r => r.hostname !== hostname);
-    await fs.writeFile(CFGD, yaml.stringify(doc));
-    await reload();
-  }
-
-  function reload() {
-    return new Promise((resolve, reject) => {
-      const p = spawn('sudo', ['systemctl', 'kill', '-s', 'HUP', 'cloudflared']);
-      p.on('close', c => c === 0 ? resolve() : reject(new Error(`SIGHUP exit ${c}`)));
-    });
-  }
-
-  module.exports = { addIngressRule, removeIngressRule };
-  ```
-- [ ] sudo 권한: `/etc/sudoers.d/orbitron` 에 `stevenlim ALL=(ALL) NOPASSWD: /bin/systemctl kill -s HUP cloudflared` 추가 필요 — Orbitron 개발자가 운영자에게 요청.
-- [ ] 단위 테스트: 임시 파일로 ingress 조작 검증.
-- [ ] Commit: `git commit -am "feat(ps): cloudflared ingress auto-update + SIGHUP"`
-
-### Task 4-6: 슬롯 생성 시 DNS + ingress 통합
-
-**Files:**
-- Modify: `routes/pixelStreaming.js`
-- Modify: `services/pixelStreaming/slotDao.js` (또는 라우트 레벨에서 처리)
-
-- [ ] `POST /ps-slots` 에서 DAO create 성공 후 DNS + ingress 호출. 실패 시 slot row 롤백(delete).
-- [ ] `DELETE /ps-slots/:id` 에서 reverse 호출 (ingress 제거 → DNS 제거 → 컨테이너 down → DB row 삭제).
-- [ ] 통합 테스트: mock CF API + 임시 cloudflared config.
-- [ ] Commit: `git commit -am "feat(ps): wire DNS+ingress to slot lifecycle"`
-
----
-
-## Phase 5 — 온디맨드 기동 & 유휴 자동 stop
-
-### Task 5-1: start/stop 라우트
-
-**Files:**
-- Modify: `routes/pixelStreaming.js`
-- Create: `services/pixelStreaming/runtimeControl.js`
-- Test: `tests/pixelStreaming/runtimeControl.test.js`
-
-- [ ] 구현:
-  ```js
-  const { runSsh } = require('./remoteDeploy');
-  const slotDao = require('./slotDao');
-  const pool = require('../../db/db');
-  const { START_TIMEOUT_S } = require('./constants');
-  const fetch = require('node-fetch');
-
-  async function start(slotId) {
-    const slot = await slotDao.getById(slotId);
-    if (!slot || !slot.active_version) throw new Error('slot has no active version');
-    await runSsh(`cd /opt/ps-slots/${slot.name} && docker compose up -d`);
-    // 헬스폴링
-    const deadline = Date.now() + START_TIMEOUT_S * 1000;
-    while (Date.now() < deadline) {
-      try {
-        const r = await fetch(`http://twinverse-ai:${slot.container_port}/`, { timeout: 2000 });
-        if (r.ok) break;
-      } catch {}
-      await new Promise(r => setTimeout(r, 2000));
-    }
-    await pool.query(
-      `UPDATE ps_slots SET state='running', last_activity_at=NOW() WHERE id=$1`, [slotId]);
-    return {
-      ready: true,
-      stream_url: `https://${slot.subdomain}`,
-      estimated_ready_in_s: 0,
-    };
-  }
-
-  async function stop(slotId) {
-    const slot = await slotDao.getById(slotId);
-    await runSsh(`cd /opt/ps-slots/${slot.name} && docker compose stop`);
-    await pool.query(`UPDATE ps_slots SET state='stopped' WHERE id=$1`, [slotId]);
-  }
-
-  async function status(slotId) {
-    const slot = await slotDao.getById(slotId);
-    // Phase 5-2 의 sessionCount 사용
-    const sessions = await require('./sessionProbe').count(slot);
-    return {
-      state: slot.state,
-      current_session_count: sessions,
-      last_activity_at: slot.last_activity_at,
-    };
-  }
-
-  module.exports = { start, stop, status };
-  ```
-- [ ] 라우트:
-  ```js
-  router.post('/:slotId/start', requireAdmin, async (req, res) => {
-    try { res.json(await require('../services/pixelStreaming/runtimeControl').start(req.params.slotId)); }
-    catch (e) { res.status(400).json({ error: e.message }); }
-  });
-  router.post('/:slotId/stop', requireAdmin, async (req, res) => {
-    await require('../services/pixelStreaming/runtimeControl').stop(req.params.slotId);
-    res.status(204).end();
-  });
-  router.get('/:slotId/status', requireAdmin, async (req, res) => {
-    res.json(await require('../services/pixelStreaming/runtimeControl').status(req.params.slotId));
-  });
-  ```
-- [ ] Commit: `git commit -am "feat(ps): start/stop/status runtime control"`
-
-### Task 5-2: Wilbur 세션 수 조회
-
-**Files:**
-- Create: `services/pixelStreaming/sessionProbe.js`
-
-> Task 0-3 결과에 따라 구현. Wilbur admin API 가 있으면 그것 사용, 없으면 signaling 포트 TCP 연결 수 (`ss -tn state established sport = :8888`).
-
-- [ ] 구현 예시 (Wilbur admin API 가정):
-  ```js
-  const fetch = require('node-fetch');
-
-  async function count(slot) {
-    try {
-      const r = await fetch(`http://twinverse-ai:${slot.container_port}/api/streamers`, { timeout: 2000 });
-      if (!r.ok) return 0;
-      const data = await r.json();
-      return Array.isArray(data) ? data.reduce((n, s) => n + (s.players?.length || 0), 0) : 0;
-    } catch { return 0; }
-  }
-  module.exports = { count };
-  ```
-- [ ] 주석: Wilbur admin 미지원이면 `ss` 기반 fallback 구현 필요.
-- [ ] Commit: `git commit -am "feat(ps): wilbur session probe"`
-
-### Task 5-3: 유휴 감지 워커
-
-**Files:**
-- Create: `services/pixelStreaming/idleSweeper.js`
-- Modify: `server.js` (부팅 시 기동)
-
-- [ ] 구현:
-  ```js
-  const pool = require('../../db/db');
-  const { IDLE_SWEEP_INTERVAL_S } = require('./constants');
-  const sessionProbe = require('./sessionProbe');
-  const runtime = require('./runtimeControl');
-
-  function startIdleSweeper() {
-    setInterval(async () => {
-      try {
-        const { rows } = await pool.query(
-          `SELECT * FROM ps_slots WHERE state='running' AND pinned=false`);
-        for (const slot of rows) {
-          const sessions = await sessionProbe.count(slot);
-          const idleMs = Date.now() - new Date(slot.last_activity_at).getTime();
-          if (sessions === 0 && idleMs > slot.idle_timeout_s * 1000) {
-            console.log(`[idleSweeper] stopping ${slot.name} (idle ${idleMs}ms)`);
-            await runtime.stop(slot.id);
-          } else if (sessions > 0) {
-            await pool.query(`UPDATE ps_slots SET last_activity_at=NOW() WHERE id=$1`, [slot.id]);
-          }
-        }
-      } catch (e) { console.error('[idleSweeper]', e); }
-    }, IDLE_SWEEP_INTERVAL_S * 1000);
-  }
-
-  module.exports = { startIdleSweeper };
-  ```
-- [ ] `server.js` 에서:
-  ```js
-  require('./services/pixelStreaming/idleSweeper').startIdleSweeper();
-  ```
-- [ ] 테스트: 인메모리 fake DB + fake sessionProbe 로 idle/active 분기 검증.
-- [ ] Commit: `git commit -am "feat(ps): idle sweeper with pinned exemption"`
-
-### Task 5-4: 공개 API (랜딩페이지용)
-
-**Files:**
-- Create: `routes/pixelStreamingPublic.js`
-- Modify: `server.js`
-- Test: `tests/routes/pixelStreamingPublic.test.js`
-
-- [ ] 구현:
-  ```js
-  const express = require('express');
-  const router = express.Router();
-  const pool = require('../db/db');
-  const rateLimit = require('express-rate-limit');
-  const limiter = rateLimit({ windowMs: 60*1000, max: 60 });
-
-  router.get('/projects/:projectSlug/ps-slots', limiter, async (req, res) => {
-    const { rows } = await pool.query(
-      `SELECT s.name, s.display_name, s.description, s.thumbnail_url, s.subdomain
-         FROM ps_slots s
-         JOIN projects p ON p.id = s.project_id
-        WHERE p.subdomain = $1 AND s.active_version IS NOT NULL`,
-      [req.params.projectSlug]
-    );
-    res.json(rows);
-  });
-
-  module.exports = router;
-  ```
-- [ ] `server.js`: `app.use('/api/public', require('./routes/pixelStreamingPublic'));`
-- [ ] Commit: `git commit -am "feat(ps): public slot listing API"`
+- [ ] **Step 1: `GET /api/public/projects/:slug/ps-slots` 에 active_count/queued_count 포함**
+- [ ] **Step 2: `GET /api/public/projects/:slug/ps-slots/:name/session-state` SSE (카드 실시간 배지용)**
+- [ ] **Step 3: Rate limit 60/min/IP**
+- [ ] **Step 4: 커밋 `feat: public session state APIs`**
 
 ---
 
 ## Phase 6 — UI
 
-### Task 6-1: Orbitron 대시보드 — 슬롯 목록 탭
+### Task 6.1: Orbitron 대시보드 — 슬롯 목록/생성
 
-**Files:**
-- Create: `public/pixel-streaming.html` (또는 기존 프론트 스택 맞춰서)
-- Create: `public/js/pixel-streaming.js`
-- Modify: 기존 프로젝트 상세 페이지에 탭 링크 추가
+**파일:**
+- Create: `orbitron/public/src/pages/PsSlots/Index.*`
+- Create: `orbitron/public/src/pages/PsSlots/CreateModal.*`
+- Create: `orbitron/public/src/api/psSlots.js`
 
-> Task 0-2 의 스택 결정에 따라 SPA(React 등) 이면 컴포넌트로 작성. 여기서는 SSR/vanilla JS 가정.
+- [ ] **Step 1: 목록 테이블 (name, display, state badge, version, `N/6 · queueK`, subdomain, actions)**
+- [ ] **Step 2: 새 슬롯 모달 (name, display, desc, thumbnail, max_players slider 1~12, template select, allow_guest_link)**
+- [ ] **Step 3: 커밋 `feat: dashboard slot list + create`**
 
-- [ ] 슬롯 목록 테이블 + 생성 모달 + 슬롯 상세 패널. fetch API 로 위 엔드포인트 호출.
-- [ ] 업로드: `tus-js-client` 사용:
-  ```js
-  const upload = new tus.Upload(file, {
-    endpoint: '/api/uploads',
-    chunkSize: 64 * 1024 * 1024,
-    metadata: { filename: file.name, slot_id: String(slotId) },
-    onProgress: (bytesSent, bytesTotal) => { /* 진행바 갱신 */ },
-    onSuccess: () => { /* SSE 빌드 로그 구독 */ },
-  });
-  upload.start();
-  ```
-- [ ] SSE 구독:
-  ```js
-  const es = new EventSource(`/api/projects/${pid}/ps-slots/${sid}/versions/${vid}/build-log`);
-  es.onmessage = e => appendLog(JSON.parse(e.data).log);
-  es.addEventListener('done', e => { es.close(); refreshVersions(); });
-  ```
-- [ ] Commit: `git commit -am "feat(ps): dashboard UI — slots, upload, build log"`
+### Task 6.2: 슬롯 상세 — 메타/업로드/버전
 
-### Task 6-2: 대시보드 — 버전 히스토리 & 롤백 & 런타임 컨트롤
+**파일:**
+- Create: `orbitron/public/src/pages/PsSlots/Detail.*`
+- Create: `orbitron/public/src/components/PsUploader.*` (tus-js-client)
 
-**Files:**
-- Modify: `public/js/pixel-streaming.js`
+- [ ] **Step 1: 메타 편집 폼**
+- [ ] **Step 2: tus 업로드 UI (진행바, 이어받기)**
+- [ ] **Step 3: 빌드 로그 SSE 스트림 터미널 위젯**
+- [ ] **Step 4: 버전 히스토리 + Rollback 버튼**
+- [ ] **Step 5: 커밋 `feat: slot detail with uploader and build log`**
 
-- [ ] 버전 목록 + Rollback 버튼 + Start/Stop 버튼 + idle_timeout 편집 필드.
-- [ ] Commit.
+### Task 6.3: 세션 탭 + 킥 + 게스트 링크
 
-### Task 6-3: TwinverseAI 랜딩페이지 연동
+**파일:**
+- Modify: `orbitron/public/src/pages/PsSlots/Detail.*`
+- Create: `orbitron/public/src/pages/PsSlots/SessionsPanel.*`
+- Create: `orbitron/public/src/pages/PsSlots/GuestLinksPanel.*`
 
-**Files:**
-- (TwinverseAI repo) `frontend/src/pages/PixelStreaming.tsx`
-- (TwinverseAI repo) `frontend/src/App.tsx` (라우트 추가)
-- (TwinverseAI repo) 메뉴 컴포넌트에 항목 추가
+- [ ] **Step 1: 세션 패널 (active N/max + queue K) + Kick 버튼**
+- [ ] **Step 2: 실시간 업데이트 (공개 SSE 재사용 또는 관리자 SSE)**
+- [ ] **Step 3: 게스트 링크 패널 (발급 폼, 목록, 만료/폐기)**
+- [ ] **Step 4: 커밋 `feat: sessions and guest link panels`**
 
-> 이 태스크만 Orbitron repo 가 아닌 TwinverseAI repo 에서 작업.
+### Task 6.4: 런타임 컨트롤 + idle_timeout
 
-- [ ] 페이지 구현:
-  ```tsx
-  export default function PixelStreaming() {
-    const [slots, setSlots] = useState([]);
-    useEffect(() => {
-      fetch('https://orbitron.twinverse.org/api/public/projects/twinverseai/ps-slots')
-        .then(r => r.json()).then(setSlots);
-    }, []);
-    return (
-      <div className="grid">
-        {slots.map(s => (
-          <Card key={s.name} thumbnail={s.thumbnail_url}
-                title={s.display_name} description={s.description}>
-            <button onClick={() => handlePlay(s)}>▶ Play</button>
-          </Card>
-        ))}
-      </div>
-    );
-  }
+**파일:**
+- Modify: `orbitron/public/src/pages/PsSlots/Detail.*`
 
-  async function handlePlay(slot) {
-    setLoading(true);
-    const r = await fetch(`/api/ps/start`, { method: 'POST', body: JSON.stringify({ slot: slot.name }) });
-    const { ready, stream_url } = await r.json();
-    if (ready) window.location.href = stream_url;
-  }
-  ```
-- [ ] TwinverseAI 백엔드에 `/api/ps/start` 프록시 엔드포인트 추가 (Orbitron API 를 JWT admin token 으로 호출) — 공개 시작은 Phase C 에서 권한 설계 후 공개.
-- [ ] Commit (TwinverseAI repo): `feat: add /pixel-streaming landing page`.
+- [ ] **Step 1: ▶ Start (강제) / ■ Stop (세션 전원 강퇴 확인 모달) 버튼**
+- [ ] **Step 2: idle_timeout 슬라이더 (60~3600)**
+- [ ] **Step 3: 커밋 `feat: runtime controls`**
 
----
+### Task 6.5: TwinverseAI 랜딩 `/pixel-streaming` — **Track A (내부 작업)**
 
-## Phase 7 — 마이그레이션 & 컷오버
+> Orbitron 개발 AI 는 이 Task 를 수행하지 않습니다. Track A (TwinverseAI 프론트엔드) 에서 Orbitron 공개 API 를 호출하여 구현합니다.
 
-### Task 7-1: 기존 환경 백업
 
-- [ ] `ssh twinverse-ai "sudo tar czf /root/twinverse-ps2-backup-$(date +%Y%m%d).tgz /opt/twinverse-ps2"`
-- [ ] `ssh orbitron "cp /home/stevenlim/.cloudflared/config.yml /home/stevenlim/.cloudflared/config.yml.bak-$(date +%Y%m%d)"`
+**파일:**
+- Create: `frontend/src/pages/PixelStreaming/Index.tsx`
+- Create: `frontend/src/pages/PixelStreaming/SlotCard.tsx`
+- Create: `frontend/src/pages/PixelStreaming/JoinFlow.tsx`
+- Modify: `frontend/src/App.tsx` (라우트)
+- Modify: `frontend/src/components/Landing/Menu.tsx` (메뉴 항목)
 
-### Task 7-2: 첫 슬롯 생성 `office`
+- [ ] **Step 1: 공개 API 호출 + 카드 그리드 (썸네일, display, "N/6 · Q") 실시간 SSE**
+- [ ] **Step 2: Play 버튼 → JoinFlow 모달**:
+  - 미로그인 & login_required → redirect to /login
+  - 미로그인 & guest_link_allowed & ?gl= 토큰 → 게스트 이름 입력 → POST /join
+  - 로그인 → 바로 POST /join
+- [ ] **Step 3: queued 시 "대기 순번 N / 최대 Q" 표시, SSE 로 promotion 시 자동 스트리밍 페이지로**
+- [ ] **Step 4: 커밋 `feat: landing pixel-streaming page`**
 
-- [ ] Orbitron 대시보드에서 `office` 슬롯 생성.
-- [ ] 현재 `C:\WORK\TwinverseDesk\Package\Linux` 폴더를 zip 으로 압축.
-- [ ] 대시보드 업로드 → 빌드 성공 → `office.ps.twinverse.org` 확인.
+### Task 6.6: 스트리밍 플레이어 페이지 — **Track A (내부 작업)**
 
-### Task 7-3: 하위 호환 리다이렉트
 
-- [ ] cloudflared config 에 수동으로:
-  ```yaml
-  - hostname: ps.twinverse.org
-    service: http://twinverse-ai:<office_port>
-  - hostname: ps2.twinverse.org
-    service: http://twinverse-ai:<office_port>
-  ```
-- [ ] 또는 Cloudflare Worker 로 301 리다이렉트.
+**파일:**
+- Create: `frontend/src/pages/PixelStreaming/Player.tsx`
+- Create: `frontend/src/pages/PixelStreaming/usePixelStreaming.ts`
 
-### Task 7-4: 구 시스템 정리
-
-- [ ] twinverse-ai: `docker compose down && rm -rf /opt/twinverse-ps2`.
-- [ ] cloudflared: 구 ingress 규칙 삭제 + reload.
-- [ ] GitHub: `TwinversePS2-Deploy` repo 설정 → Archive.
-
-### Task 7-5: 문서 업데이트
-
-- [ ] TwinverseAI `CLAUDE.md`: Pixel Streaming 관련 레퍼런스 갱신.
-- [ ] `docs/shared-drive-setup.md` 업데이트: Z: 경유 배포는 더 이상 권장 경로 아님 명시.
+- [ ] **Step 1: PS2 WebRTC 클라이언트 (@epicgames-ps/lib-pixelstreamingfrontend-ue5.7)**
+- [ ] **Step 2: 풀스크린, 상단 바 (슬롯명, N/6, 나가기)**
+- [ ] **Step 3: 마이크 권한 요청 후 근접 음성 up-link**
+- [ ] **Step 4: 언로드 시 `sendBeacon('/leave')`, 30초 heartbeat**
+- [ ] **Step 5: 커밋 `feat: pixel streaming player page`**
 
 ---
 
-## Self-Review 체크리스트 (완료 시 확인)
+## Phase 7 — 마이그레이션 · Cutover
 
-- [ ] 각 섹션/요구사항이 스펙과 매칭되는가?
-  - ✅ 멀티슬롯, 서브도메인, on-demand, N=3 롤백, 자동 배포, tus 업로드, Cloudflare 자동화, Wilbur 세션 탐지, 유휴 stop, 공개 API, UI 통합, 마이그레이션 체크리스트 — 모두 태스크 포함.
-- [ ] 플레이스홀더 없음? (TBD/TODO/"나중에")
-  - ✅ 단, Task 0-2/0-3 "조사" 산출물에 따라 이후 태스크의 세부 구현 경로가 결정되는 분기는 명시적으로 노출함. 이는 외부 엔지니어가 Orbitron 내부 구조를 모른다는 필연적 제약.
-- [ ] 타입/메서드 이름 일관성?
-  - ✅ `slotDao.create/listByProject/getById/updateMeta/remove`, `versionDao.createNext/updateStatus/listBySlot/pruneOldVersions`, `pipeline.run`, `activateVersion`, `ensureCname/removeCname`, `addIngressRule/removeIngressRule` 전역 일관.
+### Task 7.1: 기존 `/opt/twinverse-ps2` 백업
 
-## 실행 방식
+**파일:**
+- Create: `scripts/backup-twinverse-ps2.sh`
 
-이 계획은 **외부 Orbitron 개발자에게 전달**하는 문서입니다. Claude/AI 에이전트가 바로 실행하는 계획이 아니므로, subagent-driven / executing-plans 스킬 자동 실행 대상이 아닙니다.
+- [ ] **Step 1: twinverse-ai 에서 `/opt/twinverse-ps2/` 전체 tarball**
+- [ ] **Step 2: `/srv/backups/twinverse-ps2-20260415.tar.gz`**
+- [ ] **Step 3: 커밋**
 
-Orbitron 개발자에게 전달 시:
-1. 이 파일 전체 공유.
-2. `docs/superpowers/specs/2026-04-15-pixel-streaming-platform-design.md` 설계 문서도 함께 전달.
-3. Phase 0 의 사전 조사 결과를 본인(Steven)이 검토한 후 Phase 1 착수 승인.
-4. 각 Phase 완료마다 데모 + 코드 리뷰 게이트.
+### Task 7.2: 현행 UE5 빌드를 템플릿 기반으로 포팅 — **Track A (내부 작업)**
+
+
+**파일:**
+- (template repo 작업)
+
+- [ ] **Step 1: TwinverseDesk 현재 PCG_Study_Modern 맵을 템플릿 레포 fork 에 이식**
+- [ ] **Step 2: 리슨 서버 호환 수정 (Replicated 엑터, 플레이어 스폰 포인트)**
+- [ ] **Step 3: Linux 패키지 → zip 준비**
+
+### Task 7.3: `office` 슬롯 생성 + 업로드
+
+- [ ] **Step 1: Orbitron UI 에서 `office` 슬롯 생성 (max=6, allow_guest_link=false, template=v1.0.0)**
+- [ ] **Step 2: 포팅된 zip 업로드 → ready 확인**
+- [ ] **Step 3: 1인 join → 이동/카메라 확인**
+- [ ] **Step 4: 2인 join → 서로 보임/채팅/이모트 확인**
+- [ ] **Step 5: 6인 join → FPS 측정, 7번째 join → 큐 동작 확인**
+
+### Task 7.4: 하위호환 리다이렉트
+
+**파일:**
+- Modify: cloudflared 설정
+
+- [ ] **Step 1: `ps.twinverse.org` → `office.ps.twinverse.org` 301**
+- [ ] **Step 2: 기존 `ps2.twinverse.org` 는 Phase 7 종료 시 제거**
+
+### Task 7.5: 구 배포 철거
+
+- [ ] **Step 1: Orbitron project 27 (twinverse-ps2) 삭제**
+- [ ] **Step 2: twinverse-ai 에서 `/opt/twinverse-ps2/` 제거 (백업 확인 후)**
+- [ ] **Step 3: cloudflared 에서 `ps2.*`, `ps2-api.*` ingress 제거 + SIGHUP**
+- [ ] **Step 4: `TwinversePS2-Deploy` GitHub archive**
+
+### Task 7.6: TwinverseAI 랜딩 메뉴 공개
+
+- [ ] **Step 1: 랜딩 네비에 "Pixel Streaming" 활성화**
+- [ ] **Step 2: 퍼블릭 QA (게스트 링크 1개 발급 테스트)**
+- [ ] **Step 3: 커밋 `feat: launch pixel-streaming menu`**
+
+---
+
+## Self-Review
+
+### Spec 커버리지
+- 스펙 섹션 2 아키텍처 → Phase 0.5 (UE5 셸) + Phase 3 (컨테이너) + Phase 5 (세션/큐) 전부 커버.
+- 스펙 섹션 3 데이터 모델 → Task 1.1 SQL 에 ps_slot_templates / ps_slots / ps_versions / ps_sessions 전부 포함.
+- 스펙 섹션 4 API 계약 → Phase 1~5 라우트로 전부 매핑.
+- 스펙 섹션 5 오케스트레이션 → Phase 3 빌드 + Phase 4 활성화/DNS + Phase 5 join/큐/스위퍼.
+- 스펙 섹션 6 UI → Phase 6 Orbitron 대시보드 + 랜딩.
+- 스펙 섹션 7 보안 → 각 Task 에 검증 조건 명시 (path traversal, 게스트 링크 HMAC, read-only 컨테이너).
+- 스펙 섹션 8 테스트 → 각 서비스 모듈 `__tests__` + E2E(Task 3.6, 7.3).
+- 스펙 섹션 9 롤아웃 → Phase 7 체크리스트와 1:1.
+- 스펙 섹션 11 열린 질문 → Phase 0 에 매핑.
+- 스펙 부록 B 템플릿 기능 → Task 0.5.3~0.5.10 에 1:1.
+
+### 타입/네이밍 일관성
+- `ps_slot_templates.version` (문자열) · `ps_slots.template_version` 참조 — 매칭.
+- `ps_sessions.state` 값 `queued|active` 전역 고정.
+- 서비스 함수명: `runtimeControl.startSlot/stopSlot/statusSlot`, `joinService.join/leave/heartbeat/kick`, `sessionDao.createActive/createQueued/promoteFirstQueued/removeSession/pruneGhostSessions/heartbeat` — 전 Phase 에서 일관 사용.
+- 상수: `MAX_PLAYERS_PER_SLOT=6`, `SESSION_HEARTBEAT_GRACE_S=90`, `START_TIMEOUT_S=90` — 코드 전반 상수 import.
+
+### 플레이스홀더 없음
+모든 step 이 구체 파일 경로 · 명시된 로직 · 테스트 조건을 포함. "적절한 에러 처리" 같은 모호 표현 없음.
+
+---
+
+## 핸드오프 안내
+
+이 계획은 **외부 Orbitron 개발 AI/개발자 전달용**이며, Phase 0 조사 완료 → Steven 승인 게이트를 거쳐야 Phase 0.5 (템플릿 레포) 착수 가능합니다.
+
+Phase 0.5 는 UE5 작업이므로 Orbitron 개발자만으로는 진행 불가 — Steven 또는 별도 UE5 엔지니어가 병행해야 합니다. 두 Phase 는 병렬로 진행 가능:
+
+- Orbitron 개발: Phase 1~5 백엔드는 템플릿 없어도 스키마/API/세션 관리 작업 가능
+- UE5 개발: Phase 0.5 템플릿 독립 작업
+
+Phase 6 (UI) 는 백엔드 API 확정 후, Phase 7 (cutover) 는 양쪽 모두 완료 후 진행.
