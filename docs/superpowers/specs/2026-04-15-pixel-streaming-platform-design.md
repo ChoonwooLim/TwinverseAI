@@ -603,13 +603,15 @@ DeskRPG(tvdesk.twinverse.org) 의 검증된 OpenClaw 게이트웨이 방식을 T
 
 - **목적**: 실제 업무 수행 — AI 비서, AI 개발자, AI 분석가 등 "일하는 동료"
 - **백엔드**: `WebSocket /api/npc/agent/stream` — OpenClaw RPC gateway 프록시
-- **게이트웨이**: OpenClaw (DeskRPG 에서 포팅) — `ws://<host>:18789`, `OPENCLAW_TOKEN` 인증
+- **게이트웨이**: OpenClaw LAN 인스턴스 (2026-04-15 신규 배포) — `ws://192.168.219.117:18789`, `OPENCLAW_TOKEN` 인증
+  - twinverse-ai 서버의 `openclaw` 컨테이너 (`ghcr.io/hostinger/hvps-openclaw:latest`, host network, `/srv/openclaw/data` 볼륨)
+  - DeskRPG 의 Hostinger VPS 인스턴스 (`wss://openclaw-apco.srv1557851.hstgr.cloud/openclaw`) 와는 **완전 독립**
 - **프로토콜**: `chat.send` RPC (스트리밍 delta) · `agents.list/create` · pairing 플로우
 - **세션**: **persistent** — NPC 별 agent session 유지, history 는 에이전트 내부 보관
-- **모델**: `openai-codex/gpt-5.4` 또는 `anthropic-claude-code/sonnet-4-6` 등 CLI 에이전트
+- **모델**: `ollama/qwen2.5:7b` (기본, tool-capable, 무료·LAN 전용). gemma3/gemma4 는 Ollama 에서 tools 미지원이라 Tier 2 불가
 - **도구 사용**: 에이전트가 파일 read/write · 웹 검색 · 코드 실행 가능 (OpenClaw 정책에 따름)
 - **응답 시간**: 초기 ~5초 + 스트리밍 delta
-- **비용**: 외부 API 키 소비 (또는 로컬 CLI 에이전트)
+- **비용**: 0 원 (LAN Ollama 사용, 외부 API 호출 없음)
 - **UE5 컴포넌트**: `UOfficeNPCAgentConversation` (신규) — WebSocket 스트리밍 + 말풍선 점진적 갱신
 - **쿨다운**: 5초, 동시 요청 슬롯당 3건 제한
 

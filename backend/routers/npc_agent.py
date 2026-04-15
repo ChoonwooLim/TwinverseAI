@@ -27,10 +27,15 @@ router = APIRouter()
 
 OPENCLAW_WS_URL = os.getenv(
     "OPENCLAW_WS_URL",
-    "wss://openclaw-apco.srv1557851.hstgr.cloud/openclaw",
+    "ws://192.168.219.117:18789",
 )
 OPENCLAW_TOKEN = os.getenv("OPENCLAW_TOKEN", "")
-OPENCLAW_MODEL = os.getenv("OPENCLAW_MODEL", "openai-codex/gpt-5.4")
+OPENCLAW_MODEL = os.getenv("OPENCLAW_MODEL", "ollama/qwen2.5:7b")
+
+# Production deployments:
+#   Office (this backend) -> LAN twinverse-ai (Ollama)
+#   DeskRPG (tvdesk.twinverse.org) -> Hostinger VPS (ChatGPT Codex)
+# The two instances are independent; do not cross-wire tokens.
 
 
 class OpenClawNotConfigured(RuntimeError):
