@@ -647,3 +647,45 @@
   관점에서 터널 권장.
 
 ---
+
+## 2026-04-15
+
+### 작업 요약
+
+| 카테고리 | 작업 내용 | 상태 |
+|----------|----------|------|
+| docs | TwinverseFolder 공유 드라이브(Z:) 설정/복구 가이드 작성 | 완료 |
+| docs | Orbitron Pixel Streaming 플랫폼 설계 스펙 작성 | 완료 |
+| docs | Orbitron Pixel Streaming 구현 계획서 작성 (7 Phase, ~35 tasks) | 완료 |
+| infra | Orbitron 대시보드 프로젝트 27 `twinverse-ps2` start_command 복구 | 완료 |
+| docs | 개발 AI 핸드오프 패키지 `Z:\OrbitronHandoff\` 배포 (README + spec + plan) | 완료 |
+
+### 세부 내용
+
+- **공유 드라이브 가이드** (`docs/shared-drive-setup.md`, commit 3fcfa93): Orbitron Samba
+  + Windows `cmdkey`/`net use` 영구 매핑 절차. 2026-04-15 자격증명 소실 재발 방지 목적.
+- **Pixel Streaming 플랫폼 설계** (`docs/superpowers/specs/...-design.md`, commit b7af68c):
+  TwinverseAI 프로젝트 내부에 멀티 슬롯(Phase B) + 향후 멀티테넌트(Phase C) 진화 경로를
+  포함한 전체 설계. 스키마(`ps_slots`, `ps_versions`), tus 업로드, 원격 배포, Cloudflare DNS/
+  tunnel ingress 자동화, on-demand 컨테이너 수명 제어, 3-version 롤백, 보안(path traversal/
+  command injection 방어) 모두 명세.
+- **구현 계획서** (`docs/superpowers/plans/...-platform.md`, commit f8a95b2): Phase 0 사전
+  조사 → Phase 1 DB/CRUD → Phase 2 업로드·추출 → Phase 3 이미지 빌드·전송 → Phase 4 활성화·
+  롤백·DNS → Phase 5 런타임 제어·idle sweeper → Phase 6 UI → Phase 7 기존 `/opt/twinverse-ps2/`
+  마이그레이션. TDD bite-sized task, 정확한 파일 경로/코드/커밋 메시지 포함.
+- **Orbitron 대시보드**: project id 27 `twinverse-ps2` 가 이미 등록되어 있었으나 `start_command`
+  가 `npm startdocker compose up -d` 로 파손되어 있어 SSH→psql 로 직접 UPDATE. build_command 도
+  `docker build -t twinverse/ps2:latest .` 로 정정. 실제 배포는 repo orbitron.yaml 이 override.
+- **핸드오프 패키지**: 외부 Orbitron 개발 AI 전달용으로 Z:\OrbitronHandoff\ 에 spec + plan +
+  `README-handoff.md` 배치. README는 읽는 순서, Phase 0 게이트, 환경 정보(Orbitron/GPU 서버/
+  Cloudflare), 기존 임시 구축본 정리 대상, 범위 경계(Phase B vs C) 명시.
+
+### 다음 세션 참고
+
+- **Phase 0 착수 대기**: Orbitron 개발 AI가 핸드오프 패키지 수령 → Phase 0 사전 조사(Orbitron
+  내부 배포 파이프라인·Wilbur admin API·Cloudflare 토큰 범위) 결과 보고 기다림. 승인 후 Phase 1.
+- **Phase 7 정리 대상**: 새 시스템 안정화 후 기존 project id 27 `twinverse-ps2` 및 GPU 서버
+  `/opt/twinverse-ps2/` 철거. 현재는 임시 운영.
+- **스펙 열린 질문**: spec 섹션 11 에 미해결 질문 목록 있음 — Phase 0 조사와 함께 해소.
+
+---
