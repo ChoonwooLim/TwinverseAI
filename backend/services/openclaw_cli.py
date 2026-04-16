@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import json
 import shlex
-import tempfile
 import uuid
 from typing import Any
 
@@ -28,8 +27,6 @@ from .openclaw_ssh import (
     ensure_configured,
     openclaw_exec,
     openclaw_run_checked,
-    parse_table_rows,
-    rows_to_dicts,
     ssh_run,
 )
 
@@ -44,62 +41,83 @@ def _require(pattern, value: str, field: str) -> None:
 # ---------------------------------------------------------------------------
 
 def agents_list() -> list[dict[str, Any]]:
-    """Return paired + discovered agents.
-
-    CLI: `openclaw agents list` (box-drawing table).
-    """
-    raw = openclaw_run_checked("agents list")
-    rows = parse_table_rows(raw)
-    dicts = rows_to_dicts(rows)
+    """Return paired + discovered agents via `openclaw agents list --json`."""
+    raw = openclaw_run_checked("agents list --json")
+    try:
+        data = json.loads(raw.strip() or "[]")
+    except json.JSONDecodeError:
+        return []
+    items = data if isinstance(data, list) else []
     out: list[dict[str, Any]] = []
-    for entry in dicts:
+    for a in items:
+        if not isinstance(a, dict):
+            continue
+        model = a.get("model")
+        if isinstance(model, dict):
+            model = model.get("primary") or model.get("id") or ""
         out.append({
-            "id": entry.get("id") or entry.get("agent") or "",
-            "displayName": entry.get("name") or entry.get("display name") or entry.get("display") or "",
-            "model": entry.get("model") or "",
-            "theme": entry.get("theme") or "",
-            "emoji": entry.get("emoji") or "",
-            "avatar": entry.get("avatar") or "",
-            "raw": entry,
+            "id": a.get("id", ""),
+            "displayName": a.get("identityName") or a.get("name", ""),
+            "model": model or "",
+            "theme": a.get("identityTheme", ""),
+            "emoji": a.get("identityEmoji", ""),
+            "avatar": a.get("identityAvatar", ""),
+            "workspace": a.get("workspace", ""),
+            "isDefault": bool(a.get("isDefault", False)),
         })
     return [a for a in out if a["id"]]
 
 
 def agents_add(agent_id: str, display_name: str, model: str) -> dict[str, Any]:
-    """Create a new agent via CLI (no plugin slot side-effects)."""
+    """Create a new agent via CLI (no plugin slot side-effects).
+
+    CLI signature: `openclaw agents add [name] --model <id> --workspace <dir> --non-interactive`.
+    The positional `name` becomes the agent id. Display name is then set via
+    set-identity (caller should follow up with agents_set_identity for non-slug names).
+    """
     _require(AGENT_ID_RE, agent_id, "agentId")
     if len(display_name) > 120:
         raise HTTPException(status_code=400, detail="displayName too long")
     if len(model) > 120:
         raise HTTPException(status_code=400, detail="model too long")
+    workspace = f"/data/.openclaw/workspace-{agent_id}"
     cmd = (
-        f"agents add --id {shlex.quote(agent_id)} "
-        f"--name {shlex.quote(display_name)} "
-        f"--model {shlex.quote(model)}"
+        f"agents add {shlex.quote(agent_id)} "
+        f"--model {shlex.quote(model)} "
+        f"--workspace {shlex.quote(workspace)} "
+        f"--non-interactive --json"
     )
     out = openclaw_run_checked(cmd, timeout=30)
+    if display_name and display_name != agent_id:
+        try:
+            agents_set_identity(agent_id, display_name=display_name)
+        except HTTPException:
+            pass
     return {"ok": True, "message": out.strip()[:1000]}
 
 
 def agents_delete(agent_id: str) -> dict[str, Any]:
     _require(AGENT_ID_RE, agent_id, "agentId")
-    out = openclaw_run_checked(f"agents delete {shlex.quote(agent_id)} --yes", timeout=30)
+    out = openclaw_run_checked(f"agents delete {shlex.quote(agent_id)} --force", timeout=30)
     return {"ok": True, "message": out.strip()[:1000]}
 
 
 def agents_set_identity(agent_id: str, *, display_name: str | None = None, theme: str | None = None, emoji: str | None = None) -> dict[str, Any]:
-    """Update lightweight identity fields (name / theme / emoji) via CLI."""
+    """Update lightweight identity fields (name / theme / emoji) via CLI.
+
+    CLI: `openclaw agents set-identity --agent <id> [--name ...] [--theme ...] [--emoji ...]`
+    """
     _require(AGENT_ID_RE, agent_id, "agentId")
-    flags: list[str] = []
+    flags: list[str] = [f"--agent {shlex.quote(agent_id)}"]
     if display_name is not None:
         flags.append(f"--name {shlex.quote(display_name)}")
     if theme is not None:
         flags.append(f"--theme {shlex.quote(theme)}")
     if emoji is not None:
         flags.append(f"--emoji {shlex.quote(emoji)}")
-    if not flags:
+    if len(flags) == 1:
         return {"ok": True, "message": "nothing to update"}
-    out = openclaw_run_checked(f"agents set-identity {shlex.quote(agent_id)} {' '.join(flags)}", timeout=20)
+    out = openclaw_run_checked(f"agents set-identity {' '.join(flags)}", timeout=20)
     return {"ok": True, "message": out.strip()[:1000]}
 
 
@@ -143,19 +161,29 @@ def agents_files_set(agent_id: str, file_name: str, content: str) -> dict[str, A
 # ---------------------------------------------------------------------------
 
 def plugins_list() -> list[dict[str, Any]]:
-    raw = openclaw_run_checked("plugins list")
-    rows = parse_table_rows(raw)
-    dicts = rows_to_dicts(rows)
+    """List plugins via `openclaw plugins list --json`.
+
+    Returns list of {id, name, enabled, version, source, status, description, origin}.
+    """
+    raw = openclaw_run_checked("plugins list --json")
+    try:
+        data = json.loads(raw.strip() or "{}")
+    except json.JSONDecodeError:
+        return []
+    plugins = data.get("plugins", []) if isinstance(data, dict) else (data if isinstance(data, list) else [])
     out: list[dict[str, Any]] = []
-    for entry in dicts:
-        pid = entry.get("plugin") or entry.get("id") or entry.get("name") or ""
-        enabled_raw = (entry.get("enabled") or entry.get("status") or "").lower()
+    for p in plugins:
+        if not isinstance(p, dict):
+            continue
         out.append({
-            "id": pid,
-            "enabled": enabled_raw in ("yes", "true", "on", "enabled", "\u2713", "*"),
-            "version": entry.get("version", ""),
-            "source": entry.get("source", ""),
-            "raw": entry,
+            "id": p.get("id", ""),
+            "name": p.get("name", ""),
+            "enabled": bool(p.get("enabled", False)),
+            "version": p.get("version", ""),
+            "source": p.get("source", ""),
+            "status": p.get("status", ""),
+            "description": p.get("description", ""),
+            "origin": p.get("origin", ""),
         })
     return [p for p in out if p["id"]]
 
@@ -202,12 +230,14 @@ def _mask_secrets(tree: Any) -> Any:
 
 
 def config_get(key: str = "", *, mask: bool = True) -> Any:
-    """Read config value(s). Empty key returns full tree."""
-    if key:
-        _require(CONFIG_KEY_RE, key, "key")
-        cmd = f"config get {shlex.quote(key)} --json"
-    else:
-        cmd = "config get --json"
+    """Read a config value at `key`. CLI requires a dot path — empty key returns {}.
+
+    For tree-level inspection use schema() or pass a concrete prefix like `plugins.entries`.
+    """
+    if not key:
+        return {}
+    _require(CONFIG_KEY_RE, key, "key")
+    cmd = f"config get {shlex.quote(key)} --json"
     raw = openclaw_run_checked(cmd, timeout=20)
     try:
         data = json.loads(raw.strip() or "null")
