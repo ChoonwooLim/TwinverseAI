@@ -30,13 +30,37 @@ export default function ChatTab() {
   const loadAgents = useCallback(async () => {
     try {
       const r = await api.get("/api/admin/openclaw/console/agents");
-      setAgents(r.data.agents || []);
+      const list = r.data.agents || [];
+      setAgents(list);
+      const enriched = await Promise.all(list.map(async (a) => {
+        try {
+          const f = await api.get(`/api/admin/openclaw/console/agents/${encodeURIComponent(a.id)}/files/IDENTITY.md`);
+          return { ...a, role: extractRole(f.data?.content || "") };
+        } catch {
+          return { ...a, role: "" };
+        }
+      }));
+      setAgents(enriched);
     } catch (e) {
       setErr(e?.response?.data?.detail || e.message || "failed");
     }
   }, []);
 
   useEffect(() => { loadAgents(); }, [loadAgents]);
+
+  function extractRole(md) {
+    const lines = (md || "").split(/\r?\n/);
+    const out = [];
+    for (const raw of lines) {
+      const line = raw.trim();
+      if (!line) continue;
+      if (line.startsWith("#")) continue;
+      if (line.startsWith("---") || line.startsWith("```")) continue;
+      out.push(line.replace(/^[-*]\s+/, "").replace(/\*\*/g, ""));
+      if (out.length >= 2) break;
+    }
+    return out.join(" ").slice(0, 140);
+  }
 
   const wsUrl = () => {
     const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -132,7 +156,12 @@ export default function ChatTab() {
   };
 
   useEffect(() => {
-    if (connState === "open" && selectedAgent) openSession(selectedAgent);
+    if (!selectedAgent) return;
+    if (connState === "idle" || connState === "closed") {
+      connect();
+    } else if (connState === "open") {
+      openSession(selectedAgent);
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connState, selectedAgent]);
 
@@ -174,16 +203,27 @@ export default function ChatTab() {
           </div>
           {agents.length === 0 ? (
             <div className={styles.empty}>에이전트 없음</div>
-          ) : agents.map((a) => (
-            <div
-              key={a.id}
-              className={`${styles.agentListItem} ${selectedAgent === a.id ? styles.agentListItemActive : ""}`}
-              onClick={() => setSelectedAgent(a.id)}
-            >
-              <div style={{ fontWeight: 600 }}>{a.displayName || a.id}</div>
-              <div className={styles.mono} style={{ fontSize: "0.72rem", color: "#888" }}>{a.id} · {a.model}</div>
-            </div>
-          ))}
+          ) : agents.map((a) => {
+            const emoji = a.emoji || "";
+            const initial = (a.displayName || a.id || "?").trim().charAt(0).toUpperCase();
+            return (
+              <div
+                key={a.id}
+                className={`${styles.agentListItem} ${selectedAgent === a.id ? styles.agentListItemActive : ""}`}
+                onClick={() => setSelectedAgent(a.id)}
+                title={a.role || a.id}
+              >
+                <div className={styles.agentThumb}>
+                  {emoji ? emoji : <span className={styles.agentThumbFallback}>{initial}</span>}
+                </div>
+                <div className={styles.agentInfo}>
+                  <div className={styles.agentName}>{a.displayName || a.id}</div>
+                  {a.role ? <div className={styles.agentRole}>{a.role}</div> : null}
+                  <div className={styles.agentMeta}>{a.id} · {a.model}</div>
+                </div>
+              </div>
+            );
+          })}
         </div>
 
         <div className={styles.chatMain}>
@@ -214,10 +254,18 @@ export default function ChatTab() {
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={handleKey}
-              placeholder={sessionKey ? "메시지를 입력하세요 (Enter=전송, Shift+Enter=줄바꿈)" : "먼저 에이전트를 선택하세요"}
-              disabled={!sessionKey}
+              placeholder={
+                !selectedAgent ? "좌측에서 에이전트를 선택하세요"
+                : !sessionKey ? (connState === "open" ? "세션 준비 중…" : "연결 중…")
+                : "메시지를 입력하세요 (Enter=전송, Shift+Enter=줄바꿈)"
+              }
+              disabled={!selectedAgent}
             />
-            <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={send} disabled={!sessionKey || !draft.trim()}>
+            <button
+              className={`${styles.btn} ${styles.btnPrimary}`}
+              onClick={send}
+              disabled={!sessionKey || !draft.trim()}
+            >
               전송
             </button>
           </div>
