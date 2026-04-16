@@ -26,6 +26,7 @@ export default function ChatTab() {
   const rpcId = useRef(1);
   const pendingResolvers = useRef({});
   const scrollRef = useRef(null);
+  const lastErrorRef = useRef(0); // timestamp of last fatal error — used to pause auto-reconnect
 
   const loadAgents = useCallback(async () => {
     try {
@@ -101,6 +102,7 @@ export default function ChatTab() {
       if (msg.op === "ready") { setConnState("open"); return; }
       if (msg.op === "auth.error" || msg.op === "error") {
         setErr(msg.message || msg.code || "error");
+        lastErrorRef.current = Date.now();
         return;
       }
 
@@ -157,7 +159,12 @@ export default function ChatTab() {
 
   useEffect(() => {
     if (!selectedAgent) return;
-    if (connState === "idle" || connState === "closed") {
+    if (connState === "idle") {
+      connect();
+    } else if (connState === "closed") {
+      // Don't hammer the server if we just got an error — wait 5s before retrying
+      const sinceErr = Date.now() - lastErrorRef.current;
+      if (sinceErr < 5_000) return;
       connect();
     } else if (connState === "open") {
       openSession(selectedAgent);

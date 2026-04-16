@@ -23,7 +23,7 @@ from pydantic import BaseModel, Field
 from deps import require_admin
 from models import User
 from services import openclaw_cli as cli
-from services.openclaw_ssh import CONTAINER, ensure_configured, ssh_run
+from services.openclaw_ssh import CONTAINER, ensure_configured
 from utils.ws_auth import authenticate_ws_first_message
 
 logger = logging.getLogger("twinverse.openclaw.console")
@@ -274,13 +274,17 @@ def _strip_sensitive(obj: Any) -> Any:
 
 @router.websocket("/chat")
 async def chat_ws(ws: WebSocket) -> None:
-    """Browser <-> backend <-> OpenClaw gateway JSON-RPC relay.
+    """Browser <-> backend <-> OpenClaw gateway relay.
 
-    Flow:
-      1. accept + first-message JWT auth (admin role)
-      2. open outbound WS to OPENCLAW_WS_URL (token attached server-side)
-      3. forward client -> gateway messages as-is
-      4. forward gateway -> client messages with secret fields stripped
+    OpenClaw gateway protocol (from dist/protocol-*.js):
+      - Request frame:  {type:"req", id, method, params?}
+      - Response frame: {type:"res", id, result? | error?}
+      - Event frame:    {type:"event", event, payload?, seq?}
+      - First message MUST be a `connect` request with client info + auth.token.
+        Authorization HTTP header is NOT read by the gateway.
+
+    Browser side speaks simple JSON-RPC ({id, method, params}) and expects
+    server notifications as {method, params}. We translate in both directions.
     """
     await ws.accept()
 
@@ -295,69 +299,143 @@ async def chat_ws(ws: WebSocket) -> None:
 
     try:
         import websockets
+        from websockets.asyncio.client import connect as ws_connect
     except ImportError:
-        await ws.send_json({"op": "error", "code": "missing_dep", "message": "websockets library not installed"})
+        await ws.send_json({"op": "error", "code": "missing_dep", "message": "websockets>=13 not installed"})
         await ws.close(code=1011)
         return
 
     try:
-        try:
-            from websockets.asyncio.client import connect as ws_connect
-            gw = await ws_connect(
-                OPENCLAW_WS_URL,
-                additional_headers={"Authorization": f"Bearer {OPENCLAW_TOKEN}"},
-                max_size=8 * 1024 * 1024,
-                ping_interval=20,
-                ping_timeout=20,
-            )
-        except ImportError:
-            gw = await websockets.connect(
-                OPENCLAW_WS_URL,
-                extra_headers={"Authorization": f"Bearer {OPENCLAW_TOKEN}"},
-                max_size=8 * 1024 * 1024,
-                ping_interval=20,
-                ping_timeout=20,
-            )
+        gw = await ws_connect(
+            OPENCLAW_WS_URL,
+            max_size=8 * 1024 * 1024,
+            ping_interval=20,
+            ping_timeout=20,
+        )
     except Exception as e:
         logger.exception("openclaw gateway connect failed")
         await ws.send_json({"op": "error", "code": "gateway_unreachable", "message": str(e)[:300]})
         await ws.close(code=1011)
         return
 
+    # --- gateway handshake: connect request + hello-ok ---
+    connect_req = {
+        "type": "req",
+        "id": "tv-connect",
+        "method": "connect",
+        "params": {
+            "minProtocol": 3,
+            "maxProtocol": 3,
+            "client": {
+                "id": "gateway-client",
+                "displayName": "TwinverseAI admin console",
+                "version": "1.0.0",
+                "platform": "linux",
+                "mode": "backend",
+            },
+            "caps": [],
+            "auth": {"token": OPENCLAW_TOKEN},
+            "role": "operator",
+            "scopes": ["operator.admin"],
+        },
+    }
+
+    try:
+        await gw.send(json.dumps(connect_req))
+        handshake_ok = False
+        async with asyncio.timeout(15):
+            async for raw in gw:
+                text = raw if isinstance(raw, str) else raw.decode("utf-8", errors="replace")
+                try:
+                    frame = json.loads(text)
+                except json.JSONDecodeError:
+                    continue
+                if frame.get("type") == "res" and frame.get("id") == "tv-connect":
+                    if frame.get("error"):
+                        err = frame["error"]
+                        msg = err.get("message") if isinstance(err, dict) else str(err)
+                        await ws.send_json({"op": "error", "code": "gateway_handshake_failed",
+                                            "message": (msg or "connect rejected")[:300]})
+                        await gw.close()
+                        await ws.close(code=1008)
+                        return
+                    handshake_ok = True
+                    break
+        if not handshake_ok:
+            raise RuntimeError("no hello-ok received before timeout")
+    except Exception as e:
+        logger.exception("openclaw gateway handshake failed")
+        try:
+            await ws.send_json({"op": "error", "code": "gateway_handshake_failed", "message": str(e)[:300]})
+        except Exception:
+            pass
+        try: await gw.close()
+        except Exception: pass
+        await ws.close(code=1011)
+        return
+
     await ws.send_json({"op": "ready", "user": user.username})
 
     async def pump_client_to_gw() -> None:
+        """Browser JSON-RPC {id, method, params} -> Gateway {type:"req", ...}."""
         try:
             while True:
                 raw = await ws.receive_text()
-                await gw.send(raw)
+                try:
+                    msg = json.loads(raw)
+                except json.JSONDecodeError:
+                    continue
+                if not isinstance(msg, dict):
+                    continue
+                # ignore legacy auth frames from older frontends
+                if msg.get("op") == "auth":
+                    continue
+                method = msg.get("method")
+                mid = msg.get("id")
+                if not method or not mid:
+                    continue
+                frame = {"type": "req", "id": str(mid), "method": method,
+                         "params": msg.get("params") or {}}
+                await gw.send(json.dumps(frame, ensure_ascii=False))
         except WebSocketDisconnect:
             pass
         except Exception:
             logger.exception("chat_ws: client->gw pump failed")
         finally:
-            try:
-                await gw.close()
-            except Exception:
-                pass
+            try: await gw.close()
+            except Exception: pass
 
     async def pump_gw_to_client() -> None:
+        """Gateway {type:"res"|"event"} -> Browser {id,result/error} or {method, params}."""
         try:
-            async for msg in gw:
-                text = msg if isinstance(msg, str) else msg.decode("utf-8", errors="replace")
+            async for raw in gw:
+                text = raw if isinstance(raw, str) else raw.decode("utf-8", errors="replace")
                 try:
-                    parsed = json.loads(text)
-                    sanitized = _strip_sensitive(parsed)
-                    await ws.send_text(json.dumps(sanitized, ensure_ascii=False))
+                    frame = json.loads(text)
                 except json.JSONDecodeError:
-                    await ws.send_text(text)
+                    continue
+                if not isinstance(frame, dict):
+                    continue
+                ftype = frame.get("type")
+                if ftype == "res":
+                    out: dict[str, Any] = {"id": frame.get("id")}
+                    if "result" in frame:
+                        out["result"] = _strip_sensitive(frame.get("result"))
+                    if "error" in frame:
+                        out["error"] = _strip_sensitive(frame.get("error"))
+                    await ws.send_text(json.dumps(out, ensure_ascii=False))
+                elif ftype == "event":
+                    out = {"method": frame.get("event"),
+                           "params": _strip_sensitive(frame.get("payload"))}
+                    await ws.send_text(json.dumps(out, ensure_ascii=False))
+                else:
+                    # unknown frame type — forward as-is for debugging
+                    await ws.send_text(json.dumps(_strip_sensitive(frame), ensure_ascii=False))
         except Exception:
             logger.exception("chat_ws: gw->client pump failed")
         finally:
-            try:
-                await ws.close()
-            except Exception:
-                pass
+            try: await ws.close()
+            except Exception: pass
 
     await asyncio.gather(pump_client_to_gw(), pump_gw_to_client())
 
