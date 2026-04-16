@@ -44,3 +44,4 @@ uploads/*
 
 # External projects
 deskrpg-master/
+.claude/
