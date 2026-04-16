@@ -185,6 +185,22 @@
   transition: border-color 0.15s;
 }
 .input:focus, .textarea:focus, .select:focus { border-color: #a855f7; }
+
+/* Dark-theme override for native <select>: browsers default to system white-on-white */
+select.input {
+  background-color: #1a1a1a;
+  color: #fff;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path fill='%23bbb' d='M2 4l4 4 4-4z'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 0.6rem center;
+  padding-right: 1.8rem;
+}
+select.input option {
+  background-color: #1a1a1a;
+  color: #fff;
+}
 .textarea { min-height: 120px; resize: vertical; font-family: ui-monospace, Menlo, monospace; font-size: 0.82rem; }
 
 .modalBackdrop {
