@@ -336,7 +336,13 @@ async def chat_ws(ws: WebSocket) -> None:
             "caps": [],
             "auth": {"token": OPENCLAW_TOKEN},
             "role": "operator",
-            "scopes": ["operator.admin"],
+            "scopes": [
+                "operator.admin",
+                "operator.write",
+                "operator.read",
+                "operator.talk",
+                "operator.approvals",
+            ],
         },
     }
 
