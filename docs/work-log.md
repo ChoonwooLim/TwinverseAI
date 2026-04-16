@@ -741,3 +741,70 @@
   3.5.0 추가 완료).
 
 ---
+
+## 2026-04-16 (OpenClaw 풀 콘솔 + 채팅 안정화 + Phase 1 멀티모달 첨부)
+
+### 작업 요약
+
+| 카테고리 | 작업 내용 | 상태 |
+|----------|----------|------|
+| feat | 어드민 OpenClaw 풀 콘솔 (Agents / Plugins / Config / Chat / Logs 5 탭, admin 전용) | 완료 |
+| feat | 채팅 탭 — 에이전트 썸네일 카드 + 자동 WS 연결 + 세션 자동 생성 + 모델 동적 목록 | 완료 |
+| feat | Phase 1 멀티모달 — 이미지(base64→vision 모델 attachments) + 문서(inline 텍스트) 첨부 UI | 완료 |
+| fix | OpenClaw CLI 래퍼 실제 문법 반영 (agents list 500 해결, publickey SSH, 채팅 WS 연결) | 완료 |
+| fix | Gateway 네이티브 프레임 프로토콜 (type:req/res/event) + payload unwrap + 5 operator scope + TUI 식별 | 완료 |
+| fix | agents.update agentId / agent model 변경 시 타 에이전트 설정 보존 · 채팅 히스토리 per-agent | 완료 |
+| fix | TwinverseDesk 실행 자동 로그아웃 방지 — PS2 헬스체크 401 에서 토큰 삭제 금지 | 완료 |
+| fix | admin select 드롭다운 흰바탕+흰글씨 · WS 공개 엔드포인트 · 파일 읽기 폴백 · 새 agent 디렉터리 chown | 완료 |
+| chore | `.claude/` 로컬 상태 파일을 git 추적에서 제외 | 완료 |
+
+### 세부 내용
+
+- **OpenClaw 풀 콘솔 (커밋 `82f2074`)**: admin 전용 페이지 `/admin/openclaw` 에 5 탭
+  (Agents / Plugins / Config / Chat / Logs) 전면 도입. backend 는 `paramiko` SSH 로
+  twinverse-ai 에 접속해 `openclaw <subcmd> --json` CLI 를 호출하고, Chat·Logs 는 gateway
+  WS 를 릴레이 (`ws://localhost:18789` ↔ 프런트). 재시작 회피를 위해 `config set` CLI 만
+  사용 (docker restart 금지 규칙 준수).
+- **채팅 탭 진화 (3 단계)**:
+  1. `fc893fa` — 에이전트 썸네일 카드형 목록 + 연결/세션 자동화.
+  2. `4f41edc` — `models.list` RPC 로 모델 드롭다운 동적화, 전송 안정화.
+  3. `0e0142a` (**Phase 1 멀티모달**) — 📎 버튼 / 파일 입력. 이미지는 base64 로 읽어
+     `sessions.send(..., attachments=[{type:image,mimeType,fileName,content}])` 로
+     전달, 문서 (.txt/.md/.json/.log/.csv) 는 `--- 첨부 문서: NAME ---` 블록으로 inline
+     첨부. non-vision 모델에 이미지를 붙이면 경고 배너. backend WS frame size 8MB →
+     16MB 상향.
+- **Gateway 프로토콜 디버깅 14 연속 fix**: OpenClaw 게이트웨이의 실제 프레임 형식이 docs 와
+  달라 다단계 수정. `type:req/res/event` + `payload`(not `result`), `session.message`
+  (not `sessions.messages.*`), 5 operator scope (gateway.connect 핸드셰이크), TUI 식별
+  (`dangerouslyDisableDeviceAuth` 가 scope 유지하도록), `agents.update` 가 `agentId`
+  요구 (`id` 거부), CLI 문법 차이 (`agents list --json`), publickey SSH, WS 공개
+  엔드포인트, 파일 읽기 폴백, chown node:node.
+- **채팅 히스토리 per-agent (`2900c3b`)**: 에이전트 모델 변경 시 전체 에이전트 설정이
+  wipe 되던 버그 수정 + 히스토리를 에이전트별 분리.
+- **TwinverseDesk 자동 로그아웃 방지 (`310c3a4`)**: PS2 헬스체크가 401 반환할 때 api.js
+  response interceptor 가 토큰 삭제 → 유저 로그아웃. PS2 헬스는 인증 정책 상 정상 401
+  이므로 특정 경로는 interceptor 에서 스킵.
+- **8 종 벤치 에이전트 IDENTITY (사전 준비)**: 이전 세션에서 bench-qwen25-7b/05b,
+  bench-gemma4-e4b/26b/31b, bench-gemma3-12b, bench-mistral-7b, bench-llava-7b 8 개의
+  `IDENTITY.md` 를 korean-only directive 와 역할 설명과 함께 작성, gateway agents list
+  에 `identitySource: "identity"` 로 반영 확인.
+- **미커밋 남은 변경**: `backend/routers/npc.py` (NPC 메시지 role 교대 + Claude fallback
+  모델 ID 업데이트), `scripts/update_openclaw_token.js` (Orbitron 대시보드 토큰 갱신 헬퍼).
+  오늘 OpenClaw 풀 콘솔 작업과 직접 관련 없어 이번 docs 커밋에서는 제외.
+
+### 다음 세션 참고
+
+- **사용자 스모크 테스트 대기**:
+  1. 벤치 에이전트 8 종이 한국어로만 응답하는지 (한자 누출 없음) 확인.
+  2. 첨부 UI 검증 — 문서 inline 전달, 이미지 → llava 분기.
+- **`agents.files.get` 'unknown agent id' 로그 노이즈**: gateway CLI 에서 특정 상황에
+  뜨는 에러 추적 (재시작 중 타이밍 이슈 가능).
+- **남은 미커밋 변경 처리**: `backend/routers/npc.py` (NPC 메시지 role 교대) 는 다음
+  세션에 별도 fix 커밋으로 분리. `scripts/update_openclaw_token.js` 는 `.gitignore`
+  대상인지 판단 (실제 토큰이 하드코딩된 1 회성 스크립트).
+- **Phase 2 멀티모달 설계**: 이미지/동영상 생성 (Flux/SD) 는 AI registry 에 별도 서비스로
+  등록한 뒤 gateway 와 연결할지, TwinverseAI 백엔드에 직접 프록시할지 결정 필요.
+- **Codex + Anthropic API 통합 문서화**: LAN(Ollama)·Hostinger(Codex) 구도에서
+  Anthropic API 를 3rd provider 로 붙일 때의 키 분리·쿼터·라우팅 정책 정리.
+
+---
