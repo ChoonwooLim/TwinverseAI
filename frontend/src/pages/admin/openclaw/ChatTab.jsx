@@ -125,18 +125,29 @@ export default function ChatTab() {
 
   const handleNotification = (msg) => {
     const { method, params } = msg;
-    if (method === "sessions.messages" || method === "sessions.messages.delta") {
-      const delta = params?.delta || params?.content || "";
-      if (delta) setPendingDelta((prev) => prev + delta);
-    }
-    if (method === "sessions.messages.done" || method === "sessions.messages.final") {
-      const final = params?.content || params?.final;
-      setMessages((prev) => [...prev, { role: "assistant", content: final || "" }]);
+    // Gateway emits `session.message` (singular) with full message object
+    // whenever the transcript gains a new row (user echo, assistant reply,
+    // tool call, etc). No per-token streaming events.
+    if (method === "session.message") {
+      const m = params?.message;
+      if (!m || m.role !== "assistant") return;
+      const text = extractAssistantText(m);
+      if (!text) return;
+      setMessages((prev) => [...prev, { role: "assistant", content: text }]);
       setPendingDelta("");
     }
-    if (method === "sessions.changed") {
-      // noop for now
+  };
+
+  const extractAssistantText = (m) => {
+    const content = m?.content;
+    if (typeof content === "string") return content;
+    if (Array.isArray(content)) {
+      return content
+        .map((c) => (typeof c === "string" ? c : c?.text || ""))
+        .filter(Boolean)
+        .join("\n");
     }
+    return "";
   };
 
   useEffect(() => () => {
