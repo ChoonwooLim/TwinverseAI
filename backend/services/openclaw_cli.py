@@ -128,32 +128,83 @@ def agents_update_rpc(agent_id: str, patch: dict[str, Any]) -> dict[str, Any]:
     return gateway_call("agents.update", params)
 
 
+def _agent_workspace(agent_id: str) -> str:
+    """Return the on-disk workspace path for an agent, looked up from `agents list --json`."""
+    for a in agents_list():
+        if a["id"] == agent_id:
+            return a.get("workspace") or f"/data/.openclaw/workspace-{agent_id}"
+    return f"/data/.openclaw/workspace-{agent_id}"
+
+
 def agents_files_get(agent_id: str, file_name: str) -> str:
-    """Read a per-agent file (IDENTITY.md/BOOTSTRAP.md/etc) via RPC `agents.files.get`."""
+    """Read a per-agent file. RPC first, fall back to direct docker exec cat."""
     _require(AGENT_ID_RE, agent_id, "agentId")
     if not file_name or "/" in file_name or file_name.startswith("."):
         raise HTTPException(status_code=400, detail="invalid file name")
-    result = gateway_call("agents.files.get", {"agentId": agent_id, "name": file_name})
-    return result.get("content", "") if isinstance(result, dict) else ""
+    try:
+        result = gateway_call("agents.files.get", {"agentId": agent_id, "name": file_name})
+        if isinstance(result, dict) and "content" in result:
+            return result.get("content", "")
+    except HTTPException:
+        pass
+    workspace = _agent_workspace(agent_id)
+    path = f"{workspace}/{file_name}"
+    cmd = f"docker exec {shlex.quote(CONTAINER)} sh -c {shlex.quote(f'cat {shlex.quote(path)} 2>/dev/null || true')}"
+    rc, out, _ = ssh_run(cmd, timeout=15)
+    return out if rc == 0 else ""
 
 
 def agents_files_list(agent_id: str) -> list[str]:
     _require(AGENT_ID_RE, agent_id, "agentId")
-    result = gateway_call("agents.files.list", {"agentId": agent_id})
-    if isinstance(result, dict) and "files" in result:
-        return list(result["files"])
-    return result if isinstance(result, list) else []
+    try:
+        result = gateway_call("agents.files.list", {"agentId": agent_id})
+        if isinstance(result, dict) and "files" in result:
+            return list(result["files"])
+        if isinstance(result, list):
+            return result
+    except HTTPException:
+        pass
+    workspace = _agent_workspace(agent_id)
+    cmd = (
+        f"docker exec {shlex.quote(CONTAINER)} sh -c "
+        f"{shlex.quote(f'ls -1 {shlex.quote(workspace)} 2>/dev/null | head -50')}"
+    )
+    rc, out, _ = ssh_run(cmd, timeout=15)
+    if rc != 0:
+        return []
+    return [line.strip() for line in out.splitlines() if line.strip() and not line.startswith(".")]
 
 
 def agents_files_set(agent_id: str, file_name: str, content: str) -> dict[str, Any]:
     _require(AGENT_ID_RE, agent_id, "agentId")
     if not file_name or "/" in file_name or file_name.startswith("."):
         raise HTTPException(status_code=400, detail="invalid file name")
-    return gateway_call("agents.files.set", {
-        "agentId": agent_id,
-        "name": file_name,
-        "content": content,
-    })
+    try:
+        return gateway_call("agents.files.set", {
+            "agentId": agent_id,
+            "name": file_name,
+            "content": content,
+        })
+    except HTTPException:
+        pass
+    workspace = _agent_workspace(agent_id)
+    remote_tmp = f"/tmp/agent-file-{uuid.uuid4().hex}"
+    heredoc = f"cat > {shlex.quote(remote_tmp)} <<'__TVAI_AGENT_FILE_EOF__'\n{content}\n__TVAI_AGENT_FILE_EOF__"
+    rc, _, err = ssh_run(heredoc, timeout=20)
+    if rc != 0:
+        raise HTTPException(status_code=502, detail=f"stage file failed: {err.strip()[:200]}")
+    try:
+        target = f"{workspace}/{file_name}"
+        rc, _, err = ssh_run(
+            f"docker exec {shlex.quote(CONTAINER)} mkdir -p {shlex.quote(workspace)} && "
+            f"docker cp {shlex.quote(remote_tmp)} {shlex.quote(CONTAINER)}:{shlex.quote(target)}",
+            timeout=20,
+        )
+        if rc != 0:
+            raise HTTPException(status_code=502, detail=f"docker cp failed: {err.strip()[:200]}")
+        return {"ok": True, "path": target}
+    finally:
+        ssh_run(f"rm -f {shlex.quote(remote_tmp)}", timeout=10)
 
 
 # ---------------------------------------------------------------------------

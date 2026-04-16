@@ -127,19 +127,37 @@ export default function AgentsTab() {
   );
 }
 
-function ModelSelect({ models, value, onChange, listId }) {
+function ModelSelect({ models, value, onChange }) {
+  const hasValueInList = models.some((m) => m.id === value);
   return (
-    <>
-      <input className={styles.input} list={listId} value={value} onChange={(e) => onChange(e.target.value)} />
-      <datalist id={listId}>
-        {models.map((m) => (
+    <select
+      className={styles.input}
+      value={hasValueInList ? value : "__custom__"}
+      onChange={(e) => {
+        const v = e.target.value;
+        if (v === "__custom__") {
+          const input = window.prompt("커스텀 모델 id 입력 (예: ollama/llama3:8b)", value || "");
+          if (input) onChange(input.trim());
+        } else {
+          onChange(v);
+        }
+      }}
+    >
+      {models.map((m) => {
+        const badge = m.supportsTools ? "" : " ⚠no-tools";
+        const size = m.parameterSize ? ` · ${m.parameterSize}` : "";
+        const quant = m.quantization ? ` · ${m.quantization}` : "";
+        return (
           <option key={m.id} value={m.id}>
-            {m.supportsTools ? "" : "⚠ no-tools · "}
-            {m.parameterSize || ""} {m.quantization ? `· ${m.quantization}` : ""}
+            {m.id}{badge}{size}{quant}
           </option>
-        ))}
-      </datalist>
-    </>
+        );
+      })}
+      {!hasValueInList && value ? (
+        <option value={value}>{value} (현재값)</option>
+      ) : null}
+      <option value="__custom__">+ 커스텀 입력…</option>
+    </select>
   );
 }
 
@@ -178,7 +196,7 @@ function AgentCreateModal({ models, onClose, onSaved, onError }) {
         </div>
         <div className={styles.formRow}>
           <label>모델 *</label>
-          <ModelSelect models={models} value={model} onChange={setModel} listId="model-list-create" />
+          <ModelSelect models={models} value={model} onChange={setModel} />
         </div>
         <div className={styles.formRow}>
           <label>시스템 프롬프트 (IDENTITY.md)</label>

@@ -83,8 +83,8 @@ env:
 
   # ── OpenClaw 게이트웨이 (admin 콘솔용) ──
   - key: OPENCLAW_WS_URL
-    description: "LAN OpenClaw 게이트웨이 WS URL (twinverse-ai 직접 연결 권장)"
-    value: "ws://192.168.219.117:18789"
+    description: "OpenClaw 게이트웨이 WS URL (Orbitron 컨테이너는 LAN 직접 접근 불가 → 공개 Cloudflare 엔드포인트 사용)"
+    value: "wss://openclaw.twinverse.org"
     sync: true
 
   - key: OPENCLAW_TOKEN

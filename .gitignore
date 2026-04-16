@@ -45,3 +45,4 @@ uploads/*
 # External projects
 deskrpg-master/
 .claude/
+scripts/update_openclaw_ws_url.js
