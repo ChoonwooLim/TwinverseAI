@@ -333,6 +333,43 @@ def gateway_call(method: str, params: dict[str, Any] | None = None, *, timeout: 
         return {"raw": raw}
 
 
+def models_list() -> list[dict[str, Any]]:
+    """List Ollama models installed on twinverse-ai via `curl /api/tags`.
+
+    OpenClaw uses the host Ollama (ws://host:11434). We SSH to the host and hit
+    the Ollama REST API — no docker exec needed. Returns id = `ollama/<name>`.
+    """
+    ensure_configured()
+    rc, out, _ = ssh_run("curl -s --max-time 5 http://localhost:11434/api/tags", timeout=10)
+    if rc != 0:
+        return []
+    try:
+        data = json.loads(out.strip() or "{}")
+    except json.JSONDecodeError:
+        return []
+    TOOL_FAMILIES = {"qwen", "qwen2", "qwen2.5", "qwen3", "mistral", "llama3", "command-r"}
+    models: list[dict[str, Any]] = []
+    for m in data.get("models", []):
+        name = m.get("name") or m.get("model") or ""
+        if not name:
+            continue
+        details = m.get("details") or {}
+        family = details.get("family", "")
+        families = details.get("families", []) or []
+        supports_tools = family in TOOL_FAMILIES or any(f in TOOL_FAMILIES for f in families)
+        models.append({
+            "id": f"ollama/{name}",
+            "name": name,
+            "size": m.get("size", 0),
+            "family": family,
+            "parameterSize": details.get("parameter_size", ""),
+            "quantization": details.get("quantization_level", ""),
+            "supportsTools": supports_tools,
+        })
+    models.sort(key=lambda x: (not x["supportsTools"], x["id"]))
+    return models
+
+
 def gateway_health() -> dict[str, Any]:
     rc, out, _ = openclaw_exec("gateway health --json", timeout=8)
     if rc != 0:

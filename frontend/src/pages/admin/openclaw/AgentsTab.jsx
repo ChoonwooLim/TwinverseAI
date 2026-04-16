@@ -2,17 +2,15 @@ import { useEffect, useState, useCallback } from "react";
 import api from "../../../services/api";
 import styles from "../AdminOpenClawConsole.module.css";
 
-const DEFAULT_MODELS = [
-  "ollama/qwen2.5:7b",
-  "ollama/qwen2.5:14b",
-  "ollama/gemma3:12b",
-  "ollama/gemma4:26b",
-  "openai/gpt-4o-mini",
-  "anthropic/claude-haiku-4-5-20251001",
+const FALLBACK_MODELS = [
+  { id: "ollama/qwen2.5:7b", name: "qwen2.5:7b", supportsTools: true },
+  { id: "openai/gpt-4o-mini", name: "gpt-4o-mini", supportsTools: true, cloud: true },
+  { id: "anthropic/claude-haiku-4-5-20251001", name: "claude-haiku-4.5", supportsTools: true, cloud: true },
 ];
 
 export default function AgentsTab() {
   const [agents, setAgents] = useState([]);
+  const [models, setModels] = useState(FALLBACK_MODELS);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
   const [ok, setOk] = useState("");
@@ -31,6 +29,21 @@ export default function AgentsTab() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const r = await api.get("/api/admin/openclaw/console/models");
+        const list = r.data.models || [];
+        if (alive && list.length) {
+          const cloudExtras = FALLBACK_MODELS.filter((m) => m.cloud);
+          setModels([...list, ...cloudExtras]);
+        }
+      } catch { /* fall back to hardcoded */ }
+    })();
+    return () => { alive = false; };
+  }, []);
 
   const handleDelete = async (id) => {
     if (!window.confirm(`에이전트 "${id}"를 삭제할까요? 세션/파일도 함께 제거됩니다.`)) return;
@@ -94,6 +107,7 @@ export default function AgentsTab() {
 
       {creating && (
         <AgentCreateModal
+          models={models}
           onClose={() => setCreating(false)}
           onSaved={async () => { setCreating(false); setOk("생성됨"); await load(); }}
           onError={(m) => setErr(m)}
@@ -103,6 +117,7 @@ export default function AgentsTab() {
       {editing && (
         <AgentEditModal
           agent={editing}
+          models={models}
           onClose={() => setEditing(null)}
           onSaved={async () => { setEditing(null); setOk("저장됨"); await load(); }}
           onError={(m) => setErr(m)}
@@ -112,10 +127,26 @@ export default function AgentsTab() {
   );
 }
 
-function AgentCreateModal({ onClose, onSaved, onError }) {
+function ModelSelect({ models, value, onChange, listId }) {
+  return (
+    <>
+      <input className={styles.input} list={listId} value={value} onChange={(e) => onChange(e.target.value)} />
+      <datalist id={listId}>
+        {models.map((m) => (
+          <option key={m.id} value={m.id}>
+            {m.supportsTools ? "" : "⚠ no-tools · "}
+            {m.parameterSize || ""} {m.quantization ? `· ${m.quantization}` : ""}
+          </option>
+        ))}
+      </datalist>
+    </>
+  );
+}
+
+function AgentCreateModal({ models, onClose, onSaved, onError }) {
   const [id, setId] = useState("");
   const [displayName, setDisplayName] = useState("");
-  const [model, setModel] = useState(DEFAULT_MODELS[0]);
+  const [model, setModel] = useState((models && models[0]?.id) || "ollama/qwen2.5:7b");
   const [systemPrompt, setSystemPrompt] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -147,10 +178,7 @@ function AgentCreateModal({ onClose, onSaved, onError }) {
         </div>
         <div className={styles.formRow}>
           <label>모델 *</label>
-          <input className={styles.input} list="model-list" value={model} onChange={(e) => setModel(e.target.value)} />
-          <datalist id="model-list">
-            {DEFAULT_MODELS.map((m) => <option key={m} value={m} />)}
-          </datalist>
+          <ModelSelect models={models} value={model} onChange={setModel} listId="model-list-create" />
         </div>
         <div className={styles.formRow}>
           <label>시스템 프롬프트 (IDENTITY.md)</label>
@@ -168,9 +196,9 @@ function AgentCreateModal({ onClose, onSaved, onError }) {
   );
 }
 
-function AgentEditModal({ agent, onClose, onSaved, onError }) {
+function AgentEditModal({ agent, models, onClose, onSaved, onError }) {
   const [displayName, setDisplayName] = useState(agent.displayName || "");
-  const [model, setModel] = useState(agent.model || DEFAULT_MODELS[0]);
+  const [model, setModel] = useState(agent.model || (models && models[0]?.id) || "ollama/qwen2.5:7b");
   const [theme, setTheme] = useState(agent.theme || "");
   const [emoji, setEmoji] = useState(agent.emoji || "");
   const [systemPrompt, setSystemPrompt] = useState("");
@@ -215,10 +243,7 @@ function AgentEditModal({ agent, onClose, onSaved, onError }) {
         </div>
         <div className={styles.formRow}>
           <label>모델</label>
-          <input className={styles.input} list="model-list-edit" value={model} onChange={(e) => setModel(e.target.value)} />
-          <datalist id="model-list-edit">
-            {DEFAULT_MODELS.map((m) => <option key={m} value={m} />)}
-          </datalist>
+          <ModelSelect models={models} value={model} onChange={setModel} listId="model-list-edit" />
         </div>
         <div className={styles.formRow}>
           <label>테마</label>

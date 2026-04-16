@@ -78,6 +78,13 @@ def health(_: User = Depends(require_admin)) -> dict[str, Any]:
     return cli.gateway_health()
 
 
+@router.get("/models")
+def models_list_endpoint(_: User = Depends(require_admin)) -> dict[str, Any]:
+    """List Ollama models available on twinverse-ai (usable as agent backends)."""
+    ensure_configured()
+    return {"models": cli.models_list()}
+
+
 # ---------------------------------------------------------------------------
 # agents
 # ---------------------------------------------------------------------------

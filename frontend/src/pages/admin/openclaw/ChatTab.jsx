@@ -165,13 +165,39 @@ export default function ChatTab() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connState, selectedAgent]);
 
+  const waitForOpen = () => new Promise((resolve, reject) => {
+    const start = Date.now();
+    const tick = () => {
+      if (connState === "open" && wsRef.current?.readyState === 1) return resolve();
+      if (Date.now() - start > 8000) return reject(new Error("connection timeout"));
+      setTimeout(tick, 150);
+    };
+    tick();
+  });
+
+  const ensureSession = async () => {
+    if (sessionKey) return sessionKey;
+    if (!selectedAgent) throw new Error("에이전트를 먼저 선택하세요");
+    if (!wsRef.current || (connState !== "open" && connState !== "connecting")) {
+      connect();
+    }
+    await waitForOpen();
+    const result = await rpc("sessions.create", { agentId: selectedAgent });
+    const key = result?.key || result?.sessionKey || `agent:${selectedAgent}:main`;
+    setSessionKey(key);
+    setMessages((prev) => prev.length ? prev : [{ role: "system", content: `세션 시작: ${selectedAgent}` }]);
+    try { await rpc("sessions.messages.subscribe", { key }); } catch {/* ignore */}
+    return key;
+  };
+
   const send = async () => {
-    if (!draft.trim() || !sessionKey) return;
+    if (!draft.trim()) return;
     const message = draft.trim();
     setMessages((prev) => [...prev, { role: "user", content: message }]);
     setDraft("");
     try {
-      await rpc("sessions.send", { key: sessionKey, message });
+      const key = await ensureSession();
+      await rpc("sessions.send", { key, message });
     } catch (e) {
       setErr(typeof e === "string" ? e : (e?.message || "send failed"));
     }
@@ -264,7 +290,7 @@ export default function ChatTab() {
             <button
               className={`${styles.btn} ${styles.btnPrimary}`}
               onClick={send}
-              disabled={!sessionKey || !draft.trim()}
+              disabled={!selectedAgent || !draft.trim()}
             >
               전송
             </button>
