@@ -81,6 +81,37 @@ env:
     value: "/app/docs"
     sync: true
 
+  # ── OpenClaw 게이트웨이 (admin 콘솔용) ──
+  - key: OPENCLAW_WS_URL
+    description: "LAN OpenClaw 게이트웨이 WS URL (twinverse-ai 직접 연결 권장)"
+    value: "ws://192.168.219.117:18789"
+    sync: true
+
+  - key: OPENCLAW_TOKEN
+    description: "OpenClaw 게이트웨이 bearer 토큰 (백엔드만 보유, 프론트 노출 금지)"
+    required: true
+    sync: false
+
+  - key: OPENCLAW_SSH_HOST
+    description: "twinverse-ai SSH 호스트"
+    value: "192.168.219.117"
+    sync: true
+
+  - key: OPENCLAW_SSH_USER
+    description: "twinverse-ai SSH 사용자"
+    value: "stevenlim"
+    sync: true
+
+  - key: OPENCLAW_SSH_PASSWORD
+    description: "twinverse-ai SSH 비밀번호 (시크릿)"
+    required: true
+    sync: false
+
+  - key: OPENCLAW_CONTAINER
+    description: "OpenClaw 컨테이너명"
+    value: "openclaw"
+    sync: true
+
 # ── 볼륨 (영속 데이터) ────────────────────────────────────────
 volumes:
   - path: /app/uploads

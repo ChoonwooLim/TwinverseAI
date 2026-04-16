@@ -1,0 +1,113 @@
+# OpenClaw 관리 콘솔 운영 가이드
+
+**접근 권한**: admin / superadmin
+**경로**: `/admin/openclaw-console` (탭: 에이전트 · 플러그인 · 설정 · 채팅 · 로그)
+**대상 인스턴스**: twinverse-ai (192.168.219.117) 의 LAN OpenClaw 컨테이너
+**게이트웨이**: `wss://openclaw.twinverse.org` (Cloudflare Tunnel → port 18789)
+
+## 아키텍처
+
+```
+Browser (admin JWT)
+  │ REST + WSS (same origin)
+  ▼
+TwinverseAI FastAPI backend
+  ├─ REST  /api/admin/openclaw/console/{agents,plugins,config,rpc,...}
+  │   └─ paramiko SSH → docker exec openclaw openclaw <cmd>
+  ├─ WS    /api/admin/openclaw/console/chat   ← first-msg JWT auth, relay to OpenClaw WS
+  └─ WS    /api/admin/openclaw/console/logs   ← docker logs -f (SSH)
+  ▼
+twinverse-ai (192.168.219.117)
+  ├─ OpenClaw gateway ws://localhost:18789 → wss://openclaw.twinverse.org
+  └─ CLI  docker exec openclaw openclaw <subcommand>
+```
+
+## 환경변수 (`backend/.env`)
+
+| 키 | 용도 |
+|---|---|
+| `OPENCLAW_WS_URL` | 백엔드→게이트웨이 내부 WS URL (LAN 직접 연결 권장) |
+| `OPENCLAW_TOKEN` | 게이트웨이 bearer 토큰 (백엔드만 보유, 브라우저 노출 금지) |
+| `OPENCLAW_SSH_HOST/USER/PASSWORD` | twinverse-ai SSH 접속 |
+| `OPENCLAW_CONTAINER` | `openclaw` (기본값) |
+
+**보안 규칙**
+- `OPENCLAW_TOKEN` 은 프론트엔드 번들에 절대 들어가면 안 됨 (CI 에서 grep 검증)
+- WS 응답에서 `token`, `apiKey`, `secret`, `password` 등 필드는 서버에서 strip
+- REST config 조회 시 같은 패턴의 값은 `***<마지막4자>` 로 마스킹
+
+## 재시작 회피 설계 (중요)
+
+`docker restart openclaw` 은 entrypoint 의 "Fixing data permissions" 가 `openclaw.json`
+을 재생성 → 토큰 로테이트. 콘솔은 이를 절대 유발하지 않도록 아래 규칙을 따른다:
+
+| 작업 | 방법 | 재시작? |
+|---|---|---|
+| 에이전트 생성 | `openclaw agents add --id ... --name ... --model ...` | **아니오** (plugin slot 미추가) |
+| 에이전트 삭제 | `openclaw agents delete <id> --yes` | 아니오 |
+| 에이전트 이름/테마/이모지 | `openclaw agents set-identity` | 아니오 |
+| 에이전트 모델 | `gateway call agents.update {model}` | 아니오 |
+| 에이전트 IDENTITY.md | `gateway call agents.files.set` | 아니오 |
+| 플러그인 on/off | `config set plugins.entries.<id>.enabled=bool` (+SIGUSR1 reload) | 아니오 |
+| 플러그인 config | `config set --batch-file --strict-json --dry-run` → 실제 적용 | 아니오 |
+| 전역 config | 동일 (dry-run 선행) | 아니오 |
+| 금지 | `docker restart openclaw`, RPC `agents.create` (plugin slot 추가) | **예 — 금지** |
+
+## 주요 REST 엔드포인트
+
+```
+GET    /api/admin/openclaw/console/health
+GET    /api/admin/openclaw/console/agents
+POST   /api/admin/openclaw/console/agents            {id, displayName, model, systemPrompt?}
+DELETE /api/admin/openclaw/console/agents/{id}
+PATCH  /api/admin/openclaw/console/agents/{id}       {displayName?, model?, theme?, emoji?, systemPrompt?}
+GET    /api/admin/openclaw/console/agents/{id}/files
+GET    /api/admin/openclaw/console/agents/{id}/files/{name}
+PUT    /api/admin/openclaw/console/agents/{id}/files/{name}   {content}
+
+GET    /api/admin/openclaw/console/plugins
+GET    /api/admin/openclaw/console/plugins/{id}
+POST   /api/admin/openclaw/console/plugins/{id}/enable
+POST   /api/admin/openclaw/console/plugins/{id}/disable
+GET    /api/admin/openclaw/console/plugins/{id}/config
+PUT    /api/admin/openclaw/console/plugins/{id}/config        {config, dryRun?}
+
+GET    /api/admin/openclaw/console/config?key=...
+GET    /api/admin/openclaw/console/config/schema
+PUT    /api/admin/openclaw/console/config                     {pairs, dryRun?}
+GET    /api/admin/openclaw/console/config/audit?lines=50
+
+POST   /api/admin/openclaw/console/rpc                        {method, params}   # allowlisted methods only
+```
+
+## WebSocket 엔드포인트
+
+**공통**: 첫 프레임은 반드시 `{"op":"auth","token":"<jwt>"}` — 실패 시 `close(4401)` / `close(4403)`.
+
+### `/chat` — JSON-RPC 릴레이
+- 서버는 OpenClaw 게이트웨이에 Authorization 헤더로 토큰 부착
+- 클라이언트는 표준 JSON-RPC envelope 전송: `{id, method, params}`
+- 허용 메서드 예: `sessions.create`, `sessions.send`, `sessions.messages.subscribe`, `agents.list`, `chat.history`
+- 응답 메시지에서 `token`/`apiKey`/`secret` 등 필드는 자동 strip
+
+### `/logs` — 로그 스트리밍
+- 서버가 SSH 채널로 `docker logs -f --tail 200 openclaw` 실행
+- 라인별로 `{op:"log.line", stream:"stdout|stderr", line:"..."}` 푸시
+- 클라이언트 연결 해제 시 SSH 채널 자동 종료
+
+## 배포 체크리스트 (Orbitron)
+
+- [ ] Orbitron 대시보드에 `OPENCLAW_TOKEN`, `OPENCLAW_SSH_PASSWORD` secrets 등록
+- [ ] Orbitron 배포본 컨테이너 → twinverse-ai SSH 접근 가능한지 확인
+- [ ] `wss://twinverseai.twinverse.org/api/admin/openclaw/console/chat` 직접 연결 테스트
+- [ ] 번들(`dist/`) 에 토큰 grep 0건 확인 (CI)
+
+## 트러블슈팅
+
+| 증상 | 원인 / 조치 |
+|---|---|
+| 콘솔 접속 시 "Gateway 응답 없음" | `ssh twinverse-ai docker ps` 로 openclaw 컨테이너 live 확인. `systemctl status cloudflared`. |
+| 채팅 `sessions.send` 실패 (`must have required property 'key'`) | 먼저 `sessions.create` 로 key 발급 필요. 자동 처리되지만 에이전트 id 잘못 지정 시 실패 |
+| 플러그인 config 저장 시 `dry-run failed` | `--strict-json` 파싱 오류. JSON 형식 재확인, `config schema <plugin-id>` 참고 |
+| 로그가 흐르지 않음 | SSH 연결 정상인데 stdout 없음 → `docker logs openclaw` 직접 실행해 비교 |
+| 콘솔 작업 후 디바이스 페어링 끊김 | `docker restart` 유발된 것. audit log 확인, 해당 작업 재발 방지 |

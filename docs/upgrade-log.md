@@ -58,3 +58,4 @@
 | 2026-04-15 | Pixel Streaming 멀티플레이어 피벗 동기화 (Track A/B 분리) | feat | docs/superpowers/specs/*, docs/superpowers/plans/* |
 | 2026-04-15 | Office NPC Tier 2 → LAN twinverse-ai OpenClaw(Ollama qwen2.5:7b) 이관 | feat | backend/.env, backend/routers/npc_agent.py, ai-shared-registry.md |
 | 2026-04-15 | 어드민 OpenClaw 디바이스 페어링 승인 UI + API 프록시 (paramiko SSH) | feat | backend/routers/admin_openclaw.py, frontend/src/pages/admin/AdminOpenClawDevices.jsx, Sidebar.jsx, App.jsx, requirements.txt |
+| 2026-04-16 | 어드민 OpenClaw 풀 콘솔 — 에이전트 CRUD · 플러그인 on/off+config · 전역 config+audit · 채팅 WS 릴레이 · 로그 스트리밍 (admin 전용, 재시작 회피 설계) | feat | backend/services/openclaw_ssh.py, backend/services/openclaw_cli.py, backend/utils/ws_auth.py, backend/routers/admin_openclaw_console.py, frontend/src/pages/admin/AdminOpenClawConsole.jsx+CSS, frontend/src/pages/admin/openclaw/{Agents,Plugins,Config,Chat,Logs}Tab.jsx, Sidebar.jsx, App.jsx, requirements.txt(+websockets) |

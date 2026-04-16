@@ -12,3 +12,4 @@ slowapi==0.1.9
 psutil==7.0.0
 httpx
 paramiko==3.5.0
+websockets==13.1

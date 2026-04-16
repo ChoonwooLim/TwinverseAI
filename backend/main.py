@@ -17,7 +17,7 @@ from slowapi.errors import RateLimitExceeded
 from rate_limit import limiter
 import database
 from database import create_db_and_tables
-from routers import auth, admin, docs, skills, plugins, boards, comments, files, news, ps2_spawner, npc, npc_agent, admin_openclaw
+from routers import auth, admin, docs, skills, plugins, boards, comments, files, news, ps2_spawner, npc, npc_agent, admin_openclaw, admin_openclaw_console
 
 
 def _get_uploads_dir() -> Path:
@@ -493,6 +493,7 @@ app.include_router(ps2_spawner.router, prefix="/api/ps2", tags=["ps2-spawner"])
 app.include_router(npc.router, prefix="/api/npc", tags=["npc"])
 app.include_router(npc_agent.router, prefix="/api/npc", tags=["npc-agent"])
 app.include_router(admin_openclaw.router, prefix="/api/admin/openclaw", tags=["admin-openclaw"])
+app.include_router(admin_openclaw_console.router, prefix="/api/admin/openclaw/console", tags=["admin-openclaw-console"])
 
 @app.get("/health")
 def health_check():
