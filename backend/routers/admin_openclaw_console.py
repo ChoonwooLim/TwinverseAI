@@ -365,7 +365,10 @@ async def logs_ws(ws: WebSocket) -> None:
         await ws.close(code=1011)
         return
 
-    from services.openclaw_ssh import SSH_HOST, SSH_USER, SSH_PASSWORD
+    from services.openclaw_ssh import SSH_HOST, SSH_USER, SSH_PASSWORD, _load_pkey
+
+    pkey = _load_pkey()
+    use_key = pkey is not None
 
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -375,9 +378,10 @@ async def logs_ws(ws: WebSocket) -> None:
         client.connect(
             hostname=SSH_HOST,
             username=SSH_USER,
-            password=SSH_PASSWORD,
-            look_for_keys=SSH_PASSWORD is None,
-            allow_agent=SSH_PASSWORD is None,
+            pkey=pkey,
+            password=None if use_key else SSH_PASSWORD,
+            look_for_keys=False,
+            allow_agent=False,
             timeout=10,
         )
         transport = client.get_transport()

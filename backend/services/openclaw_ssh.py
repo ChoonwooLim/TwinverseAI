@@ -13,6 +13,8 @@ CLI를 호출하고 stdout을 파싱한다.
 
 from __future__ import annotations
 
+import base64
+import io
 import os
 import re
 import shlex
@@ -24,6 +26,8 @@ from fastapi import HTTPException
 SSH_HOST = os.getenv("OPENCLAW_SSH_HOST", "").strip()
 SSH_USER = os.getenv("OPENCLAW_SSH_USER", "").strip()
 SSH_PASSWORD = os.getenv("OPENCLAW_SSH_PASSWORD", "").strip() or None
+SSH_KEY_B64 = os.getenv("OPENCLAW_SSH_KEY_B64", "").strip() or None
+SSH_KEY_PATH = os.getenv("OPENCLAW_SSH_KEY_PATH", "").strip() or None
 CONTAINER = os.getenv("OPENCLAW_CONTAINER", "openclaw").strip() or "openclaw"
 
 
@@ -35,9 +39,41 @@ def ensure_configured() -> None:
         )
 
 
+def _load_pkey():
+    """Load a paramiko PKey from OPENCLAW_SSH_KEY_B64 or OPENCLAW_SSH_KEY_PATH (tries ed25519 then rsa)."""
+    import paramiko
+
+    if SSH_KEY_B64:
+        try:
+            pem = base64.b64decode(SSH_KEY_B64).decode("utf-8")
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"OPENCLAW_SSH_KEY_B64 decode failed: {e}") from e
+        buf = io.StringIO(pem)
+        for cls in (paramiko.Ed25519Key, paramiko.RSAKey, paramiko.ECDSAKey):
+            try:
+                buf.seek(0)
+                return cls.from_private_key(buf)
+            except paramiko.ssh_exception.SSHException:
+                continue
+        raise HTTPException(status_code=500, detail="OPENCLAW_SSH_KEY_B64: unsupported key format")
+
+    if SSH_KEY_PATH and os.path.exists(SSH_KEY_PATH):
+        for cls in (paramiko.Ed25519Key, paramiko.RSAKey, paramiko.ECDSAKey):
+            try:
+                return cls.from_private_key_file(SSH_KEY_PATH)
+            except paramiko.ssh_exception.SSHException:
+                continue
+        raise HTTPException(status_code=500, detail=f"OPENCLAW_SSH_KEY_PATH: unsupported key format ({SSH_KEY_PATH})")
+
+    return None
+
+
 def ssh_run(command: str, timeout: int = 20) -> tuple[int, str, str]:
     """Run a shell command on twinverse-ai via paramiko. Returns (rc, stdout, stderr)."""
     import paramiko
+
+    pkey = _load_pkey()
+    use_key = pkey is not None
 
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -45,9 +81,10 @@ def ssh_run(command: str, timeout: int = 20) -> tuple[int, str, str]:
         client.connect(
             hostname=SSH_HOST,
             username=SSH_USER,
-            password=SSH_PASSWORD,
-            look_for_keys=SSH_PASSWORD is None,
-            allow_agent=SSH_PASSWORD is None,
+            pkey=pkey,
+            password=None if use_key else SSH_PASSWORD,
+            look_for_keys=False,
+            allow_agent=False,
             timeout=timeout,
         )
         stdin, stdout, stderr = client.exec_command(command, timeout=timeout)

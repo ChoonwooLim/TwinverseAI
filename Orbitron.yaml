@@ -103,7 +103,11 @@ env:
     sync: true
 
   - key: OPENCLAW_SSH_PASSWORD
-    description: "twinverse-ai SSH 비밀번호 (시크릿)"
+    description: "twinverse-ai SSH 비밀번호 (키 인증 사용 시 생략 가능)"
+    sync: false
+
+  - key: OPENCLAW_SSH_KEY_B64
+    description: "twinverse-ai SSH 개인키 (base64 PEM, 권장 — publickey-only 서버 대응)"
     required: true
     sync: false
 
