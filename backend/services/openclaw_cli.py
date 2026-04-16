@@ -142,7 +142,7 @@ def agents_set_identity(agent_id: str, *, display_name: str | None = None, theme
 def agents_update_rpc(agent_id: str, patch: dict[str, Any]) -> dict[str, Any]:
     """Update agent via RPC `agents.update` (model/files without plugin slot changes)."""
     _require(AGENT_ID_RE, agent_id, "agentId")
-    params = {"id": agent_id, **patch}
+    params = {"agentId": agent_id, **patch}
     return gateway_call("agents.update", params)
 
 
