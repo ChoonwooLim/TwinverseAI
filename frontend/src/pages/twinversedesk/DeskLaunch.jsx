@@ -100,7 +100,10 @@ export default function DeskLaunch() {
       } catch (err) {
         const status = err.response?.status;
         if (status === 401) {
-          // ps2api response interceptor will bounce to /login — no banner needed.
+          // GPU server auth mismatch — show banner instead of logging out.
+          // The ps2api interceptor no longer wipes credentials for health checks.
+          setHealth(null);
+          setHealthError("GPU 서버 인증 오류 — 서버 SECRET_KEY를 확인하세요");
           return;
         }
         setHealth(null);

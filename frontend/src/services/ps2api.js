@@ -17,16 +17,25 @@ ps2api.interceptors.request.use((config) => {
   return config;
 });
 
-// 401 on PS2 API means the stored token is stale (expired or signed with an
-// old SECRET_KEY). Match api.js behavior: wipe credentials and bounce to login
-// so the user gets a fresh token instead of being stuck on "Invalid token".
+// 401 handling — only wipe credentials for actual user-action requests
+// (spawn, terminate, heartbeat, office join, etc.).
+// Health checks and session-status polls run automatically on page load;
+// a 401 from the GPU server for those does NOT mean the main-site token is
+// invalid, so we must NOT nuke localStorage or redirect — otherwise simply
+// navigating to /twinversedesk/launch logs the user out.
+const PS2_SILENT_PATHS = ["/api/ps2/health", "/api/ps2/sessions", "/api/ps2/status/"];
+
 ps2api.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err.response?.status === 401) {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      window.location.href = "/login";
+      const url = err.config?.url || "";
+      const isSilent = PS2_SILENT_PATHS.some((p) => url.includes(p));
+      if (!isSilent) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        window.location.href = "/login";
+      }
     }
     return Promise.reject(err);
   }
