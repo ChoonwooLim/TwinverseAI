@@ -88,12 +88,30 @@ def agents_add(agent_id: str, display_name: str, model: str) -> dict[str, Any]:
         f"--non-interactive --json"
     )
     out = openclaw_run_checked(cmd, timeout=30)
+    _fix_agent_dir_ownership(agent_id)
     if display_name and display_name != agent_id:
         try:
             agents_set_identity(agent_id, display_name=display_name)
         except HTTPException:
             pass
     return {"ok": True, "message": out.strip()[:1000]}
+
+
+def _fix_agent_dir_ownership(agent_id: str) -> None:
+    """Chown newly-created agent+workspace dirs to node:node.
+
+    Container entrypoint runs as root, so `openclaw agents add` creates dirs
+    with root ownership. But the gateway process runs as node (runuser -u node)
+    and can't acquire /data/.openclaw/agents/<id>/sessions/sessions.json.lock,
+    which makes sessions.create fail with EACCES on first chat.
+    """
+    paths = f"/data/.openclaw/agents/{agent_id} /data/.openclaw/workspace-{agent_id}"
+    inner = f"chown -R node:node {paths} 2>/dev/null || true"
+    cmd = f"docker exec {shlex.quote(CONTAINER)} sh -c {shlex.quote(inner)}"
+    try:
+        ssh_run(cmd, timeout=10)
+    except Exception:
+        pass  # best-effort; surfaces later as EACCES if it fails
 
 
 def agents_delete(agent_id: str) -> dict[str, Any]:
