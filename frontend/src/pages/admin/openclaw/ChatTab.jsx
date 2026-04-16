@@ -15,18 +15,33 @@ import styles from "../AdminOpenClawConsole.module.css";
 export default function ChatTab() {
   const [agents, setAgents] = useState([]);
   const [selectedAgent, setSelectedAgent] = useState(null);
-  const [sessionKey, setSessionKey] = useState(null);
-  const [messages, setMessages] = useState([]);
+  // Per-agent maps so switching agents never wipes another agent's transcript.
+  const [sessionKeyByAgent, setSessionKeyByAgent] = useState({});
+  const [messagesByAgent, setMessagesByAgent] = useState({});
   const [draft, setDraft] = useState("");
   const [connState, setConnState] = useState("idle"); // idle | connecting | open | closed
   const [err, setErr] = useState("");
-  const [pendingDelta, setPendingDelta] = useState("");
 
   const wsRef = useRef(null);
   const rpcId = useRef(1);
   const pendingResolvers = useRef({});
   const scrollRef = useRef(null);
   const lastErrorRef = useRef(0); // timestamp of last fatal error — used to pause auto-reconnect
+  // Reverse index: sessionKey → agentId. Gateway's `session.message` event
+  // only carries sessionKey, so we need this to route deltas to the right
+  // agent's buffer even when another agent is currently selected.
+  const agentBySessionKey = useRef({});
+
+  const sessionKey = sessionKeyByAgent[selectedAgent] || null;
+  const messages = selectedAgent ? (messagesByAgent[selectedAgent] || []) : [];
+
+  const appendMessage = (agentId, msg) => {
+    if (!agentId) return;
+    setMessagesByAgent((prev) => ({
+      ...prev,
+      [agentId]: [...(prev[agentId] || []), msg],
+    }));
+  };
 
   const loadAgents = useCallback(async () => {
     try {
@@ -133,8 +148,11 @@ export default function ChatTab() {
       if (!m || m.role !== "assistant") return;
       const text = extractAssistantText(m);
       if (!text) return;
-      setMessages((prev) => [...prev, { role: "assistant", content: text }]);
-      setPendingDelta("");
+      // Route delta to the agent that owns this sessionKey, not the currently
+      // selected one — user may have switched agents while this reply was in flight.
+      const targetAgent = agentBySessionKey.current[params?.sessionKey];
+      if (!targetAgent) return;
+      appendMessage(targetAgent, { role: "assistant", content: text });
     }
   };
 
@@ -157,11 +175,16 @@ export default function ChatTab() {
 
   const openSession = async (agentId) => {
     if (!wsRef.current || connState !== "open") { connect(); return; }
+    // Reuse existing session for this agent — preserves transcript on re-select.
+    if (sessionKeyByAgent[agentId]) return;
     try {
       const result = await rpc("sessions.create", { agentId });
       const key = result?.key || result?.sessionKey || `agent:${agentId}:main`;
-      setSessionKey(key);
-      setMessages([{ role: "system", content: `세션 시작: ${agentId}` }]);
+      agentBySessionKey.current[key] = agentId;
+      setSessionKeyByAgent((prev) => ({ ...prev, [agentId]: key }));
+      setMessagesByAgent((prev) =>
+        prev[agentId] ? prev : { ...prev, [agentId]: [{ role: "system", content: `세션 시작: ${agentId}` }] }
+      );
       try { await rpc("sessions.messages.subscribe", { key }); } catch {/* ignore */}
     } catch (e) {
       setErr(typeof e === "string" ? e : (e?.message || "session create failed"));
@@ -193,28 +216,33 @@ export default function ChatTab() {
     tick();
   });
 
-  const ensureSession = async () => {
-    if (sessionKey) return sessionKey;
-    if (!selectedAgent) throw new Error("에이전트를 먼저 선택하세요");
+  const ensureSession = async (agentId) => {
+    const existing = sessionKeyByAgent[agentId];
+    if (existing) return existing;
+    if (!agentId) throw new Error("에이전트를 먼저 선택하세요");
     if (!wsRef.current || (connState !== "open" && connState !== "connecting")) {
       connect();
     }
     await waitForOpen();
-    const result = await rpc("sessions.create", { agentId: selectedAgent });
-    const key = result?.key || result?.sessionKey || `agent:${selectedAgent}:main`;
-    setSessionKey(key);
-    setMessages((prev) => prev.length ? prev : [{ role: "system", content: `세션 시작: ${selectedAgent}` }]);
+    const result = await rpc("sessions.create", { agentId });
+    const key = result?.key || result?.sessionKey || `agent:${agentId}:main`;
+    agentBySessionKey.current[key] = agentId;
+    setSessionKeyByAgent((prev) => ({ ...prev, [agentId]: key }));
+    setMessagesByAgent((prev) =>
+      prev[agentId] ? prev : { ...prev, [agentId]: [{ role: "system", content: `세션 시작: ${agentId}` }] }
+    );
     try { await rpc("sessions.messages.subscribe", { key }); } catch {/* ignore */}
     return key;
   };
 
   const send = async () => {
-    if (!draft.trim()) return;
+    if (!draft.trim() || !selectedAgent) return;
+    const agentId = selectedAgent;
     const message = draft.trim();
-    setMessages((prev) => [...prev, { role: "user", content: message }]);
+    appendMessage(agentId, { role: "user", content: message });
     setDraft("");
     try {
-      const key = await ensureSession();
+      const key = await ensureSession(agentId);
       await rpc("sessions.send", { key, message });
     } catch (e) {
       setErr(typeof e === "string" ? e : (e?.message || "send failed"));
@@ -223,7 +251,7 @@ export default function ChatTab() {
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [messages, pendingDelta]);
+  }, [messages]);
 
   const handleKey = (e) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
@@ -272,7 +300,7 @@ export default function ChatTab() {
 
         <div className={styles.chatMain}>
           <div ref={scrollRef} className={styles.chatMessages}>
-            {messages.length === 0 && !pendingDelta ? (
+            {messages.length === 0 ? (
               <div className={styles.empty}>
                 {selectedAgent ? "메시지를 입력해 대화를 시작하세요." : "좌측에서 에이전트를 선택하세요."}
               </div>
@@ -287,9 +315,6 @@ export default function ChatTab() {
                 {m.content}
               </div>
             ))}
-            {pendingDelta && (
-              <div className={`${styles.msg} ${styles.msgAssistant}`}>{pendingDelta}<span style={{ opacity: 0.5 }}>▎</span></div>
-            )}
           </div>
           <div className={styles.chatInputRow}>
             <textarea

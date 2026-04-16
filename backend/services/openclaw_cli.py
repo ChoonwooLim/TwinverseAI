@@ -140,10 +140,51 @@ def agents_set_identity(agent_id: str, *, display_name: str | None = None, theme
 
 
 def agents_update_rpc(agent_id: str, patch: dict[str, Any]) -> dict[str, Any]:
-    """Update agent via RPC `agents.update` (model/files without plugin slot changes)."""
+    """Update agent meta (currently: model) via targeted `config set`.
+
+    Avoids the destructive `agents.update` RPC — that path serializes the
+    gateway's in-memory agents list back to openclaw.json, which (at least
+    in 2026.4.12) drops any agents the current process hasn't hydrated,
+    permanently truncating the config. Targeted `config set agents.list[N].x`
+    rewrites only the requested leaf and preserves siblings.
+    """
     _require(AGENT_ID_RE, agent_id, "agentId")
-    params = {"agentId": agent_id, **patch}
-    return gateway_call("agents.update", params)
+    model = patch.get("model")
+    if not model:
+        return {"ok": True, "skipped": "no supported fields in patch"}
+    if len(model) > 120:
+        raise HTTPException(status_code=400, detail="model too long")
+
+    # Look up the agent's index in agents.list (CLI preserves on-disk order).
+    agents = agents_list()
+    idx = next((i for i, a in enumerate(agents) if a["id"] == agent_id), -1)
+    if idx < 0:
+        raise HTTPException(status_code=404, detail=f"agent not found: {agent_id}")
+
+    path = f"agents.list[{idx}].model"
+    # `config set <path> <value>` expects JSON-encoded value (strict-json).
+    value_json = json.dumps(model, ensure_ascii=False)
+    cmd = f"config set {shlex.quote(path)} {shlex.quote(value_json)} --strict-json"
+    out = openclaw_run_checked(cmd, timeout=20)
+    # config set runs as root via docker exec; fix ownership so gateway's
+    # file watcher (runs as node) can re-arm on inotify.
+    _chown_config_to_node()
+    return {"ok": True, "path": path, "model": model, "message": out.strip()[:500]}
+
+
+def _chown_config_to_node() -> None:
+    """Chown /data/.openclaw/openclaw.json* back to node:node after a root-exec config write.
+
+    Without this, the next inotify watch attempt from the gateway (which runs as
+    `node` via runuser) fails with EACCES and hot-reload stops working until the
+    next gateway restart.
+    """
+    inner = "chown node:node /data/.openclaw/openclaw.json /data/.openclaw/openclaw.json.bak* 2>/dev/null || true"
+    cmd = f"docker exec {shlex.quote(CONTAINER)} sh -c {shlex.quote(inner)}"
+    try:
+        ssh_run(cmd, timeout=10)
+    except Exception:
+        pass  # best-effort
 
 
 def _agent_workspace(agent_id: str) -> str:
