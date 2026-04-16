@@ -428,11 +428,14 @@ async def chat_ws(ws: WebSocket) -> None:
                     continue
                 ftype = frame.get("type")
                 if ftype == "res":
+                    # Gateway frame shape: {type:"res", id, ok, payload, error}
+                    # Translate to JSON-RPC: {id, result, error}
                     out: dict[str, Any] = {"id": frame.get("id")}
-                    if "result" in frame:
-                        out["result"] = _strip_sensitive(frame.get("result"))
-                    if "error" in frame:
-                        out["error"] = _strip_sensitive(frame.get("error"))
+                    err = frame.get("error")
+                    if err:
+                        out["error"] = _strip_sensitive(err)
+                    elif frame.get("ok") is not False:
+                        out["result"] = _strip_sensitive(frame.get("payload"))
                     await ws.send_text(json.dumps(out, ensure_ascii=False))
                 elif ftype == "event":
                     out = {"method": frame.get("event"),
