@@ -308,7 +308,8 @@ async def chat_ws(ws: WebSocket) -> None:
     try:
         gw = await ws_connect(
             OPENCLAW_WS_URL,
-            max_size=8 * 1024 * 1024,
+            # 16MB — fits ~12MB of base64 (≈9MB raw image) for llava vision attachments.
+            max_size=16 * 1024 * 1024,
             ping_interval=20,
             ping_timeout=20,
         )

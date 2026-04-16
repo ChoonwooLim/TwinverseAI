@@ -12,6 +12,41 @@ import styles from "../AdminOpenClawConsole.module.css";
  *
  * Sensitive fields (token/apiKey/secret/...) are stripped server-side.
  */
+// Gateway `sessions.send` accepts `attachments: [{type, mimeType, fileName, content}]`
+// where `content` is base64 of the raw file bytes. See openclaw-gateway
+// attachment-normalize.ts (`normalizeRpcAttachmentsToChatAttachments`).
+const IMAGE_MIMES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+const DOC_MIMES = ["text/plain", "text/markdown", "application/json"];
+const DOC_EXTS = [".txt", ".md", ".json", ".log", ".csv"];
+const ATTACH_ACCEPT = [...IMAGE_MIMES, ...DOC_MIMES, ...DOC_EXTS].join(",");
+const MAX_ATTACH_BYTES = 9 * 1024 * 1024; // ~12MB base64 — fits inside 16MB WS frame
+
+// Models known to support vision input. Keep in sync with backend model catalog.
+const VISION_MODEL_HINTS = ["llava", "vision", "minicpm-v", "llama3.2-vision"];
+const isVisionModel = (modelId) => {
+  if (!modelId) return false;
+  const s = String(modelId).toLowerCase();
+  return VISION_MODEL_HINTS.some((h) => s.includes(h));
+};
+
+const readFileAsBase64 = (file) => new Promise((resolve, reject) => {
+  const r = new FileReader();
+  r.onload = () => {
+    const result = String(r.result || "");
+    const comma = result.indexOf(",");
+    resolve(comma >= 0 ? result.slice(comma + 1) : result);
+  };
+  r.onerror = () => reject(r.error || new Error("file read failed"));
+  r.readAsDataURL(file);
+});
+
+const readFileAsText = (file) => new Promise((resolve, reject) => {
+  const r = new FileReader();
+  r.onload = () => resolve(String(r.result || ""));
+  r.onerror = () => reject(r.error || new Error("file read failed"));
+  r.readAsText(file, "utf-8");
+});
+
 export default function ChatTab() {
   const [agents, setAgents] = useState([]);
   const [selectedAgent, setSelectedAgent] = useState(null);
@@ -19,6 +54,7 @@ export default function ChatTab() {
   const [sessionKeyByAgent, setSessionKeyByAgent] = useState({});
   const [messagesByAgent, setMessagesByAgent] = useState({});
   const [draft, setDraft] = useState("");
+  const [pendingAttachments, setPendingAttachments] = useState([]); // [{kind,type,mimeType,fileName,content,size}]
   const [connState, setConnState] = useState("idle"); // idle | connecting | open | closed
   const [err, setErr] = useState("");
 
@@ -26,6 +62,7 @@ export default function ChatTab() {
   const rpcId = useRef(1);
   const pendingResolvers = useRef({});
   const scrollRef = useRef(null);
+  const fileInputRef = useRef(null);
   const lastErrorRef = useRef(0); // timestamp of last fatal error — used to pause auto-reconnect
   // Reverse index: sessionKey → agentId. Gateway's `session.message` event
   // only carries sessionKey, so we need this to route deltas to the right
@@ -235,15 +272,90 @@ export default function ChatTab() {
     return key;
   };
 
+  const selectedAgentObj = agents.find((a) => a.id === selectedAgent) || null;
+  const hasPendingImage = pendingAttachments.some((a) => a.kind === "image");
+  const visionWarning = hasPendingImage && selectedAgentObj && !isVisionModel(selectedAgentObj.model);
+
+  const addAttachments = async (fileList) => {
+    if (!fileList || fileList.length === 0) return;
+    const next = [];
+    for (const file of Array.from(fileList)) {
+      if (file.size > MAX_ATTACH_BYTES) {
+        setErr(`${file.name}: 파일이 너무 큽니다 (최대 ${Math.floor(MAX_ATTACH_BYTES / 1024 / 1024)}MB)`);
+        continue;
+      }
+      const mime = file.type || "application/octet-stream";
+      const isImg = IMAGE_MIMES.includes(mime);
+      const extIsDoc = DOC_EXTS.some((e) => file.name.toLowerCase().endsWith(e));
+      const isDoc = DOC_MIMES.includes(mime) || extIsDoc;
+      if (!isImg && !isDoc) {
+        setErr(`${file.name}: 지원하지 않는 형식`);
+        continue;
+      }
+      try {
+        if (isImg) {
+          const b64 = await readFileAsBase64(file);
+          next.push({
+            kind: "image",
+            mimeType: mime,
+            fileName: file.name,
+            content: b64,      // base64 — passed to gateway as attachment
+            size: file.size,
+          });
+        } else {
+          const text = await readFileAsText(file);
+          next.push({
+            kind: "document",
+            mimeType: mime,
+            fileName: file.name,
+            text,               // plain text — inlined into message body
+            size: file.size,
+          });
+        }
+      } catch (e) {
+        setErr(`${file.name}: 읽기 실패 — ${e?.message || e}`);
+      }
+    }
+    if (next.length) setPendingAttachments((prev) => [...prev, ...next]);
+  };
+
+  const removeAttachment = (idx) =>
+    setPendingAttachments((prev) => prev.filter((_, i) => i !== idx));
+
+  const openFilePicker = () => fileInputRef.current?.click();
+
   const send = async () => {
-    if (!draft.trim() || !selectedAgent) return;
+    if ((!draft.trim() && pendingAttachments.length === 0) || !selectedAgent) return;
     const agentId = selectedAgent;
-    const message = draft.trim();
-    appendMessage(agentId, { role: "user", content: message });
+    const images = pendingAttachments.filter((a) => a.kind === "image");
+    const docs = pendingAttachments.filter((a) => a.kind === "document");
+
+    // Inline document contents into the message body as fenced blocks.
+    const docBlocks = docs.map(
+      (d) => `--- 첨부 문서: ${d.fileName} ---\n\`\`\`\n${d.text}\n\`\`\``
+    );
+    const message = [draft.trim(), ...docBlocks].filter(Boolean).join("\n\n");
+
+    const attachments = images.map((a) => ({
+      type: "image",
+      mimeType: a.mimeType,
+      fileName: a.fileName,
+      content: a.content,  // base64
+    }));
+
+    const chipSummary = pendingAttachments.length
+      ? `📎 ${pendingAttachments.map((a) => a.fileName).join(", ")}`
+      : "";
+    const displayContent = [draft.trim(), chipSummary].filter(Boolean).join("\n\n");
+
+    appendMessage(agentId, { role: "user", content: displayContent || "(첨부 전송)" });
     setDraft("");
+    setPendingAttachments([]);
     try {
       const key = await ensureSession(agentId);
-      await rpc("sessions.send", { key, message });
+      const params = { key, message };
+      if (attachments.length) params.attachments = attachments;
+      await rpc("sessions.send", params);
     } catch (e) {
       setErr(typeof e === "string" ? e : (e?.message || "send failed"));
     }
@@ -316,7 +428,51 @@ export default function ChatTab() {
               </div>
             ))}
           </div>
+          {pendingAttachments.length > 0 && (
+            <div className={styles.attachStrip}>
+              {pendingAttachments.map((a, i) => (
+                <div
+                  key={i}
+                  className={styles.attachChip}
+                  title={`${a.fileName} · ${(a.size / 1024).toFixed(1)} KB`}
+                >
+                  <span className={styles.attachIcon}>{a.kind === "image" ? "🖼" : "📄"}</span>
+                  <span className={styles.attachName}>{a.fileName}</span>
+                  <button
+                    className={styles.attachRemove}
+                    onClick={() => removeAttachment(i)}
+                    title="제거"
+                  >×</button>
+                </div>
+              ))}
+            </div>
+          )}
+          {visionWarning && (
+            <div className={styles.attachWarn}>
+              ⚠ 선택된 모델({selectedAgentObj?.model})은 비전 미지원일 수 있습니다. 이미지는
+              LLaVA(bench-llava-7b) 같은 비전 모델에서 정상 처리됩니다.
+            </div>
+          )}
           <div className={styles.chatInputRow}>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept={ATTACH_ACCEPT}
+              style={{ display: "none" }}
+              onChange={(e) => {
+                addAttachments(e.target.files);
+                e.target.value = "";
+              }}
+            />
+            <button
+              className={styles.btn}
+              onClick={openFilePicker}
+              disabled={!selectedAgent}
+              title="이미지/문서 첨부"
+            >
+              📎
+            </button>
             <textarea
               className={styles.chatInput}
               rows={2}
@@ -333,7 +489,7 @@ export default function ChatTab() {
             <button
               className={`${styles.btn} ${styles.btnPrimary}`}
               onClick={send}
-              disabled={!selectedAgent || !draft.trim()}
+              disabled={!selectedAgent || (!draft.trim() && pendingAttachments.length === 0)}
             >
               전송
             </button>
