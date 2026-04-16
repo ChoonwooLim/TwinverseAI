@@ -326,12 +326,15 @@ async def chat_ws(ws: WebSocket) -> None:
         "params": {
             "minProtocol": 3,
             "maxProtocol": 3,
+            # Identify as TUI (terminal operator UI) so gateway's
+            # controlUi.dangerouslyDisableDeviceAuth=true applies —
+            # otherwise requested scopes are wiped for non-paired clients.
             "client": {
-                "id": "gateway-client",
+                "id": "openclaw-tui",
                 "displayName": "TwinverseAI admin console",
                 "version": "1.0.0",
                 "platform": "linux",
-                "mode": "backend",
+                "mode": "ui",
             },
             "caps": [],
             "auth": {"token": OPENCLAW_TOKEN},
@@ -340,8 +343,9 @@ async def chat_ws(ws: WebSocket) -> None:
                 "operator.admin",
                 "operator.write",
                 "operator.read",
-                "operator.talk",
                 "operator.approvals",
+                "operator.pairing",
+                "operator.talk.secrets",
             ],
         },
     }
