@@ -294,13 +294,23 @@ async def chat_ws(ws: WebSocket) -> None:
         return
 
     try:
-        gw = await websockets.connect(
-            OPENCLAW_WS_URL,
-            additional_headers={"Authorization": f"Bearer {OPENCLAW_TOKEN}"},
-            max_size=8 * 1024 * 1024,
-            ping_interval=20,
-            ping_timeout=20,
-        )
+        try:
+            from websockets.asyncio.client import connect as ws_connect
+            gw = await ws_connect(
+                OPENCLAW_WS_URL,
+                additional_headers={"Authorization": f"Bearer {OPENCLAW_TOKEN}"},
+                max_size=8 * 1024 * 1024,
+                ping_interval=20,
+                ping_timeout=20,
+            )
+        except ImportError:
+            gw = await websockets.connect(
+                OPENCLAW_WS_URL,
+                extra_headers={"Authorization": f"Bearer {OPENCLAW_TOKEN}"},
+                max_size=8 * 1024 * 1024,
+                ping_interval=20,
+                ping_timeout=20,
+            )
     except Exception as e:
         logger.exception("openclaw gateway connect failed")
         await ws.send_json({"op": "error", "code": "gateway_unreachable", "message": str(e)[:300]})
