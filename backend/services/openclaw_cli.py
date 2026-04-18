@@ -509,39 +509,70 @@ def gateway_call(method: str, params: dict[str, Any] | None = None, *, timeout: 
 
 
 def models_list() -> list[dict[str, Any]]:
-    """List Ollama models installed on twinverse-ai via `curl /api/tags`.
+    """List all models selectable as an agent backend.
 
-    OpenClaw uses the host Ollama (ws://host:11434). We SSH to the host and hit
-    the Ollama REST API — no docker exec needed. Returns id = `ollama/<name>`.
+    Two sources:
+      1. Ollama (host `twinverse-ai:11434` REST API) — id = `ollama/<name>`.
+      2. OpenClaw `models.providers` config — every provider (anthropic,
+         openai-codex, etc.) contributes its `models[]` array with id =
+         `<provider>/<modelId>`.
     """
     ensure_configured()
-    rc, out, _ = ssh_run("curl -s --max-time 5 http://localhost:11434/api/tags", timeout=10)
-    if rc != 0:
-        return []
-    try:
-        data = json.loads(out.strip() or "{}")
-    except json.JSONDecodeError:
-        return []
-    TOOL_FAMILIES = {"qwen", "qwen2", "qwen2.5", "qwen3", "mistral", "llama3", "command-r"}
     models: list[dict[str, Any]] = []
-    for m in data.get("models", []):
-        name = m.get("name") or m.get("model") or ""
-        if not name:
-            continue
-        details = m.get("details") or {}
-        family = details.get("family", "")
-        families = details.get("families", []) or []
-        supports_tools = family in TOOL_FAMILIES or any(f in TOOL_FAMILIES for f in families)
-        models.append({
-            "id": f"ollama/{name}",
-            "name": name,
-            "size": m.get("size", 0),
-            "family": family,
-            "parameterSize": details.get("parameter_size", ""),
-            "quantization": details.get("quantization_level", ""),
-            "supportsTools": supports_tools,
-        })
-    models.sort(key=lambda x: (not x["supportsTools"], x["id"]))
+
+    # --- Ollama models -------------------------------------------------------
+    rc, out, _ = ssh_run("curl -s --max-time 5 http://localhost:11434/api/tags", timeout=10)
+    if rc == 0:
+        try:
+            data = json.loads(out.strip() or "{}")
+        except json.JSONDecodeError:
+            data = {}
+        TOOL_FAMILIES = {"qwen", "qwen2", "qwen2.5", "qwen3", "mistral", "llama3", "command-r"}
+        for m in data.get("models", []):
+            name = m.get("name") or m.get("model") or ""
+            if not name:
+                continue
+            details = m.get("details") or {}
+            family = details.get("family", "")
+            families = details.get("families", []) or []
+            supports_tools = family in TOOL_FAMILIES or any(f in TOOL_FAMILIES for f in families)
+            models.append({
+                "id": f"ollama/{name}",
+                "name": name,
+                "provider": "ollama",
+                "size": m.get("size", 0),
+                "family": family,
+                "parameterSize": details.get("parameter_size", ""),
+                "quantization": details.get("quantization_level", ""),
+                "supportsTools": supports_tools,
+            })
+
+    # --- Provider models (anthropic, openai-codex, …) -----------------------
+    try:
+        providers = config_get("models.providers", mask=True) or {}
+    except Exception:
+        providers = {}
+    if isinstance(providers, dict):
+        for provider_name, provider_cfg in providers.items():
+            if not isinstance(provider_cfg, dict):
+                continue
+            for entry in provider_cfg.get("models") or []:
+                if not isinstance(entry, dict):
+                    continue
+                model_id = entry.get("id") or entry.get("name")
+                if not model_id:
+                    continue
+                models.append({
+                    "id": f"{provider_name}/{model_id}",
+                    "name": model_id,
+                    "provider": provider_name,
+                    "api": entry.get("api"),
+                    "cloud": True,
+                    "supportsTools": True,  # cloud providers generally support tools
+                })
+
+    # cloud models bubble after Ollama tool-capable, before non-tool Ollama
+    models.sort(key=lambda x: (not x.get("supportsTools"), x.get("provider") != "ollama", x["id"]))
     return models
 
 

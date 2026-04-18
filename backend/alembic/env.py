@@ -15,6 +15,7 @@ from sqlmodel import SQLModel
 from models import User, Post, Comment, FileRecord, Document  # noqa: F401
 from models.news import ClaudeNews  # noqa: F401
 from models.ps2_session import PS2Session  # noqa: F401
+from models.openclaw_chat import OpenClawConversation, OpenClawMessage  # noqa: F401
 
 config = context.config
 

@@ -4,3 +4,4 @@ from .comment import Comment
 from .file import FileRecord
 from .document import Document
 from .ps2_session import PS2Session
+from .openclaw_chat import OpenClawConversation, OpenClawMessage

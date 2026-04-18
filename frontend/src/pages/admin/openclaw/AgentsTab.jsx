@@ -2,10 +2,10 @@ import { useEffect, useState, useCallback } from "react";
 import api from "../../../services/api";
 import styles from "../AdminOpenClawConsole.module.css";
 
+// Minimal offline fallback only — real list comes from /api/.../models which
+// includes Ollama + every provider registered in models.providers.
 const FALLBACK_MODELS = [
   { id: "ollama/qwen2.5:7b", name: "qwen2.5:7b", supportsTools: true },
-  { id: "openai/gpt-4o-mini", name: "gpt-4o-mini", supportsTools: true, cloud: true },
-  { id: "anthropic/claude-haiku-4-5-20251001", name: "claude-haiku-4.5", supportsTools: true, cloud: true },
 ];
 
 export default function AgentsTab() {
@@ -36,10 +36,7 @@ export default function AgentsTab() {
       try {
         const r = await api.get("/api/admin/openclaw/console/models");
         const list = r.data.models || [];
-        if (alive && list.length) {
-          const cloudExtras = FALLBACK_MODELS.filter((m) => m.cloud);
-          setModels([...list, ...cloudExtras]);
-        }
+        if (alive && list.length) setModels(list);
       } catch { /* fall back to hardcoded */ }
     })();
     return () => { alive = false; };
