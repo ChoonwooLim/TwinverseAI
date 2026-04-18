@@ -124,8 +124,21 @@ export default function AgentsTab() {
   );
 }
 
+// Claude-CLI 프로바이더는 게이트웨이 전역 config 스키마에서 거부되므로
+// (auth:"cli" / baseUrl 없음) `/models` 응답에 포함되지 않는다.
+// 드롭다운에서 바로 고를 수 있도록 프론트엔드에서 프리셋으로 하드코딩한다.
+const EXTRA_PRESET_MODELS = [
+  { id: "claude-cli/claude-opus-4-7",   label: "Claude Opus 4.7 (CLI·구독)" },
+  { id: "claude-cli/claude-opus-4-6",   label: "Claude Opus 4.6 (CLI·구독)" },
+  { id: "claude-cli/claude-sonnet-4-6", label: "Claude Sonnet 4.6 (CLI·구독)" },
+  { id: "claude-cli/claude-haiku-4-5",  label: "Claude Haiku 4.5 (CLI·구독)" },
+];
+
 function ModelSelect({ models, value, onChange }) {
-  const hasValueInList = models.some((m) => m.id === value);
+  const serverIds = new Set(models.map((m) => m.id));
+  const presets = EXTRA_PRESET_MODELS.filter((p) => !serverIds.has(p.id));
+  const presetIds = new Set(presets.map((p) => p.id));
+  const hasValueInList = serverIds.has(value) || presetIds.has(value);
   return (
     <select
       className={styles.input}
@@ -150,6 +163,13 @@ function ModelSelect({ models, value, onChange }) {
           </option>
         );
       })}
+      {presets.length > 0 && (
+        <optgroup label="Claude CLI (구독·프리셋)">
+          {presets.map((p) => (
+            <option key={p.id} value={p.id}>{p.id} — {p.label}</option>
+          ))}
+        </optgroup>
+      )}
       {!hasValueInList && value ? (
         <option value={value}>{value} (현재값)</option>
       ) : null}

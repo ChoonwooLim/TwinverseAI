@@ -27,7 +27,7 @@ from database import engine, get_session
 from deps import require_admin
 from models import User, OpenClawConversation, OpenClawMessage
 from services import openclaw_cli as cli
-from services.openclaw_ssh import CONTAINER, ensure_configured
+from services.openclaw_ssh import CONTAINER, ensure_configured, ssh_run
 from utils.ws_auth import authenticate_ws_first_message
 
 logger = logging.getLogger("twinverse.openclaw.console")
@@ -37,6 +37,19 @@ router = APIRouter()
 
 OPENCLAW_WS_URL = os.getenv("OPENCLAW_WS_URL", "").strip()
 OPENCLAW_TOKEN = os.getenv("OPENCLAW_TOKEN", "").strip()
+
+# Volume-persisted runtime override for OPENCLAW_TOKEN.
+# 게이트웨이 재시작 시 토큰이 로테이트되면 env_vars 의 값과 어긋나는데,
+# UI 의 "토큰 리셋" 버튼이 새 토큰을 여기 기록해 redeploy 후에도 유지되게 한다.
+_TOKEN_OVERRIDE_PATH = "/app/data/.openclaw_token_override"
+try:
+    if os.path.isfile(_TOKEN_OVERRIDE_PATH):
+        with open(_TOKEN_OVERRIDE_PATH, "r", encoding="utf-8") as _f:
+            _override_val = _f.read().strip()
+        if _override_val:
+            OPENCLAW_TOKEN = _override_val
+except Exception:
+    pass
 
 
 # ---------------------------------------------------------------------------
@@ -123,6 +136,52 @@ def models_list_endpoint(_: User = Depends(require_admin)) -> dict[str, Any]:
     """List Ollama models available on twinverse-ai (usable as agent backends)."""
     ensure_configured()
     return {"models": cli.models_list()}
+
+
+@router.post("/token/reset")
+def token_reset_endpoint(_: User = Depends(require_admin)) -> dict[str, Any]:
+    """게이트웨이가 재시작되면 `gateway.auth.token` 이 로테이트된다. 이 엔드포인트는
+    SSH 로 OpenClaw config 파일을 직접 읽어 현재 토큰을 꺼낸 뒤 프로세스의 in-memory
+    값(module-level `OPENCLAW_TOKEN`)을 교체하고, 데이터 볼륨에 override 파일로 저장해
+    다음 재배포에서도 유지되도록 한다. Orbitron env_vars 는 건드리지 않음 — 원한다면
+    별도로 `scripts/update_openclaw_token.js` 로 동기화할 것.
+    """
+    ensure_configured()
+    cmd = f"docker exec {shlex.quote(CONTAINER)} cat /data/.openclaw/openclaw.json"
+    rc, out, err = ssh_run(cmd, timeout=15)
+    if rc != 0:
+        raise HTTPException(
+            status_code=502,
+            detail=f"read gateway config failed (rc={rc}): {(err or out).strip()[:300]}",
+        )
+    try:
+        cfg = json.loads(out)
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=502, detail=f"gateway config JSON parse failed: {e}") from e
+    new_token = (((cfg.get("gateway") or {}).get("auth") or {}).get("token") or "").strip()
+    if not new_token:
+        raise HTTPException(status_code=502, detail="gateway.auth.token not found in config")
+
+    global OPENCLAW_TOKEN
+    unchanged = (new_token == OPENCLAW_TOKEN)
+    OPENCLAW_TOKEN = new_token
+
+    persisted = False
+    try:
+        os.makedirs(os.path.dirname(_TOKEN_OVERRIDE_PATH), exist_ok=True)
+        with open(_TOKEN_OVERRIDE_PATH, "w", encoding="utf-8") as f:
+            f.write(new_token)
+        persisted = True
+    except Exception as e:
+        logger.warning("token override persist failed: %s", e)
+
+    masked = f"{new_token[:8]}…{new_token[-4:]}" if len(new_token) > 12 else "***"
+    return {
+        "ok": True,
+        "changed": not unchanged,
+        "tokenPrefix": masked,
+        "persisted": persisted,
+    }
 
 
 # ---------------------------------------------------------------------------
