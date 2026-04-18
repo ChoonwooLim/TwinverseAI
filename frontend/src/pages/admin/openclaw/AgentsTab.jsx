@@ -5,7 +5,7 @@ import styles from "../AdminOpenClawConsole.module.css";
 // Minimal offline fallback only — real list comes from /api/.../models which
 // includes Ollama + every provider registered in models.providers.
 const FALLBACK_MODELS = [
-  { id: "ollama/qwen2.5:7b", name: "qwen2.5:7b", supportsTools: true },
+  { id: "anthropic/claude-opus-4-7", name: "Claude Opus 4.7", supportsTools: true },
 ];
 
 export default function AgentsTab() {
@@ -181,7 +181,7 @@ function ModelSelect({ models, value, onChange }) {
 function AgentCreateModal({ models, onClose, onSaved, onError }) {
   const [id, setId] = useState("");
   const [displayName, setDisplayName] = useState("");
-  const [model, setModel] = useState((models && models[0]?.id) || "ollama/qwen2.5:7b");
+  const [model, setModel] = useState((models && models[0]?.id) || "anthropic/claude-opus-4-7");
   const [systemPrompt, setSystemPrompt] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -233,7 +233,7 @@ function AgentCreateModal({ models, onClose, onSaved, onError }) {
 
 function AgentEditModal({ agent, models, onClose, onSaved, onError }) {
   const [displayName, setDisplayName] = useState(agent.displayName || "");
-  const [model, setModel] = useState(agent.model || (models && models[0]?.id) || "ollama/qwen2.5:7b");
+  const [model, setModel] = useState(agent.model || (models && models[0]?.id) || "anthropic/claude-opus-4-7");
   const [theme, setTheme] = useState(agent.theme || "");
   const [emoji, setEmoji] = useState(agent.emoji || "");
   const [systemPrompt, setSystemPrompt] = useState("");

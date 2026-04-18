@@ -30,7 +30,7 @@ OPENCLAW_WS_URL = os.getenv(
     "ws://192.168.219.117:18789",
 )
 OPENCLAW_TOKEN = os.getenv("OPENCLAW_TOKEN", "")
-OPENCLAW_MODEL = os.getenv("OPENCLAW_MODEL", "ollama/qwen2.5:7b")
+OPENCLAW_MODEL = os.getenv("OPENCLAW_MODEL", "anthropic/claude-opus-4-7")
 
 # Production deployments:
 #   Office (this backend) -> LAN twinverse-ai (Ollama)
