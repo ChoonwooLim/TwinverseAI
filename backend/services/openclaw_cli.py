@@ -13,6 +13,7 @@ OpenClaw 고수준 CLI/RPC 래퍼.
 from __future__ import annotations
 
 import json
+import re
 import shlex
 import uuid
 from typing import Any
@@ -70,28 +71,64 @@ def agents_list() -> list[dict[str, Any]]:
 
 _IDENTITY_SEP = "@@@TV_IDENTITY_SEP@@@"
 
+_HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
+# Boilerplate directives that appear at the top of every IDENTITY.md and
+# carry no descriptive value — filter them from the list-view snippet.
+_BOILERPLATE_MARKERS = (
+    "korean-only",
+    "한국어(Hangul)",
+    "중국어 한자",
+    "日本漢字",
+    "单一 글자",
+    "Fill this in",
+    "Make it yours",
+)
+
 
 def _extract_role_from_identity(md: str) -> str:
-    """Port of frontend extractRole(): first 2 non-heading/non-fence lines, joined."""
+    """Pick the first 1-2 human-readable description lines from IDENTITY.md.
+
+    Skips HTML comments, YAML frontmatter, headings, code fences, and the
+    korean-only-directive / template boilerplate every agent ships with.
+    """
     if not md:
         return ""
+    cleaned_md = _HTML_COMMENT_RE.sub("", md)
     out: list[str] = []
-    for raw in md.splitlines():
+    in_fence = False
+    in_frontmatter = False
+    for idx, raw in enumerate(cleaned_md.splitlines()):
         line = raw.strip()
         if not line:
             continue
+        if line.startswith("```"):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        if line == "---":
+            # YAML frontmatter toggle (only when it opens at the top)
+            if idx == 0 or in_frontmatter:
+                in_frontmatter = not in_frontmatter
+            continue
+        if in_frontmatter:
+            continue
         if line.startswith("#"):
             continue
-        if line.startswith("---") or line.startswith("```"):
+        if any(m in line for m in _BOILERPLATE_MARKERS):
             continue
-        cleaned = line
-        if cleaned.startswith("- ") or cleaned.startswith("* "):
-            cleaned = cleaned[2:]
-        cleaned = cleaned.replace("**", "")
-        out.append(cleaned)
+        # strip list markers + markdown emphasis
+        if line.startswith(("- ", "* ", "+ ")):
+            line = line[2:]
+        line = line.replace("**", "").replace("__", "")
+        # drop markdown italics from leading/trailing single _ or *
+        line = line.strip("_*").strip()
+        if not line:
+            continue
+        out.append(line)
         if len(out) >= 2:
             break
-    return " ".join(out)[:140]
+    return " ".join(out)[:160]
 
 
 def agents_list_with_roles() -> list[dict[str, Any]]:

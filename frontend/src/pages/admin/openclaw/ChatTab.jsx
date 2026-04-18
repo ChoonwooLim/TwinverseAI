@@ -494,20 +494,28 @@ export default function ChatTab() {
           ) : agents.map((a) => {
             const emoji = a.emoji || "";
             const initial = (a.displayName || a.id || "?").trim().charAt(0).toUpperCase();
+            const role = (a.role || "").trim();
             return (
               <div
                 key={a.id}
                 className={`${styles.agentListItem} ${selectedAgent === a.id ? styles.agentListItemActive : ""}`}
                 onClick={() => setSelectedAgent(a.id)}
-                title={a.role || a.id}
+                title={role || a.id}
               >
                 <div className={styles.agentThumb}>
                   {emoji ? emoji : <span className={styles.agentThumbFallback}>{initial}</span>}
                 </div>
                 <div className={styles.agentInfo}>
                   <div className={styles.agentName}>{a.displayName || a.id}</div>
-                  {a.role ? <div className={styles.agentRole}>{a.role}</div> : null}
-                  <div className={styles.agentMeta}>{a.id} · {a.model}</div>
+                  {role ? (
+                    <div className={styles.agentRole}>{role}</div>
+                  ) : (
+                    <div className={styles.agentRoleEmpty}>설명 없음</div>
+                  )}
+                  <div className={styles.agentMeta}>
+                    <span className={styles.agentMetaId}>{a.id}</span>
+                    <span className={styles.agentMetaModel} title={a.model}>{a.model}</span>
+                  </div>
                 </div>
               </div>
             );
