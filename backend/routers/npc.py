@@ -27,7 +27,7 @@ OLLAMA_TIMEOUT = float(os.getenv("NPC_OLLAMA_TIMEOUT", "30.0"))
 
 FALLBACK = os.getenv("NPC_LLM_FALLBACK", "").lower()
 FALLBACK_API_KEY = os.getenv("NPC_LLM_FALLBACK_API_KEY", "")
-FALLBACK_MODEL = os.getenv("NPC_LLM_FALLBACK_MODEL", "claude-sonnet-4-5")
+FALLBACK_MODEL = os.getenv("NPC_LLM_FALLBACK_MODEL", "claude-3-5-sonnet-20241022")
 LLM_MAX_TOKENS = int(os.getenv("NPC_LLM_MAX_TOKENS", "512"))
 
 
@@ -67,8 +67,15 @@ async def npc_chat(request: Request, body: NPCChatRequest):
         role = msg.get("role", "user")
         content = msg.get("content", "")
         if role in ("user", "assistant") and content:
-            messages.append({"role": role, "content": content})
-    messages.append({"role": "user", "content": f"[{body.sender_name}]: {body.message}"})
+            if messages and messages[-1]["role"] == role:
+                messages[-1]["content"] += f"\n\n{content}"
+            else:
+                messages.append({"role": role, "content": content})
+    
+    if messages and messages[-1]["role"] == "user":
+        messages[-1]["content"] += f"\n\n[{body.sender_name}]: {body.message}"
+    else:
+        messages.append({"role": "user", "content": f"[{body.sender_name}]: {body.message}"})
 
     try:
         text = await _call_ollama(system_prompt, messages)
