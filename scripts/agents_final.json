@@ -1,0 +1,192 @@
+[
+  {
+    "id": "main",
+    "name": "main",
+    "workspace": "/data/.openclaw/workspace",
+    "agentDir": "/data/.openclaw/agents/main/agent",
+    "model": "ollama/mistral:7b",
+    "bindings": 0,
+    "isDefault": true,
+    "routes": [
+      "default (no explicit rules)"
+    ]
+  },
+  {
+    "id": "designer-a",
+    "name": "designer-a",
+    "identityName": "designer-a",
+    "identitySource": "config",
+    "workspace": "/data/.openclaw/workspace-designer-a",
+    "agentDir": "/data/.openclaw/agents/designer-a/agent",
+    "model": "ollama/mistral:7b",
+    "bindings": 0,
+    "isDefault": false
+  },
+  {
+    "id": "code-reviewer",
+    "name": "code-reviewer",
+    "identityName": "Code Reviewer",
+    "identityEmoji": "🔍",
+    "identitySource": "config",
+    "workspace": "/data/.openclaw/workspace-code-reviewer",
+    "agentDir": "/data/.openclaw/agents/code-reviewer/agent",
+    "model": "ollama/mistral:7b",
+    "bindings": 0,
+    "isDefault": false
+  },
+  {
+    "id": "ue5-engineer",
+    "name": "ue5-engineer",
+    "identityName": "UE5 Engineer",
+    "identityEmoji": "🎮",
+    "identitySource": "config",
+    "workspace": "/data/.openclaw/workspace-ue5-engineer",
+    "agentDir": "/data/.openclaw/agents/ue5-engineer/agent",
+    "model": "ollama/mistral:7b",
+    "bindings": 0,
+    "isDefault": false
+  },
+  {
+    "id": "devops",
+    "name": "devops",
+    "identityName": "DevOps",
+    "identityEmoji": "⚙️",
+    "identitySource": "config",
+    "workspace": "/data/.openclaw/workspace-devops",
+    "agentDir": "/data/.openclaw/agents/devops/agent",
+    "model": "ollama/mistral:7b",
+    "bindings": 0,
+    "isDefault": false
+  },
+  {
+    "id": "ai-architect",
+    "name": "ai-architect",
+    "identityName": "AI Architect",
+    "identityEmoji": "🧠",
+    "identitySource": "config",
+    "workspace": "/data/.openclaw/workspace-ai-architect",
+    "agentDir": "/data/.openclaw/agents/ai-architect/agent",
+    "model": "ollama/mistral:7b",
+    "bindings": 0,
+    "isDefault": false
+  },
+  {
+    "id": "debugger",
+    "name": "debugger",
+    "identityName": "Debugger",
+    "identityEmoji": "🪲",
+    "identitySource": "config",
+    "workspace": "/data/.openclaw/workspace-debugger",
+    "agentDir": "/data/.openclaw/agents/debugger/agent",
+    "model": "ollama/mistral:7b",
+    "bindings": 0,
+    "isDefault": false
+  },
+  {
+    "id": "planner-b",
+    "name": "planner-b",
+    "identityName": "planner-b",
+    "identitySource": "config",
+    "workspace": "/data/.openclaw/workspace-planner-b",
+    "agentDir": "/data/.openclaw/agents/planner-b/agent",
+    "model": "ollama/mistral:7b",
+    "bindings": 0,
+    "isDefault": false
+  },
+  {
+    "id": "bench-qwen25-7b",
+    "name": "bench-qwen25-7b",
+    "identityName": "Qwen2.5 7B",
+    "identityEmoji": "🐦",
+    "identitySource": "identity",
+    "workspace": "/data/.openclaw/workspace-bench-qwen25-7b",
+    "agentDir": "/data/.openclaw/agents/bench-qwen25-7b/agent",
+    "model": "ollama/qwen2.5:7b",
+    "bindings": 0,
+    "isDefault": false
+  },
+  {
+    "id": "bench-qwen25-05b",
+    "name": "bench-qwen25-05b",
+    "identityName": "Qwen2.5 0.5B",
+    "identityEmoji": "🐤",
+    "identitySource": "identity",
+    "workspace": "/data/.openclaw/workspace-bench-qwen25-05b",
+    "agentDir": "/data/.openclaw/agents/bench-qwen25-05b/agent",
+    "model": "ollama/qwen2.5:0.5b",
+    "bindings": 0,
+    "isDefault": false
+  },
+  {
+    "id": "bench-gemma4-e4b",
+    "name": "bench-gemma4-e4b",
+    "identityName": "Gemma4 e4b",
+    "identityEmoji": "🍃",
+    "identitySource": "identity",
+    "workspace": "/data/.openclaw/workspace-bench-gemma4-e4b",
+    "agentDir": "/data/.openclaw/agents/bench-gemma4-e4b/agent",
+    "model": "ollama/gemma4:e4b",
+    "bindings": 0,
+    "isDefault": false
+  },
+  {
+    "id": "bench-gemma4-26b",
+    "name": "bench-gemma4-26b",
+    "identityName": "Gemma4 26B",
+    "identityEmoji": "🌿",
+    "identitySource": "identity",
+    "workspace": "/data/.openclaw/workspace-bench-gemma4-26b",
+    "agentDir": "/data/.openclaw/agents/bench-gemma4-26b/agent",
+    "model": "ollama/gemma4:26b",
+    "bindings": 0,
+    "isDefault": false
+  },
+  {
+    "id": "bench-gemma4-31b",
+    "name": "bench-gemma4-31b",
+    "identityName": "Gemma4 31B",
+    "identityEmoji": "🌳",
+    "identitySource": "identity",
+    "workspace": "/data/.openclaw/workspace-bench-gemma4-31b",
+    "agentDir": "/data/.openclaw/agents/bench-gemma4-31b/agent",
+    "model": "ollama/gemma4:31b",
+    "bindings": 0,
+    "isDefault": false
+  },
+  {
+    "id": "bench-gemma3-12b",
+    "name": "bench-gemma3-12b",
+    "identityName": "Gemma3 12B",
+    "identityEmoji": "🍀",
+    "identitySource": "identity",
+    "workspace": "/data/.openclaw/workspace-bench-gemma3-12b",
+    "agentDir": "/data/.openclaw/agents/bench-gemma3-12b/agent",
+    "model": "ollama/gemma3:12b",
+    "bindings": 0,
+    "isDefault": false
+  },
+  {
+    "id": "bench-mistral-7b",
+    "name": "bench-mistral-7b",
+    "identityName": "Mistral 7B",
+    "identityEmoji": "🌀",
+    "identitySource": "identity",
+    "workspace": "/data/.openclaw/workspace-bench-mistral-7b",
+    "agentDir": "/data/.openclaw/agents/bench-mistral-7b/agent",
+    "model": "ollama/mistral:7b",
+    "bindings": 0,
+    "isDefault": false
+  },
+  {
+    "id": "bench-llava-7b",
+    "name": "bench-llava-7b",
+    "identityName": "LLaVA 7B",
+    "identityEmoji": "👁️",
+    "identitySource": "identity",
+    "workspace": "/data/.openclaw/workspace-bench-llava-7b",
+    "agentDir": "/data/.openclaw/agents/bench-llava-7b/agent",
+    "model": "ollama/llava:7b",
+    "bindings": 0,
+    "isDefault": false
+  }
+]

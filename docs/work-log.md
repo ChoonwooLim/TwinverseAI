@@ -808,3 +808,76 @@
   Anthropic API 를 3rd provider 로 붙일 때의 키 분리·쿼터·라우팅 정책 정리.
 
 ---
+
+## 2026-04-18 (OpenClaw 채팅 지속화 + 토큰 리셋 UI + Claude Max OAuth 복구)
+
+### 작업 요약
+
+| 카테고리 | 작업 내용 | 상태 |
+|----------|----------|------|
+| feat | OpenClaw 콘솔 채팅 대화 지속화 — DB 테이블 + gateway `chat`/final → `session.message` alias | 완료 |
+| feat | OpenClaw 토큰 리셋 UI — 게이트웨이 재시작 후 `/token/reset` 엔드포인트 + 볼륨 override | 완료 |
+| feat | `claude-cli/*` 모델 프리셋 optgroup — 드롭다운에서 바로 선택 (전역 스키마 거부되는 프로바이더) | 완료 |
+| feat | OpenClaw 에이전트 카드 설명 파싱 개선 (IDENTITY.md 역할 섹션 우선 · 디자인 정리) | 완료 |
+| fix | 채팅 탭 502 — 에이전트 목록 N+1 `files.get` 페치 제거, 서버 응답에 description 포함 | 완료 |
+| fix | IDENTITY.md 설명 추출 — 한국어 지시문/템플릿 주석 블록 배제, `## 역할` 섹션 우선 + 라벨 필드 폴백 | 완료 |
+| fix | 채팅 어시스턴트 답변 중복 렌더링 — `chat` final 프레임과 `session.message` 이중 emit 중복 제거 | 완료 |
+| fix | 에이전트 모델 변경 시 채팅 세션 캐시 무효화 (`openclaw:agent-model-changed` 이벤트) | 완료 |
+| fix | TwinverseDesk 실행 401 자동 로그아웃 — api interceptor 에서 PS2 헬스 경로 스킵 (재발) | 완료 |
+| fix | NPC 채팅 — 연속된 같은 role 메시지 자동 병합 + Claude fallback 모델 ID 교정 | 완료 |
+| ops | Claude Max OAuth 만료 → 401 복구: 컨테이너 TTY `claude login` 후 `auth-profiles.json` 4 에이전트 싱크 | 완료 |
+
+### 세부 내용
+
+- **채팅 대화 지속화 (`37dd926`)**: `openclaw_chat_sessions` / `openclaw_chat_messages`
+  Alembic 마이그레이션 (`3f2e455e`) 추가, `ChatTab.jsx` 가 에이전트별 히스토리를 DB 에
+  영속. OpenClaw gateway 가 `session.message` 대신 `chat` + state=final 로 어시스턴트
+  최종 메시지를 보내는 변경에 대응, 백엔드 `pump_gw_to_client` 가 `chat` final 프레임을
+  `session.message` 별칭으로 한번 더 emit 하여 프론트 기존 렌더 경로 호환.
+- **토큰 리셋 UI (`c52257c`)**: `docker restart openclaw` 가 `gateway.auth.token` 을
+  새로 생성하는 문제 해결. `POST /api/admin/openclaw/console/token/reset` 가 SSH 로
+  `/data/.openclaw/openclaw.json` 을 읽어 새 토큰을 `/app/data/.openclaw_token_override`
+  볼륨 파일로 영속화 → 재배포 없이 `OPENCLAW_TOKEN` 즉시 갱신. 채팅 탭 "토큰 리셋" 버튼이
+  WS 재연결까지 자동 수행.
+- **`claude-cli/*` 프리셋 optgroup**: 전역 스키마가 `claude-cli` 프로바이더를
+  거부(auth:"cli" / baseUrl 없음)하여 `/models` API 응답에서 빠지는 점을 회피 —
+  `AgentsTab.jsx` 에 `EXTRA_PRESET_MODELS` 하드코딩으로 `claude-cli/claude-opus-4-7`
+  등 4 개 ID 를 optgroup "Claude CLI (구독·프리셋)" 으로 항상 노출.
+- **IDENTITY.md 설명 파서 3 단계 진화 (`b406ed9` → `3fc495f`)**: 카드 설명이
+  "너는 한국어로만 답한다" 같은 지시문으로 오염되던 문제. (1) 한국어 지시문/템플릿 주석
+  영역 정규식으로 배제, (2) `## 역할` 섹션을 1 순위로, (3) `Role:` / `역할:` 라벨 필드를
+  폴백으로 추출.
+- **채팅 중복 렌더 (`502f199`)**: `chat` final alias 도입 후 백엔드가 같은 어시스턴트
+  메시지를 `chat` + `session.message` 로 2 회 emit 하여 UI 에 2 개 말풍선 표시. 서버측
+  `emitted_message_ids` 세트로 dedupe.
+- **모델 변경 캐시 무효화 (`59aabe1`)**: 에이전트 편집에서 모델만 바꿨을 때 기존 세션이
+  과거 모델로 계속 동작. `openclaw:agent-model-changed` CustomEvent 를 `AgentsTab` 에서
+  dispatch → `ChatTab` 이 수신 시 해당 에이전트의 세션/WS 를 재생성.
+- **Claude Max OAuth 만료 인시던트**: 게이트웨이 재시작 이후 `claude-max` 응답이 중국어/
+  한국어 혼용 + 가짜 "Think: off / token 18k/20k" 상태 메시지. 원인은 Anthropic OAuth
+  access token 8 h 만료 + `/data/.openclaw/agents/*/agent/auth-profiles.json` 에 남은
+  STALE 토큰 (`expires: 1776502083158`). TTY 로 `claude login` 재실행 후 node 스크립트로
+  4 개 에이전트(claude-max/claude-opus/main/codex-pro) auth-profiles 를
+  `/data/.claude/.credentials.json` 의 fresh 토큰과 싱크 + `managedBy:"claude-cli"`
+  태그 추가. `openclaw agent --agent claude-max -m "hi"` → "hello from claude-max" 응답
+  확인. **다음 만료**: 2026-04-18 17:20 UTC (한국 새벽 2:20). 그 이후 자동 갱신
+  (refresh→access) 동작 여부가 남은 관찰 포인트.
+- **NPC 메시지 role 교대 병합 (`3c27d1e`)**: Anthropic API 가 연속된 같은 role 메시지를
+  거부하는 제약에 대응해 `backend/routers/npc.py` 에서 병합 유틸 추가 + fallback 모델
+  ID 를 최신 Claude 로 교정.
+
+### 다음 세션 참고
+
+- **Claude Max OAuth 자동 갱신 검증**: 오늘 새벽 ~2:20 KST 이후 `openclaw agent --agent
+  claude-max -m "ping"` 테스트. 성공 시 refreshToken 자동 갱신 정상 (아무 조치 불요),
+  401 재발 시 refreshToken 엔드포인트 호출 스크립트 + cron (7h 간격) 자동화 필요.
+- **토큰 override 라이프사이클**: `/app/data/.openclaw_token_override` 파일이 env_vars
+  보다 우선권. 장기적으로 env_vars 자체를 해당 값으로 재동기화하여 override 삭제하는
+  정책으로 정리.
+- **`scripts/update_openclaw_token.js` 위치**: 실제 토큰이 하드코딩된 1 회성 헬퍼.
+  `scripts/agents_final.json` / `agents_post_restart.json` 등과 함께 운영 시크릿 치우는
+  정리 필요 (`.gitignore` 또는 `private-ops/`).
+- **Phase 2 멀티모달 (Flux/SD)**: 이미지/영상 생성 프로바이더 설계 — 기존 LAN gateway 에
+  별도 provider 로 붙일지 vs 백엔드에서 직접 프록시할지 결정 미해결.
+
+---
