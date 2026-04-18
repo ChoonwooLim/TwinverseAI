@@ -17,29 +17,10 @@ ps2api.interceptors.request.use((config) => {
   return config;
 });
 
-// 401 handling — only wipe credentials for actual user-action requests
-// (spawn, terminate, heartbeat, office join, etc.).
-// Health checks and session-status polls run automatically on page load;
-// a 401 from the GPU server for those does NOT mean the main-site token is
-// invalid, so we must NOT nuke localStorage or redirect — otherwise simply
-// navigating to /twinversedesk/launch logs the user out.
-const PS2_SILENT_PATHS = ["/api/ps2/health", "/api/ps2/sessions", "/api/ps2/status/"];
-
-ps2api.interceptors.response.use(
-  (res) => res,
-  (err) => {
-    if (err.response?.status === 401) {
-      const url = err.config?.url || "";
-      const isSilent = PS2_SILENT_PATHS.some((p) => url.includes(p));
-      if (!isSilent) {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-        window.location.href = "/login";
-      }
-    }
-    return Promise.reject(err);
-  }
-);
+// GPU-server 401s never wipe the main-site session. The user's token is
+// issued by the main backend; a PS2-server rejection (stale secret sync,
+// user not yet replicated on GPU DB, transient auth glitch) must not log
+// them out of TwinverseAI. Let the component surface the error instead.
 
 // Office multiplayer helpers
 export const officeApi = {
