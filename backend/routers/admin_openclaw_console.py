@@ -557,6 +557,10 @@ async def chat_ws(ws: WebSocket) -> None:
     # even before the gateway ack (useful for debugging; assistant save is
     # event-driven regardless).
     pending_user_by_id: dict[str, int] = {}
+    # Gateway sometimes emits BOTH `session.message` and `chat`+state:"final"
+    # for the same assistant reply. Track the message ids we've already
+    # forwarded to the browser so we don't render duplicates.
+    seen_message_ids: set[str] = set()
 
     def _save_message(conv_id: int, role: str, content: str,
                       attachments: list[dict[str, Any]] | None = None) -> None:
@@ -679,22 +683,53 @@ async def chat_ws(ws: WebSocket) -> None:
                     event = frame.get("event")
                     payload = frame.get("payload") or {}
                     # Newer gateway builds emit the assistant's final message as
-                    # `chat` with state:"final" instead of `session.message`.
-                    # Normalize by treating a final `chat` as an alias so the
-                    # persistence hook + legacy frontend listener both work.
+                    # `chat` with state:"final"; older builds emit
+                    # `session.message`. Some builds emit BOTH for the same
+                    # message, so we dedup by message id + persist + alias once.
                     is_chat_final = (
                         event == "chat"
                         and isinstance(payload, dict)
                         and payload.get("state") == "final"
                         and isinstance(payload.get("message"), dict)
                     )
-                    # --- Persistence hook: assistant reply events ---
+                    is_assistant_final = False
+                    dedup_key: str | None = None
                     if (event == "session.message" or is_chat_final) and isinstance(payload, dict):
+                        m = payload.get("message") or {}
+                        if isinstance(m, dict) and m.get("role") == "assistant":
+                            is_assistant_final = True
+                            mid = m.get("id") or m.get("messageId")
+                            if mid is not None:
+                                dedup_key = f"id:{mid}"
+                            else:
+                                # fallback: sessionKey + content hash
+                                skey = payload.get("sessionKey") or payload.get("key") or ""
+                                c = m.get("content")
+                                if isinstance(c, list):
+                                    c_text = "".join(
+                                        (x if isinstance(x, str) else (x.get("text") or ""))
+                                        for x in c
+                                    )
+                                elif isinstance(c, str):
+                                    c_text = c
+                                else:
+                                    c_text = ""
+                                if c_text:
+                                    dedup_key = f"ck:{skey}:{hash(c_text)}"
+
+                    # Dedup: skip the frame entirely if we've already forwarded
+                    # this assistant message under either event name.
+                    if is_assistant_final and dedup_key and dedup_key in seen_message_ids:
+                        continue
+                    if is_assistant_final and dedup_key:
+                        seen_message_ids.add(dedup_key)
+
+                    # --- Persistence hook: assistant reply events ---
+                    if is_assistant_final:
                         skey = payload.get("sessionKey") or payload.get("key")
                         conv_id = session_to_conv.get(str(skey)) if skey else None
                         m = payload.get("message") or {}
-                        role = m.get("role") if isinstance(m, dict) else None
-                        if conv_id and role == "assistant":
+                        if conv_id:
                             content = m.get("content")
                             if isinstance(content, list):
                                 text_out = "\n".join(
@@ -708,14 +743,12 @@ async def chat_ws(ws: WebSocket) -> None:
                             if text_out:
                                 _save_message(conv_id, "assistant", text_out)
                     cleaned_payload = _strip_sensitive(payload)
-                    out = {"method": event, "params": cleaned_payload}
+                    # Always forward under `session.message` for the frontend
+                    # (legacy listener). Chat/final and session.message are
+                    # interchangeable for the UI at this point.
+                    forward_event = "session.message" if is_chat_final else event
+                    out = {"method": forward_event, "params": cleaned_payload}
                     await ws.send_text(json.dumps(out, ensure_ascii=False))
-                    # Re-emit `chat`+final as `session.message` alias for the
-                    # legacy frontend listener (ChatTab.jsx handles only
-                    # `session.message`). Backend-only fix — no frontend rebuild.
-                    if is_chat_final:
-                        alias = {"method": "session.message", "params": cleaned_payload}
-                        await ws.send_text(json.dumps(alias, ensure_ascii=False))
                 else:
                     # unknown frame type — forward as-is for debugging
                     await ws.send_text(json.dumps(_strip_sensitive(frame), ensure_ascii=False))
