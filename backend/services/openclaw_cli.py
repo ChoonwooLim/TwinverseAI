@@ -119,16 +119,79 @@ def _strip_boilerplate_blocks(md: str) -> str:
     return "\n".join(lines[i:])
 
 
-def _extract_role_from_identity(md: str) -> str:
-    """Pick the first 1-2 human-readable description lines from IDENTITY.md.
+_FIELD_RE = re.compile(r"^\s*[-*+]?\s*\*?\*?(?P<label>[A-Za-z가-힣]+)\s*\*?\*?\s*:\s*(?P<value>.+?)\s*$")
 
-    Skips HTML comments, the korean-only-directive preamble, YAML frontmatter,
-    headings, code fences, and leftover template placeholder text.
+
+def _extract_role_section(body: str) -> str:
+    """Extract the first paragraph under a `## 역할` / `## Role` heading."""
+    lines = body.splitlines()
+    i = 0
+    while i < len(lines):
+        s = lines[i].strip().lower()
+        if s.startswith("##") and ("역할" in s or "role" in s):
+            i += 1
+            buf: list[str] = []
+            while i < len(lines):
+                line = lines[i].strip()
+                if not line:
+                    if buf:
+                        break
+                    i += 1
+                    continue
+                if line.startswith("#") or line == "---" or line.startswith(("- ", "* ", "+ ")):
+                    break
+                buf.append(line)
+                i += 1
+            text = " ".join(buf).replace("**", "").replace("__", "").strip()
+            if text:
+                return text
+            return ""
+        i += 1
+    return ""
+
+
+def _extract_field_value(body: str, labels: tuple[str, ...]) -> str:
+    """Grab the value of a `**Label:** value` line for any label in `labels`."""
+    wanted = {label.lower() for label in labels}
+    for raw in body.splitlines():
+        m = _FIELD_RE.match(raw)
+        if not m:
+            continue
+        label = m.group("label").lower()
+        if label in wanted:
+            value = m.group("value").replace("**", "").replace("__", "").strip()
+            value = value.strip("_*").strip()
+            if value and not (value.startswith("(") and value.endswith(")")):
+                return value
+    return ""
+
+
+def _extract_role_from_identity(md: str) -> str:
+    """Pick a clean human-readable description from IDENTITY.md.
+
+    Priority:
+    1. First paragraph under a `## 역할` / `## Role` heading.
+    2. Value of the `**Role:**` / `**역할:**` field.
+    3. Value of the `**Creature:**` field.
+    4. First 1-2 meaningful lines (legacy fallback).
     """
     if not md:
         return ""
     body = _HTML_COMMENT_RE.sub("", md)
     body = _strip_boilerplate_blocks(body)
+
+    text = _extract_role_section(body)
+    if text:
+        return text[:160]
+
+    text = _extract_field_value(body, ("Role", "역할"))
+    if text:
+        return text[:160]
+
+    text = _extract_field_value(body, ("Creature",))
+    if text:
+        return text[:160]
+
     out: list[str] = []
     in_fence = False
     for raw in body.splitlines():
@@ -140,23 +203,18 @@ def _extract_role_from_identity(md: str) -> str:
             continue
         if in_fence:
             continue
-        # Stop at horizontal rule — content below it in the default template
-        # is Notes/commentary, never the agent's self-description.
         if line == "---":
             break
         if line.startswith("#"):
             continue
         if any(m in line for m in _TEMPLATE_MARKERS):
             continue
-        # strip list markers + markdown emphasis
         if line.startswith(("- ", "* ", "+ ")):
             line = line[2:]
         line = line.replace("**", "").replace("__", "")
         line = line.strip("_*").strip()
-        # empty / placeholder underscore fields like "_(pick ...)_"
-        if not line or line.startswith("(") and line.endswith(")"):
+        if not line or (line.startswith("(") and line.endswith(")")):
             continue
-        # bare template labels with no value: "Name:", "Creature:", etc.
         if line.endswith(":") and len(line) <= 24:
             continue
         out.append(line)
