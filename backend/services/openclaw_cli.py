@@ -68,6 +68,71 @@ def agents_list() -> list[dict[str, Any]]:
     return [a for a in out if a["id"]]
 
 
+_IDENTITY_SEP = "@@@TV_IDENTITY_SEP@@@"
+
+
+def _extract_role_from_identity(md: str) -> str:
+    """Port of frontend extractRole(): first 2 non-heading/non-fence lines, joined."""
+    if not md:
+        return ""
+    out: list[str] = []
+    for raw in md.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        if line.startswith("#"):
+            continue
+        if line.startswith("---") or line.startswith("```"):
+            continue
+        cleaned = line
+        if cleaned.startswith("- ") or cleaned.startswith("* "):
+            cleaned = cleaned[2:]
+        cleaned = cleaned.replace("**", "")
+        out.append(cleaned)
+        if len(out) >= 2:
+            break
+    return " ".join(out)[:140]
+
+
+def agents_list_with_roles() -> list[dict[str, Any]]:
+    """Agents + inline role (first lines of IDENTITY.md), in ONE extra SSH call.
+
+    Replaces the N+1 fetch pattern (agents list + per-agent IDENTITY.md) that
+    forced the browser to open N SSH sessions through the backend's thread
+    pool. With 15+ agents this regularly saturated the Render thread pool
+    and produced transient 502s upstream.
+    """
+    agents = agents_list()
+    if not agents:
+        return agents
+    parts: list[str] = []
+    for a in agents:
+        workspace = a.get("workspace") or f"/data/.openclaw/workspace-{a['id']}"
+        escaped = shlex.quote(f"{workspace}/IDENTITY.md")
+        parts.append(
+            f"printf '\\n{_IDENTITY_SEP}%s{_IDENTITY_SEP}\\n' {shlex.quote(a['id'])}; "
+            f"head -c 4096 {escaped} 2>/dev/null || true"
+        )
+    script = "; ".join(parts)
+    cmd = f"docker exec {shlex.quote(CONTAINER)} sh -c {shlex.quote(script)}"
+    rc, out, _ = ssh_run(cmd, timeout=20)
+    if rc != 0 or not out:
+        return agents  # best-effort: return without roles rather than fail
+    # Output shape: [leading junk] SEP <id> SEP <content> SEP <id> SEP <content> ...
+    # Splitting on SEP yields: [junk, id1, content1, id2, content2, ...]
+    # Walk in pairs starting at index 1.
+    tokens = out.split(_IDENTITY_SEP)
+    roles: dict[str, str] = {}
+    for i in range(1, len(tokens) - 1, 2):
+        agent_id = tokens[i].strip()
+        body = tokens[i + 1]
+        if agent_id:
+            roles[agent_id] = body
+    for a in agents:
+        a["role"] = _extract_role_from_identity(roles.get(a["id"], ""))
+    return agents
+
+
 def agents_add(agent_id: str, display_name: str, model: str) -> dict[str, Any]:
     """Create a new agent via CLI (no plugin slot side-effects).
 

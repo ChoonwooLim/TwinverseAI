@@ -90,9 +90,18 @@ def models_list_endpoint(_: User = Depends(require_admin)) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 @router.get("/agents")
-def agents_list_endpoint(_: User = Depends(require_admin)) -> dict[str, Any]:
+def agents_list_endpoint(
+    with_role: bool = True,
+    _: User = Depends(require_admin),
+) -> dict[str, Any]:
+    """List agents. `with_role=true` (default) inlines IDENTITY.md role snippet
+    via one batched SSH call, eliminating the N+1 per-agent file fetch the
+    chat tab used to drive from the browser — that pattern regularly saturated
+    the backend thread pool and surfaced as upstream 502s.
+    """
     ensure_configured()
-    return {"agents": cli.agents_list()}
+    agents = cli.agents_list_with_roles() if with_role else cli.agents_list()
+    return {"agents": agents}
 
 
 @router.post("/agents")

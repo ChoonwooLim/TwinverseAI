@@ -82,38 +82,17 @@ export default function ChatTab() {
 
   const loadAgents = useCallback(async () => {
     try {
+      // Backend `/agents?with_role=1` inlines IDENTITY.md role snippet in one
+      // batched SSH call — avoids N+1 that saturated the thread pool and
+      // upstream 502'd on big agent lists.
       const r = await api.get("/api/admin/openclaw/console/agents");
-      const list = r.data.agents || [];
-      setAgents(list);
-      const enriched = await Promise.all(list.map(async (a) => {
-        try {
-          const f = await api.get(`/api/admin/openclaw/console/agents/${encodeURIComponent(a.id)}/files/IDENTITY.md`);
-          return { ...a, role: extractRole(f.data?.content || "") };
-        } catch {
-          return { ...a, role: "" };
-        }
-      }));
-      setAgents(enriched);
+      setAgents(r.data.agents || []);
     } catch (e) {
       setErr(e?.response?.data?.detail || e.message || "failed");
     }
   }, []);
 
   useEffect(() => { loadAgents(); }, [loadAgents]);
-
-  function extractRole(md) {
-    const lines = (md || "").split(/\r?\n/);
-    const out = [];
-    for (const raw of lines) {
-      const line = raw.trim();
-      if (!line) continue;
-      if (line.startsWith("#")) continue;
-      if (line.startsWith("---") || line.startsWith("```")) continue;
-      out.push(line.replace(/^[-*]\s+/, "").replace(/\*\*/g, ""));
-      if (out.length >= 2) break;
-    }
-    return out.join(" ").slice(0, 140);
-  }
 
   const wsUrl = () => {
     const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
