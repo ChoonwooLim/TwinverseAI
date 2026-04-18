@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import styles from "./Sidebar.module.css";
 
@@ -68,31 +69,101 @@ const SIDEBAR_CONFIG = {
   },
 };
 
+const STORAGE_KEY = "twinverse:sidebar:collapsed";
+
+function loadCollapsed() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function isChildActive(item, pathname) {
+  if (!item.children) return false;
+  return item.children.some((c) => pathname === c.path || pathname.startsWith(c.path + "/"));
+}
+
 export default function Sidebar({ section }) {
   const location = useLocation();
   const config = SIDEBAR_CONFIG[section];
+
+  const [collapsed, setCollapsed] = useState(loadCollapsed);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(collapsed));
+    } catch {
+      /* ignore quota */
+    }
+  }, [collapsed]);
+
+  const toggle = (key, currentlyOpen) => {
+    setCollapsed((prev) => ({ ...prev, [key]: currentlyOpen }));
+  };
+
+  const currentGroupKey = useMemo(() => {
+    if (!config) return null;
+    const match = config.items.find((item) => isChildActive(item, location.pathname));
+    return match ? match.path : null;
+  }, [config, location.pathname]);
+
   if (!config) return null;
 
   return (
     <aside className={styles.sidebar}>
       <h3 className={styles.title}>{config.title}</h3>
       <nav className={styles.nav}>
-        {config.items.map((item) => (
-          <div key={item.path}>
-            <Link to={item.path} className={`${styles.link} ${location.pathname === item.path ? styles.active : ""}`}>
-              {item.label}
-            </Link>
-            {item.children && (
-              <div className={styles.subNav}>
-                {item.children.map((child) => (
-                  <Link key={child.path} to={child.path} className={`${styles.subLink} ${location.pathname === child.path ? styles.active : ""}`}>
-                    {child.label}
-                  </Link>
-                ))}
+        {config.items.map((item) => {
+          const hasChildren = Array.isArray(item.children) && item.children.length > 0;
+          const userCollapsed = collapsed[item.path];
+          const isGroupActive = currentGroupKey === item.path;
+          const isOpen = hasChildren
+            ? userCollapsed === undefined
+              ? isGroupActive
+              : !userCollapsed
+            : false;
+
+          return (
+            <div key={item.path}>
+              <div className={styles.row}>
+                <Link
+                  to={item.path}
+                  className={`${styles.link} ${location.pathname === item.path ? styles.active : ""} ${hasChildren ? styles.linkWithToggle : ""}`}
+                >
+                  {item.label}
+                </Link>
+                {hasChildren && (
+                  <button
+                    type="button"
+                    className={`${styles.toggle} ${isOpen ? styles.toggleOpen : ""}`}
+                    onClick={() => toggle(item.path, isOpen)}
+                    aria-label={isOpen ? `${item.label} 접기` : `${item.label} 펼치기`}
+                    aria-expanded={isOpen}
+                  >
+                    <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+                      <path d="M2 3.5 L5 6.5 L8 3.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                )}
               </div>
-            )}
-          </div>
-        ))}
+              {hasChildren && isOpen && (
+                <div className={styles.subNav}>
+                  {item.children.map((child) => (
+                    <Link
+                      key={child.path}
+                      to={child.path}
+                      className={`${styles.subLink} ${location.pathname === child.path ? styles.active : ""}`}
+                    >
+                      {child.label}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </nav>
     </aside>
   );
