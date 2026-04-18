@@ -599,6 +599,21 @@ def config_set_with_validation(pairs: dict[str, Any]) -> dict[str, Any]:
     return config_set_batch(pairs, dry_run=False)
 
 
+def config_set_single(path: str, value: Any) -> dict[str, Any]:
+    """Write one config path via `config set <path> <json>` (single-path mode).
+
+    Use when batch-file is unreliable. Runs `_chown_config_to_node()` after so
+    the gateway's inotify watcher (runs as `node`) can re-arm.
+    """
+    ensure_configured()
+    _require(CONFIG_KEY_RE, path, "config key")
+    value_json = json.dumps(value, ensure_ascii=False)
+    cmd = f"config set {shlex.quote(path)} {shlex.quote(value_json)} --strict-json"
+    out = openclaw_run_checked(cmd, timeout=20)
+    _chown_config_to_node()
+    return {"ok": True, "path": path, "output": out.strip()[:500]}
+
+
 # ---------------------------------------------------------------------------
 # plugin config helpers (wrap global config paths)
 # ---------------------------------------------------------------------------

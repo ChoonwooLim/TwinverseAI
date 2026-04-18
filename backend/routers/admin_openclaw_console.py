@@ -240,10 +240,11 @@ def gateway_token_rotate(_: User = Depends(require_admin)) -> dict[str, Any]:
     ensure_configured()
     new_token = secrets.token_hex(32)  # 64-char hex, 같은 포맷 유지
 
-    cli.config_set_with_validation({
-        "gateway.auth.token": new_token,
-        "gateway.remote.token": new_token,
-    })
+    # Two single-path writes — batch-file mode expects a JSON array that our
+    # helper doesn't emit, so we stick to the proven `config set <path> <json>`
+    # pattern already used by agents_update_rpc.
+    cli.config_set_single("gateway.auth.token", new_token)
+    cli.config_set_single("gateway.remote.token", new_token)
 
     global OPENCLAW_TOKEN
     OPENCLAW_TOKEN = new_token
