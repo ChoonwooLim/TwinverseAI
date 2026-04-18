@@ -881,3 +881,76 @@
   별도 provider 로 붙일지 vs 백엔드에서 직접 프록시할지 결정 미해결.
 
 ---
+
+## 2026-04-18 (추가 세션 — DeskRPG NPC 고용 게이트웨이 재시작 레이스 대응)
+
+### 작업 요약
+
+| 카테고리 | 작업 내용 | 상태 |
+|----------|----------|------|
+| fix | DeskRPG `/_internal/rpc` 재시도 로직 추가 — OpenClaw 2026.4.12 자동 재시작 시 `agents.files.set` 이 "네트워크 오류"로 죽던 이슈 | 핫패치 적용 (재검증 미완) |
+| infra | Orbitron 설치 패키지 (`~/.npm/_npx/.../deskrpg/server.js`) 에 `rpcWithRetry` 헬퍼 + `__notConnected` 분기 주입, `.bak.<ts>` 백업 | 완료 |
+| chore | `scripts/patch_deskrpg_rpc_retry.js` — 재설치 대비 1 회성 핫패치 스크립트 (TwinverseAI 레포에 미커밋) | 완료 |
+
+### 세부 내용
+
+- **증상**: NPC 고용 다이얼로그가 "1/3 게이트웨이에 연결하는 중..." 에서 멈추거나
+  "네트워크 오류가 발생했습니다" 로 실패. 서버 로그는 `WebSocket error: Unexpected
+  server response: 502` 반복 → `RPC timeout` / `TimeoutError: The operation was aborted
+  due to timeout` 으로 마무리. Cloudflare 터널은 `dial tcp 127.0.0.1:18789: connect:
+  connection refused`, Docker 로그는 `[gateway] received SIGUSR1; restarting` 을
+  13:28:00 / 13:28:22 / 13:31:10 세 번 기록.
+- **원인**: OpenClaw 2026.4.12 의 reload manager 가 `agents.create` 직후 내부
+  `plugins.entries.*.config` 를 JSON 재직렬화하면서 diff 오탐 → 전체 프로세스 재시작
+  (`SIGUSR1`). DeskRPG 의 `/_internal/rpc` 는 단일 `_rpcRequest` 호출로 실패 시 즉시
+  502 응답 → 프론트 `agentCreateNetworkError`.
+- **Option B 패치**: `server.js` 에 `rpcWithRetry(channelId, method, params, 3)` 추가 —
+  일시적 오류(`Gateway not connected` / `RPC timeout:` / `WebSocket is not open` /
+  `closed before response`) 감지 시 `channelGateways.delete()` + `disconnect()` 후
+  백오프 3.5s → 5s 로 최대 3 회 재시도. `/_internal/rpc` 핸들러는 이 헬퍼를 통과시키고
+  `err.__notConnected` 플래그로만 503 분기 유지.
+- **마스터 소스**: `C:\WORK\TwinverseAI\deskrpg-master\server.js` 직접 편집했으나 해당
+  디렉토리는 TwinverseAI 레포에서 **gitignore** 되어 있음 (`.gitignore:46`). DeskRPG
+  별도 소스 레포 위치가 특정되지 않아 영구 반영은 보류 (사용자 지시: "1번으로 해" =
+  그대로 둠). 재설치 시 `scripts/patch_deskrpg_rpc_retry.js` 로 동일 핫패치 재적용.
+
+### 다음 세션 참고
+
+- **NPC 고용 최종 검증 미완**: 패치 적용 후 사용자가 "또 오류 내일 고치자" 로 세션 종료.
+  내일 브라우저에서 NPC 고용 재시도 → 실패 시 `ssh stevenlim@192.168.219.101 "tail -80
+  ~/.deskrpg/logs/server.log"` 에서 `[gateway] RPC "agents.files.set" attempt 1/3 failed
+  ...` 재시도 로그 확인. 3 회 모두 실패하면 OpenClaw 게이트웨이 재시작 창이 5s 보다
+  긴 경우 → 백오프 증가 또는 게이트웨이측 reload manager diff 오탐 자체를 고쳐야 함.
+- **DeskRPG 소스 레포 위치 파악**: 핫패치가 `npm install` 로 증발 가능. 진짜 소스
+  레포(GitHub or 다른 로컬 경로) 확인 후 커밋·publish 필요.
+- **OpenClaw 2026.4.12 upstream 이슈 보고**: `plugins.entries.*.config` JSON 재직렬화
+  diff 오탐 → 불필요한 `SIGUSR1` 재시작. 업스트림에 리포트하거나 reload manager 에
+  deep-equal 비교 추가 패치 고려.
+- **[🔴 긴급] `agents.list` config drift 인시던트**: 세션 종료 직전 발견. twinverse-ai
+  OpenClaw 의 `/srv/openclaw/data/.openclaw/openclaw.json` `agents.list` 에서
+  `claude-max` / `claude-opus` / `codex-pro` 가 누락되어 admin 콘솔에 노출 안 됨.
+  **에이전트 디렉토리는 전부 디스크에 남아있음** (`/srv/openclaw/data/.openclaw/agents/claude-max/`
+  등 — auth-profiles + OAuth 토큰 인텍트). 추가로 예전에 삭제한 bench-* / ceo-a /
+  planner-a/b / dev-b 가 agents.list 에 계속 남아있어 admin UI 에 "되살아난" 것처럼 보임.
+
+  백업 스냅샷 분석:
+  - `.bak.4` (22:24:58) — 12 에이전트, claude-max 포함
+  - `.bak.3` (22:28:00) — 13 에이전트, claude-max 포함 (+planner-b)
+  - **`.bak.2` (22:28:22) — 12 에이전트, claude-max 제거됨** ← drop 발생 시점
+  - `.bak.1` → `.bak` → 현재 — claude-max 없이 testnpc / designer-a 만 추가
+
+  가설: 22:28:22 경 TwinverseAI 어드민의 어떤 RPC 가 stale agents.list 스냅샷으로
+  config 를 전체 덮어써버림 (모델 변경 / 토큰 리셋 / 에이전트 편집 중 하나). 삭제된
+  bench-* 가 "되살아난" 것도 같은 메커니즘 — 이전 삭제 RPC 가 디렉토리만 지우고
+  agents.list 를 제대로 업데이트 안 해서 config 에 계속 남아있음.
+
+  **내일 복구 절차**: (1) `openclaw.json.bak.3` 기준으로 복원 → claude-max 복귀,
+  (2) `claude-opus` / `codex-pro` 는 bak.4 에도 없으므로 `openclaw agents add` RPC 로
+  수동 재등록 (agents dir 는 그대로 재사용). (3) bench-* / ceo-a / planner-a/b / dev-b
+  중 실제로 불필요한 것은 `openclaw agents remove` 로 제대로 제거.
+
+  **원인 추적**: TwinverseAI 백엔드 (`backend/routers/admin_openclaw_console.py`) 와
+  `frontend/src/pages/admin/openclaw/*` 에서 `agents.list` 를 통째로 PUT 하는 경로
+  전부 검토. `config_set_batch` 우회 로직 (`da61599` 커밋 참고) 도 의심권.
+
+---
