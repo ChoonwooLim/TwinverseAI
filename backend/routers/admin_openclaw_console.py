@@ -14,6 +14,7 @@ import asyncio
 import json
 import logging
 import os
+import secrets
 import shlex
 from typing import Any
 
@@ -180,6 +181,84 @@ def token_reset_endpoint(_: User = Depends(require_admin)) -> dict[str, Any]:
         "ok": True,
         "changed": not unchanged,
         "tokenPrefix": masked,
+        "persisted": persisted,
+    }
+
+
+def _read_gateway_token_from_container() -> str:
+    """Read raw `gateway.auth.token` from the OpenClaw container's openclaw.json.
+
+    Uses SSH + docker exec — config CLI masks the value, so we bypass it.
+    """
+    ensure_configured()
+    cmd = f"docker exec {shlex.quote(CONTAINER)} cat /data/.openclaw/openclaw.json"
+    rc, out, err = ssh_run(cmd, timeout=15)
+    if rc != 0:
+        raise HTTPException(
+            status_code=502,
+            detail=f"read gateway config failed (rc={rc}): {(err or out).strip()[:300]}",
+        )
+    try:
+        cfg = json.loads(out)
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=502, detail=f"gateway config JSON parse failed: {e}") from e
+    token = (((cfg.get("gateway") or {}).get("auth") or {}).get("token") or "").strip()
+    if not token:
+        raise HTTPException(status_code=502, detail="gateway.auth.token not found in config")
+    return token
+
+
+@router.get("/gateway/token")
+def gateway_token_get(_: User = Depends(require_admin)) -> dict[str, Any]:
+    """현재 LAN OpenClaw 게이트웨이 토큰을 원본(unmasked)으로 반환.
+
+    `gateway.auth.token` 과 백엔드의 런타임 `OPENCLAW_TOKEN` 이 일치하는지 함께 표시.
+    일치하지 않으면 `/token/reset` 으로 백엔드만 동기화하거나, 아래
+    `/gateway/token/rotate` 로 새 토큰을 발급해 모두 갱신할 것.
+    """
+    token = _read_gateway_token_from_container()
+    backend_synced = (token == OPENCLAW_TOKEN)
+    return {
+        "token": token,
+        "backendSynced": backend_synced,
+        "backendTokenPrefix": (
+            f"{OPENCLAW_TOKEN[:8]}…{OPENCLAW_TOKEN[-4:]}"
+            if OPENCLAW_TOKEN and len(OPENCLAW_TOKEN) > 12
+            else "(unset)"
+        ),
+    }
+
+
+@router.post("/gateway/token/rotate")
+def gateway_token_rotate(_: User = Depends(require_admin)) -> dict[str, Any]:
+    """새 게이트웨이 토큰을 발급하고 `gateway.auth.token` + `gateway.remote.token` 을 동시 교체.
+
+    배치 config 적용 후 백엔드 in-memory `OPENCLAW_TOKEN` 과 override 파일을 즉시 갱신.
+    기존 토큰을 쓰던 모든 외부 consumer(DeskRPG AI 연결, 백엔드 `.env` OPENCLAW_TOKEN 등)는
+    즉시 무효화되므로 반환값의 새 토큰으로 수동 동기화가 필요하다.
+    """
+    ensure_configured()
+    new_token = secrets.token_hex(32)  # 64-char hex, 같은 포맷 유지
+
+    cli.config_set_with_validation({
+        "gateway.auth.token": new_token,
+        "gateway.remote.token": new_token,
+    })
+
+    global OPENCLAW_TOKEN
+    OPENCLAW_TOKEN = new_token
+    persisted = False
+    try:
+        os.makedirs(os.path.dirname(_TOKEN_OVERRIDE_PATH), exist_ok=True)
+        with open(_TOKEN_OVERRIDE_PATH, "w", encoding="utf-8") as f:
+            f.write(new_token)
+        persisted = True
+    except Exception as e:
+        logger.warning("token override persist failed after rotate: %s", e)
+
+    return {
+        "ok": True,
+        "token": new_token,
         "persisted": persisted,
     }
 

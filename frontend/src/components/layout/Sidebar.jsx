@@ -26,6 +26,7 @@ const SIDEBAR_CONFIG = {
           { label: "에이전트", path: "/admin/openclaw-console/agents" },
           { label: "플러그인", path: "/admin/openclaw-console/plugins" },
           { label: "설정", path: "/admin/openclaw-console/config" },
+          { label: "토큰", path: "/admin/openclaw-console/token" },
           { label: "채팅", path: "/admin/openclaw-console/chat" },
           { label: "로그", path: "/admin/openclaw-console/logs" },
           { label: "디바이스 페어링", path: "/admin/openclaw-devices" },

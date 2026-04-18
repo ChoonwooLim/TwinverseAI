@@ -8,11 +8,13 @@ const PluginsTab = lazy(() => import("./openclaw/PluginsTab"));
 const ConfigTab = lazy(() => import("./openclaw/ConfigTab"));
 const ChatTab = lazy(() => import("./openclaw/ChatTab"));
 const LogsTab = lazy(() => import("./openclaw/LogsTab"));
+const TokenTab = lazy(() => import("./openclaw/TokenTab"));
 
 const TABS = [
   { key: "agents", label: "에이전트", Comp: AgentsTab },
   { key: "plugins", label: "플러그인", Comp: PluginsTab },
   { key: "config", label: "설정", Comp: ConfigTab },
+  { key: "token", label: "토큰", Comp: TokenTab },
   { key: "chat", label: "채팅", Comp: ChatTab },
   { key: "logs", label: "로그", Comp: LogsTab },
 ];
