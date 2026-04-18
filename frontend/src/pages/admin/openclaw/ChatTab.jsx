@@ -101,6 +101,36 @@ export default function ChatTab() {
 
   useEffect(() => { loadAgents(); }, [loadAgents]);
 
+  // When the admin changes an agent's model in the edit panel, the gateway
+  // sessions.create we had already cached is bound to the OLD model's
+  // snapshot — keep using it and the chat never reflects the new model.
+  // Clear cached gateway session keys for that agent (old sessions go orphan
+  // on the gateway; next send triggers a fresh sessions.create with new model)
+  // and refresh the sidebar so the new model chip is correct.
+  useEffect(() => {
+    const handler = (e) => {
+      const agentId = e?.detail?.agentId;
+      if (!agentId) return;
+      const convs = convsByAgent[agentId] || [];
+      if (convs.length) {
+        const idsToClear = new Set(convs.map((c) => c.id));
+        setSessionKeyByConv((prev) => {
+          const next = { ...prev };
+          for (const id of idsToClear) delete next[id];
+          return next;
+        });
+        for (const k of Object.keys(convBySessionKey.current)) {
+          if (idsToClear.has(convBySessionKey.current[k])) {
+            delete convBySessionKey.current[k];
+          }
+        }
+      }
+      loadAgents();
+    };
+    window.addEventListener("openclaw:agent-model-changed", handler);
+    return () => window.removeEventListener("openclaw:agent-model-changed", handler);
+  }, [convsByAgent, loadAgents]);
+
   const loadConversations = useCallback(async (agentId) => {
     if (!agentId) return [];
     try {

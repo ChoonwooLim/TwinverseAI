@@ -239,9 +239,15 @@ function AgentEditModal({ agent, models, onClose, onSaved, onError }) {
       if (displayName !== agent.displayName) body.displayName = displayName;
       if (theme !== agent.theme) body.theme = theme;
       if (emoji !== agent.emoji) body.emoji = emoji;
-      if (model !== agent.model) body.model = model;
+      const modelChanged = model !== agent.model;
+      if (modelChanged) body.model = model;
       body.systemPrompt = systemPrompt;
       await api.patch(`/api/admin/openclaw/console/agents/${encodeURIComponent(agent.id)}`, body);
+      if (modelChanged && typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("openclaw:agent-model-changed", { detail: { agentId: agent.id } })
+        );
+      }
       onSaved();
     } catch (e) {
       onError(e?.response?.data?.detail || e.message || "save failed");
