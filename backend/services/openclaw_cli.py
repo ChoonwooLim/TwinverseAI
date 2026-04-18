@@ -72,32 +72,66 @@ def agents_list() -> list[dict[str, Any]]:
 _IDENTITY_SEP = "@@@TV_IDENTITY_SEP@@@"
 
 _HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
-# Boilerplate directives that appear at the top of every IDENTITY.md and
-# carry no descriptive value — filter them from the list-view snippet.
-_BOILERPLATE_MARKERS = (
-    "korean-only",
-    "한국어(Hangul)",
-    "중국어 한자",
-    "日本漢字",
-    "单一 글자",
+# Templates/placeholder lines to filter when they leak into the snippet.
+_TEMPLATE_MARKERS = (
     "Fill this in",
     "Make it yours",
+    "(pick something",
+    "Who Am I?",
+    "This isn't just metadata",
+    "start of figuring out who you are",
+    "Save this file at the workspace root",
+    "metadata. It's the start",
 )
+
+
+def _strip_boilerplate_blocks(md: str) -> str:
+    """Drop language-directive preambles and YAML frontmatter from IDENTITY.md.
+
+    Every agent's IDENTITY.md is seeded with a korean-only-directive preamble
+    ending at a standalone `---` horizontal rule, sometimes followed by a
+    YAML frontmatter block. Strip both so the description snippet starts at
+    the agent's actual self-introduction.
+    """
+    lines = md.splitlines()
+
+    def drop_block_ending_at_hr(start: int) -> int:
+        for j in range(start, len(lines)):
+            if lines[j].strip() == "---":
+                return j + 1
+        return start
+
+    i = 0
+    # Skip leading korean-only-directive block (opens with HTML comment or
+    # a Korean "언어 절대 규칙" heading and ends at the first standalone `---`).
+    opening = "\n".join(lines[:6]).lower()
+    if "korean-only-directive" in opening or "언어 절대 규칙" in opening:
+        i = drop_block_ending_at_hr(0)
+        # there can be two consecutive `---` separators between the directive
+        # block and the frontmatter — skip blank lines and another rule if so.
+        while i < len(lines) and not lines[i].strip():
+            i += 1
+
+    # Skip YAML frontmatter (`---\n ... \n---`) if present.
+    if i < len(lines) and lines[i].strip() == "---":
+        i = drop_block_ending_at_hr(i + 1)
+
+    return "\n".join(lines[i:])
 
 
 def _extract_role_from_identity(md: str) -> str:
     """Pick the first 1-2 human-readable description lines from IDENTITY.md.
 
-    Skips HTML comments, YAML frontmatter, headings, code fences, and the
-    korean-only-directive / template boilerplate every agent ships with.
+    Skips HTML comments, the korean-only-directive preamble, YAML frontmatter,
+    headings, code fences, and leftover template placeholder text.
     """
     if not md:
         return ""
-    cleaned_md = _HTML_COMMENT_RE.sub("", md)
+    body = _HTML_COMMENT_RE.sub("", md)
+    body = _strip_boilerplate_blocks(body)
     out: list[str] = []
     in_fence = False
-    in_frontmatter = False
-    for idx, raw in enumerate(cleaned_md.splitlines()):
+    for raw in body.splitlines():
         line = raw.strip()
         if not line:
             continue
@@ -106,24 +140,24 @@ def _extract_role_from_identity(md: str) -> str:
             continue
         if in_fence:
             continue
+        # Stop at horizontal rule — content below it in the default template
+        # is Notes/commentary, never the agent's self-description.
         if line == "---":
-            # YAML frontmatter toggle (only when it opens at the top)
-            if idx == 0 or in_frontmatter:
-                in_frontmatter = not in_frontmatter
-            continue
-        if in_frontmatter:
-            continue
+            break
         if line.startswith("#"):
             continue
-        if any(m in line for m in _BOILERPLATE_MARKERS):
+        if any(m in line for m in _TEMPLATE_MARKERS):
             continue
         # strip list markers + markdown emphasis
         if line.startswith(("- ", "* ", "+ ")):
             line = line[2:]
         line = line.replace("**", "").replace("__", "")
-        # drop markdown italics from leading/trailing single _ or *
         line = line.strip("_*").strip()
-        if not line:
+        # empty / placeholder underscore fields like "_(pick ...)_"
+        if not line or line.startswith("(") and line.endswith(")"):
+            continue
+        # bare template labels with no value: "Name:", "Creature:", etc.
+        if line.endswith(":") and len(line) <= 24:
             continue
         out.append(line)
         if len(out) >= 2:
