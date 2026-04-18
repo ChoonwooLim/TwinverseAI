@@ -14,7 +14,6 @@ import asyncio
 import json
 import logging
 import os
-import secrets
 import shlex
 from typing import Any
 
@@ -37,20 +36,13 @@ router = APIRouter()
 
 
 OPENCLAW_WS_URL = os.getenv("OPENCLAW_WS_URL", "").strip()
+# OPENCLAW_TOKEN 은 env_vars 만이 유일한 진실 원천이다. 과거에 있던 runtime
+# override / rotation 경로는 worker 간 state drift 를 만들어 chat WS 가
+# token_mismatch 로 거부되는 문제를 일으켰으므로 전부 제거했다.
+# 토큰을 바꾸려면 Orbitron 대시보드 env_vars 의 OPENCLAW_TOKEN 을 갱신하고
+# 컨테이너를 재배포할 것. 게이트웨이 쪽 gateway.auth.token /
+# gateway.remote.token 도 동일 값으로 유지되어야 한다.
 OPENCLAW_TOKEN = os.getenv("OPENCLAW_TOKEN", "").strip()
-
-# Volume-persisted runtime override for OPENCLAW_TOKEN.
-# 게이트웨이 재시작 시 토큰이 로테이트되면 env_vars 의 값과 어긋나는데,
-# UI 의 "토큰 리셋" 버튼이 새 토큰을 여기 기록해 redeploy 후에도 유지되게 한다.
-_TOKEN_OVERRIDE_PATH = "/app/data/.openclaw_token_override"
-try:
-    if os.path.isfile(_TOKEN_OVERRIDE_PATH):
-        with open(_TOKEN_OVERRIDE_PATH, "r", encoding="utf-8") as _f:
-            _override_val = _f.read().strip()
-        if _override_val:
-            OPENCLAW_TOKEN = _override_val
-except Exception:
-    pass
 
 
 # ---------------------------------------------------------------------------
@@ -139,52 +131,6 @@ def models_list_endpoint(_: User = Depends(require_admin)) -> dict[str, Any]:
     return {"models": cli.models_list()}
 
 
-@router.post("/token/reset")
-def token_reset_endpoint(_: User = Depends(require_admin)) -> dict[str, Any]:
-    """게이트웨이가 재시작되면 `gateway.auth.token` 이 로테이트된다. 이 엔드포인트는
-    SSH 로 OpenClaw config 파일을 직접 읽어 현재 토큰을 꺼낸 뒤 프로세스의 in-memory
-    값(module-level `OPENCLAW_TOKEN`)을 교체하고, 데이터 볼륨에 override 파일로 저장해
-    다음 재배포에서도 유지되도록 한다. Orbitron env_vars 는 건드리지 않음 — 원한다면
-    별도로 `scripts/update_openclaw_token.js` 로 동기화할 것.
-    """
-    ensure_configured()
-    cmd = f"docker exec {shlex.quote(CONTAINER)} cat /data/.openclaw/openclaw.json"
-    rc, out, err = ssh_run(cmd, timeout=15)
-    if rc != 0:
-        raise HTTPException(
-            status_code=502,
-            detail=f"read gateway config failed (rc={rc}): {(err or out).strip()[:300]}",
-        )
-    try:
-        cfg = json.loads(out)
-    except json.JSONDecodeError as e:
-        raise HTTPException(status_code=502, detail=f"gateway config JSON parse failed: {e}") from e
-    new_token = (((cfg.get("gateway") or {}).get("auth") or {}).get("token") or "").strip()
-    if not new_token:
-        raise HTTPException(status_code=502, detail="gateway.auth.token not found in config")
-
-    global OPENCLAW_TOKEN
-    unchanged = (new_token == OPENCLAW_TOKEN)
-    OPENCLAW_TOKEN = new_token
-
-    persisted = False
-    try:
-        os.makedirs(os.path.dirname(_TOKEN_OVERRIDE_PATH), exist_ok=True)
-        with open(_TOKEN_OVERRIDE_PATH, "w", encoding="utf-8") as f:
-            f.write(new_token)
-        persisted = True
-    except Exception as e:
-        logger.warning("token override persist failed: %s", e)
-
-    masked = f"{new_token[:8]}…{new_token[-4:]}" if len(new_token) > 12 else "***"
-    return {
-        "ok": True,
-        "changed": not unchanged,
-        "tokenPrefix": masked,
-        "persisted": persisted,
-    }
-
-
 def _read_gateway_token_from_container() -> str:
     """Read raw `gateway.auth.token` from the OpenClaw container's openclaw.json.
 
@@ -210,11 +156,11 @@ def _read_gateway_token_from_container() -> str:
 
 @router.get("/gateway/token")
 def gateway_token_get(_: User = Depends(require_admin)) -> dict[str, Any]:
-    """현재 LAN OpenClaw 게이트웨이 토큰을 원본(unmasked)으로 반환.
+    """현재 LAN OpenClaw 게이트웨이 토큰과 백엔드 in-memory `OPENCLAW_TOKEN` 을 함께 반환.
 
-    `gateway.auth.token` 과 백엔드의 런타임 `OPENCLAW_TOKEN` 이 일치하는지 함께 표시.
-    일치하지 않으면 `/token/reset` 으로 백엔드만 동기화하거나, 아래
-    `/gateway/token/rotate` 로 새 토큰을 발급해 모두 갱신할 것.
+    값이 불일치하면 **Orbitron 대시보드의 env_vars 에서 `OPENCLAW_TOKEN` 을
+    게이트웨이 값으로 갱신한 뒤 컨테이너를 재배포**해야 한다. 과거에 있던 자동
+    rotation / override 경로는 worker 간 state drift 를 유발해 제거되었다.
     """
     token = _read_gateway_token_from_container()
     backend_synced = (token == OPENCLAW_TOKEN)
@@ -226,41 +172,6 @@ def gateway_token_get(_: User = Depends(require_admin)) -> dict[str, Any]:
             if OPENCLAW_TOKEN and len(OPENCLAW_TOKEN) > 12
             else "(unset)"
         ),
-    }
-
-
-@router.post("/gateway/token/rotate")
-def gateway_token_rotate(_: User = Depends(require_admin)) -> dict[str, Any]:
-    """새 게이트웨이 토큰을 발급하고 `gateway.auth.token` + `gateway.remote.token` 을 동시 교체.
-
-    배치 config 적용 후 백엔드 in-memory `OPENCLAW_TOKEN` 과 override 파일을 즉시 갱신.
-    기존 토큰을 쓰던 모든 외부 consumer(DeskRPG AI 연결, 백엔드 `.env` OPENCLAW_TOKEN 등)는
-    즉시 무효화되므로 반환값의 새 토큰으로 수동 동기화가 필요하다.
-    """
-    ensure_configured()
-    new_token = secrets.token_hex(32)  # 64-char hex, 같은 포맷 유지
-
-    # Two single-path writes — batch-file mode expects a JSON array that our
-    # helper doesn't emit, so we stick to the proven `config set <path> <json>`
-    # pattern already used by agents_update_rpc.
-    cli.config_set_single("gateway.auth.token", new_token)
-    cli.config_set_single("gateway.remote.token", new_token)
-
-    global OPENCLAW_TOKEN
-    OPENCLAW_TOKEN = new_token
-    persisted = False
-    try:
-        os.makedirs(os.path.dirname(_TOKEN_OVERRIDE_PATH), exist_ok=True)
-        with open(_TOKEN_OVERRIDE_PATH, "w", encoding="utf-8") as f:
-            f.write(new_token)
-        persisted = True
-    except Exception as e:
-        logger.warning("token override persist failed after rotate: %s", e)
-
-    return {
-        "ok": True,
-        "token": new_token,
-        "persisted": persisted,
     }
 
 

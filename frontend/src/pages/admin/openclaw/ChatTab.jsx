@@ -510,26 +510,6 @@ export default function ChatTab() {
         ) : (
           <span className={styles.infoMsg}>● {connState === "open" ? "연결됨" : "연결 중…"}</span>
         )}
-        <button
-          className={styles.btn}
-          onClick={async () => {
-            setErr("");
-            try {
-              try { wsRef.current?.close(); } catch { /* ignore */ }
-              const r = await api.post("/api/admin/openclaw/console/token/reset");
-              const msg = r.data?.changed
-                ? `토큰 갱신됨 (${r.data.tokenPrefix})`
-                : `이미 최신 토큰 (${r.data?.tokenPrefix || ""})`;
-              setErr(msg);
-              setTimeout(() => connect(), 200);
-            } catch (e) {
-              setErr(e?.response?.data?.detail || e.message || "token reset failed");
-            }
-          }}
-          title="게이트웨이 재시작 후 'unauthorized: token mismatch' 뜰 때 클릭"
-        >
-          토큰 리셋
-        </button>
         {err && <span className={styles.errMsg}>{err}</span>}
       </div>
 

@@ -10,11 +10,8 @@ export default function TokenTab() {
   const [backendPrefix, setBackendPrefix] = useState("");
   const [reveal, setReveal] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [rotating, setRotating] = useState(false);
-  const [syncing, setSyncing] = useState(false);
   const [copied, setCopied] = useState(false);
   const [err, setErr] = useState("");
-  const [ok, setOk] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -46,53 +43,6 @@ export default function TokenTab() {
     }
   };
 
-  const syncBackend = async () => {
-    setSyncing(true);
-    setErr("");
-    setOk("");
-    try {
-      const r = await api.post("/api/admin/openclaw/console/token/reset");
-      setOk(
-        r.data.changed
-          ? `백엔드 토큰 동기화 완료 (${r.data.tokenPrefix})`
-          : "백엔드는 이미 최신 토큰과 동기화됨",
-      );
-      await load();
-    } catch (e) {
-      setErr(e?.response?.data?.detail || e.message || "sync failed");
-    } finally {
-      setSyncing(false);
-    }
-  };
-
-  const rotate = async () => {
-    const confirm1 = window.confirm(
-      "새 토큰을 발급합니다.\n\n" +
-        "• 기존 토큰은 즉시 무효화됩니다.\n" +
-        "• 아래 Consumer 목록의 모든 항목을 수동으로 새 토큰으로 교체해야 합니다.\n" +
-        "• 교체 전까지 DeskRPG/외부 도구는 연결이 끊깁니다.\n\n" +
-        "계속하시겠습니까?",
-    );
-    if (!confirm1) return;
-    const confirm2 = window.confirm("정말로 새 토큰을 발급하시겠습니까? 되돌릴 수 없습니다.");
-    if (!confirm2) return;
-
-    setRotating(true);
-    setErr("");
-    setOk("");
-    try {
-      const r = await api.post("/api/admin/openclaw/console/gateway/token/rotate");
-      setToken(r.data.token || "");
-      setReveal(true);
-      setOk("새 토큰이 발급되었습니다. 아래 Consumer 에 즉시 반영하세요.");
-      await load();
-    } catch (e) {
-      setErr(e?.response?.data?.detail || e.message || "rotate failed");
-    } finally {
-      setRotating(false);
-    }
-  };
-
   const masked = token
     ? reveal
       ? token
@@ -102,11 +52,17 @@ export default function TokenTab() {
   return (
     <div>
       <div className={styles.panel}>
-        <h3 className={styles.panelTitle}>게이트웨이 토큰</h3>
+        <h3 className={styles.panelTitle}>게이트웨이 토큰 (고정)</h3>
         <p style={{ fontSize: "0.82rem", color: "#a5b4fc", marginTop: 0, marginBottom: "1rem", lineHeight: 1.6 }}>
           OpenClaw 게이트웨이(<code className={styles.mono}>{GATEWAY_URL}</code>) 의 마스터 접속 토큰입니다.
-          이 값은 <code className={styles.mono}>gateway.auth.token</code> 에 저장되며, 외부 도구(DeskRPG,
-          TwinverseAI 백엔드 등) 가 WebSocket 연결 시 <code>auth.token</code> 으로 제시합니다.
+          이 값은 게이트웨이의 <code className={styles.mono}>gateway.auth.token</code> 에 저장되어 있고,
+          TwinverseAI 백엔드와 DeskRPG 등 모든 외부 도구가 WebSocket 연결 시{" "}
+          <code>auth.token</code> 으로 제시합니다.
+          <br />
+          <strong style={{ color: "#fbbf24" }}>이 토큰은 자동으로 변경되지 않습니다.</strong> 바꾸려면
+          Orbitron 대시보드 env_vars 의 <code className={styles.mono}>OPENCLAW_TOKEN</code> 을 직접
+          수정하고, 게이트웨이의 <code>gateway.auth.token</code> / <code>gateway.remote.token</code> 도
+          같은 값으로 맞춘 뒤 컨테이너를 재배포하세요.
         </p>
 
         {loading && !token ? (
@@ -144,47 +100,19 @@ export default function TokenTab() {
               {backendSynced ? (
                 <span style={{ color: "#4ade80" }}>● 일치</span>
               ) : (
-                <span style={{ color: "#f87171" }}>● 불일치 — 아래 "백엔드 동기화" 버튼으로 갱신</span>
+                <span style={{ color: "#f87171" }}>
+                  ● 불일치 — Orbitron env_vars 의 OPENCLAW_TOKEN 을 위 값으로 갱신 후 재배포 필요
+                </span>
               )}
             </div>
 
-            {ok && <div className={styles.okMsg} style={{ marginTop: "0.5rem" }}>{ok}</div>}
             {err && <div className={styles.errMsg} style={{ marginTop: "0.5rem" }}>{err}</div>}
           </>
         )}
       </div>
 
       <div className={styles.panel} style={{ marginTop: "1rem" }}>
-        <h3 className={styles.panelTitle}>토큰 관리</h3>
-        <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
-          <button
-            className={styles.btn}
-            onClick={syncBackend}
-            disabled={syncing || backendSynced}
-            title={backendSynced ? "이미 일치" : "게이트웨이 토큰을 읽어 백엔드 런타임 값만 갱신"}
-          >
-            {syncing ? "동기화 중…" : "백엔드 동기화 (읽기 전용)"}
-          </button>
-          <button
-            className={`${styles.btn} ${styles.btnDanger}`}
-            onClick={rotate}
-            disabled={rotating}
-          >
-            {rotating ? "발급 중…" : "🔄 새 토큰 발급 (회전)"}
-          </button>
-        </div>
-        <p style={{ fontSize: "0.78rem", color: "#888", marginTop: "0.75rem", lineHeight: 1.6 }}>
-          <strong style={{ color: "#ccc" }}>백엔드 동기화</strong>: 게이트웨이가 자체 재시작되어 토큰이
-          바뀐 경우, 기존 토큰을 변경하지 않고 백엔드 프로세스의 in-memory 값만 새로 읽어옵니다.
-          <br />
-          <strong style={{ color: "#f87171" }}>회전</strong>: 완전히 새로운 토큰을 생성해{" "}
-          <code>gateway.auth.token</code> 과 <code>gateway.remote.token</code> 을 교체합니다. 기존
-          토큰은 즉시 무효화되므로 모든 Consumer 를 수동 갱신해야 합니다.
-        </p>
-      </div>
-
-      <div className={styles.panel} style={{ marginTop: "1rem" }}>
-        <h3 className={styles.panelTitle}>이 토큰을 사용하는 곳 (회전 시 모두 갱신 필요)</h3>
+        <h3 className={styles.panelTitle}>이 토큰을 사용하는 곳</h3>
         <table className={styles.table} style={{ width: "100%" }}>
           <thead>
             <tr>
@@ -195,15 +123,23 @@ export default function TokenTab() {
           </thead>
           <tbody>
             <tr>
-              <td>TwinverseAI 백엔드 (.env)</td>
+              <td>TwinverseAI 백엔드</td>
               <td className={styles.mono}>OPENCLAW_TOKEN</td>
               <td>
                 로컬 개발: <code>backend/.env</code> 수정 후 재시작 ·
-                Orbitron 배포: env_vars 갱신 또는 위 "백엔드 동기화" 클릭
+                Orbitron 배포: env_vars 갱신 후 재배포
               </td>
             </tr>
             <tr>
-              <td>DeskRPG "AI 연결" 다이얼로그</td>
+              <td>OpenClaw 게이트웨이 설정</td>
+              <td className={styles.mono}>gateway.auth.token / gateway.remote.token</td>
+              <td>
+                twinverse-ai 호스트에서 <code>openclaw config set gateway.auth.token &quot;...&quot;</code>{" "}
+                + <code>gateway.remote.token</code> 둘 다 같은 값으로
+              </td>
+            </tr>
+            <tr>
+              <td>DeskRPG &quot;AI 연결&quot; 다이얼로그</td>
               <td className={styles.mono}>채널 설정 → AI 연결 → 토큰</td>
               <td>위 토큰을 복사해 다이얼로그에 붙여넣고 저장</td>
             </tr>
