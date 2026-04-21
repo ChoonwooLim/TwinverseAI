@@ -334,9 +334,123 @@ Wiki repo 루트에 커밋 (스킬이 런타임에 읽음):
 
 ### 7.6 /end 스킬 수정 규모
 
-- `C:\Users\choon\.claude\skills\end\SKILL.md` 에 Phase 3.6 추가 (~30 줄 문서)
+- `C:\Users\choon\.claude\skills\end\SKILL.md` 에 Phase 3.6 추가 (~50 줄 문서, 7.7 포함)
 - 기존 단계 (docs/work-log 업데이트, Orbitron 체크, 커밋·푸시) 는 변경 없음
 - Phase 3.6 는 3 단계 (문서 append) 와 4 단계 (frontend sync) 사이에 삽입
+
+### 7.7 Deferred Triggers — 미래 기술 도입 감지
+
+현재 스택에는 없지만 언젠가 도입할 수 있는 서비스/기술 (예: AWS Bedrock, Google Vertex, RunPod) 에 대한 **선제 등록 메커니즘**. 도입이 실제로 시작될 때 자동 감지·활성화.
+
+#### 7.7.1 목적
+
+- "나중에 AWS 가면 이것도 Wiki 에 추가해야 하는데" 를 **기억에 의존하지 않고 자동 상기**
+- 커밋 메시지·diff·파일 경로 어디든 trigger 패턴이 한 번이라도 나타나면 /end 가 포착
+- 활성화 전까지는 Wiki 에 빈 페이지를 만들지 않아 노이즈 없음
+
+#### 7.7.2 `_deferred` 블록 구조
+
+`.wiki-sync.json` 의 `keywords` 블록과 동급으로 `_deferred` 오브젝트를 둔다 (언더스코어 prefix 로 "비활성 섹션" 표시):
+
+```json
+{
+  "keywords": { "...": "..." },
+  "_deferred": {
+    "aws-bedrock": {
+      "trigger": "bedrock|sagemaker|aws\\.ai",
+      "when": "TwinverseAI 또는 다른 프로젝트가 AWS 로 이관하거나 Bedrock 모델을 호출하기 시작할 때",
+      "pending_mappings": {
+        "bedrock|sagemaker": ["20-APIs/AWS-Bedrock.md"],
+        "claude-on-bedrock": ["10-Models/Claude-4x.md#bedrock-deployment"]
+      },
+      "pending_pages": ["20-APIs/AWS-Bedrock.md"],
+      "added": "2026-04-21"
+    },
+    "google-vertex": {
+      "trigger": "vertex|gemini|palm",
+      "when": "Gemini 모델 평가·배포하거나 Vertex AI 를 쓸 때",
+      "pending_mappings": {
+        "vertex|gemini": ["20-APIs/Google-Vertex.md"]
+      },
+      "pending_pages": ["20-APIs/Google-Vertex.md", "10-Models/Gemini.md"],
+      "added": "2026-04-21"
+    },
+    "runpod": {
+      "trigger": "runpod|pod-id|serverless\\s*gpu",
+      "when": "GPU 트래픽이 LAN twinverse-ai (RTX 3090) 한계 초과로 클라우드 확장 필요할 때",
+      "pending_mappings": {
+        "runpod|gpu.*cloud": ["50-Infrastructure/RunPod.md"]
+      },
+      "pending_pages": ["50-Infrastructure/RunPod.md"],
+      "added": "2026-04-21"
+    }
+  }
+}
+```
+
+**필드 의미**:
+- `trigger` — /end 가 감시할 regex (커밋 메시지 · diff · 변경된 파일 경로 전체 대상)
+- `when` — 사람이 읽는 활성화 조건 (감사 용도 · 제안 UI 에 표시)
+- `pending_mappings` — 활성화 시 `keywords` 블록으로 승격할 매핑
+- `pending_pages` — 활성화 시 Wiki 에 새로 만들 페이지 (stub 부터)
+- `added` — 이 deferred 블록이 등록된 날짜 (오래된 미활성 블록 감사용)
+
+#### 7.7.3 /end Phase 3.6 의 2-pass 흐름
+
+1. **Pass 1 — active keywords 매칭** (§7.1)
+2. **Pass 2 — `_deferred[*].trigger` 매칭**. 오늘 커밋 · diff · 파일 경로에 trigger 가 하나라도 걸리면 특별 UI 출력:
+
+```
+🚨 Deferred 블록 활성화 제안
+
+`_deferred.aws-bedrock` 의 trigger 가 감지됨:
+- 감지 패턴: bedrock|sagemaker|aws\.ai
+- 매치된 커밋: <sha> <메시지>
+- 원래 설계 의도: TwinverseAI 또는 다른 프로젝트가 AWS 로 이관하거나 Bedrock 모델을 호출하기 시작할 때
+
+권장 동작:
+1. pending_pages 를 llm-wiki 에 stub 으로 생성
+2. pending_mappings 를 keywords 블록으로 승격
+3. _deferred.aws-bedrock 블록을 _archived 로 이동 (or 삭제)
+
+지금 활성화 전환을 수행할까요? (y/n/later)
+- y → Claude 가 스텁 생성 + 매핑 승격 + 블록 이동까지 자동 커밋
+- n → 영구 무시 (오탐지 · 활성화 원치 않음)
+- later → 다음 /end 에서 다시 제안
+```
+
+#### 7.7.4 활성화 시 자동 수행 작업 (y 선택 시)
+
+Claude 가 /end 안에서 다음을 수행:
+
+1. `pending_pages` 의 각 경로에 **stub 페이지** 생성:
+   ```markdown
+   # <주제명>
+
+   <!-- 2026-MM-DD: _deferred.<block-id> 활성화로 자동 생성된 스텁 -->
+   <!-- 활성화 트리거: <sha> <커밋 메시지> -->
+
+   ## 개요
+
+   TBD — 이 주제를 Wiki 에 정리해야 합니다.
+
+   ## 참조 원본
+
+   - <활성화 트리거 커밋>
+   - ai-shared-registry 해당 섹션 (있으면 링크)
+   ```
+2. `pending_mappings` 를 `keywords` 블록에 병합 (기존 키와 충돌하면 경고)
+3. `_deferred.<id>` 블록을 `_archived.<id>` 로 이동하고 `activated: "YYYY-MM-DD"` 필드 추가
+4. `.wiki-sync.json` 커밋 + stub 페이지 커밋
+
+#### 7.7.5 감사 · 헬스체크
+
+- `/end` 가 `_deferred` 블록의 `added` 필드를 체크해서 **1 년 이상 미활성 블록** 이 있으면 연 1회 "이 블록들이 3 건 대기 중, 여전히 유효한가요?" 를 리마인드 (옵션)
+- `_archived` 는 감사 이력으로만 유지 — 재참조 가능
+
+#### 7.7.6 초기 `_deferred` 예시 등록
+
+MVP 배포 시 위 3 개 블록 (`aws-bedrock`, `google-vertex`, `runpod`) 을 기본 포함. 앞으로 Steven 이 "언젠가 쓸 것 같은" 기술 발견 시마다 한 블록씩 추가 (예: `azure-openai`, `together-ai`, `groq`, `tensorRT`, `finetune`).
 
 ---
 
@@ -351,6 +465,8 @@ Wiki repo 루트에 커밋 (스킬이 런타임에 읽음):
 | Obsidian 설정 변경이 커밋 히스토리 오염 | P3 | `.obsidian/workspace.json` gitignore. 설정 변경 커밋은 년 1~2 회 수준 |
 | MVP 13 페이지 작성 시간 초과 | P2 | Steven 의 메모리 시스템과 기존 TwinverseAI docs 재사용. 분량은 100 줄 내외 제한. 2~3 시간 목표 |
 | 매핑 파일 regex 실수로 모든 커밋 매칭 | P2 | 초기 매핑은 보수적 (AND 조건 아닌 알려진 키워드만). /end 가 후보 페이지 3 개 초과하면 경고 |
+| `_deferred` 블록이 영원히 잠자서 노이즈 됨 | P3 | `added` 필드로 연 1회 감사 리마인드 (§7.7.5). 1 년+ 미활성 블록 자동 경고 |
+| `_deferred` trigger regex 오탐지 (일반 단어에 매칭) | P2 | `when` 필드에 활성화 조건 명시. 제안 UI 가 원래 의도를 보여주고 `n` 으로 영구 무시 가능 |
 
 ---
 
@@ -378,6 +494,8 @@ Wiki repo 루트에 커밋 (스킬이 런타임에 읽음):
 - [ ] `/end` 에서 y 선택 → Wiki 변경 diff 제안 정상 생성
 - [ ] `/end` 에서 later 선택 → 다음 세션에 다시 제안
 - [ ] GitHub repo 에 Wiki 최초 push 성공
+- [ ] `_deferred.aws-bedrock.trigger` 가 걸리는 테스트 커밋 메시지로 /end 실행 → 활성화 제안 UI 출력 확인
+- [ ] 활성화 제안에서 y 선택 → stub 페이지 · 매핑 승격 · `_archived` 이동 자동 수행 확인
 
 ---
 
