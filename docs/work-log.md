@@ -954,3 +954,35 @@
   전부 검토. `config_set_batch` 우회 로직 (`da61599` 커밋 참고) 도 의심권.
 
 ---
+
+## 2026-04-21 (LLM Wiki 설계 · 계획 · 전 프로젝트 배포)
+
+### 작업 요약
+
+| 카테고리 | 작업 내용 | 상태 |
+|----------|----------|------|
+| docs | LLM Wiki (Obsidian Vault) 설계 스펙 작성 | 완료 |
+| docs | 스펙에 7.7 Deferred Triggers + 12 Claude Desktop 섹션 추가 | 완료 |
+| docs | Phase A-H 구현 계획 작성 + `deploy-pointer.ps1` pwsh7 / `$dryRun` 충돌 수정 | 완료 |
+| infra | `C:\WORK\llm-wiki\` 독립 repo 생성 (MVP 14 페이지) + GitHub private push | 완료 |
+| infra | `deploy-pointer.ps1` 실행 — 21 개 `C:\WORK\` 프로젝트에 `AI_WIKI.md` 포인터 자동 생성 | 완료 |
+| infra | `/end` 스킬 Phase 3.6 추가 (active + `_deferred` 2-pass 키워드 라우팅) | 완료 |
+| infra | 전역 `~/.claude/CLAUDE.md` 에 LLM/AI 지식 참조 규칙 추가 | 완료 |
+| feat | OpenClaw 에이전트 통합 테스트 커밋 (Phase 3.6 트리거 검증용 empty commit) | 완료 |
+
+### 세부 내용
+
+- **LLM Wiki 구축 목적**: 5 개 프로젝트 (TwinverseAI · SodamFN · TwinverseDesk · 기타) 가 Claude · Ollama · OpenClaw · Anthropic API 지식을 중복 기록하지 않도록 **단일 Wiki 참조** 로 수렴.
+- **SSOT 경계**: 값 (env / IP / 토큰) = `infra-docs/ai-shared-registry.md`, 설명 · 사용법 · 특성 = `llm-wiki`.
+- **검증**: 새 Claude 세션에서 `"Claude 4.7 의 Prompt Caching 비용 구조 알려줘"` 질문 → `AI_WIKI.md` → `20-APIs/Anthropic-API.md` Read → 정확한 답변 출력 (캐시 write 1.25× / read 0.1× / 5 분 TTL / 1024 토큰 / 4 블록) 확인.
+- **Obsidian Vault 정비**: `attachmentFolderPath` → `90-Attachments`, `userIgnoreFilters: ["scripts/"]` 로 그래프 ghost cluster 제거.
+- **VS Code 환경**: Foam + Markdown All in One + Paste Image + Mermaid 확장 4 개 설치 + `.vscode/settings.json` 에 이미지 경로 고정.
+- **Phase 3.6 테스트**: `feat: test OpenClaw agent integration` empty commit (`9feef73`) 로 `openclaw` 키워드 감지 → `40-Tools/OpenClaw.md` 제안 UI 동작 검증.
+
+### 다음 세션 참고
+
+- **`agents.list` config drift 인시던트** (2026-04-18 세션 종료 직전 발견): 아직 미복구. 다음 세션에 `openclaw.json.bak.3` 기준 복원 + `claude-opus` / `codex-pro` 재등록 필요.
+- **LLM Wiki stub 페이지**: `Prompt-Caching.md`, `Tool-Use.md` 등은 그래프에 점선으로 표시됨. 향후 `/end` Phase 3.6 로 자연스럽게 채워질 것.
+- **AI_WIKI.md 배포 결과**: 21 프로젝트에 포인터 생성됨. `llm-wiki` / `infra-docs` / `bin` / `UnrealEngine` 은 SkipList 제외.
+
+---

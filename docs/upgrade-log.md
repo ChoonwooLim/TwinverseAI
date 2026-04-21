@@ -66,3 +66,5 @@
 | 2026-04-18 | OpenClaw 토큰 리셋 UI — 게이트웨이 재시작 후 `POST /token/reset` 엔드포인트 + `/app/data/.openclaw_token_override` 볼륨 파일 + 채팅 탭 "토큰 리셋" 버튼 (WS 재연결 자동) | feat | backend/routers/admin_openclaw_console.py, frontend/src/pages/admin/openclaw/ChatTab.jsx, scripts/update_openclaw_token.js |
 | 2026-04-18 | `claude-cli/*` 모델 프리셋 optgroup — 전역 스키마가 거부하는 Claude Max CLI 모델 4 종을 드롭다운에서 바로 선택 가능 | feat | frontend/src/pages/admin/openclaw/AgentsTab.jsx |
 | 2026-04-18 | OpenClaw 에이전트 카드 설명 파싱 개선 + 카드 디자인 정리 (패딩·폰트·아이콘·호버 상태) | feat | backend/services/openclaw_cli.py, frontend/src/pages/admin/AdminOpenClawConsole.module.css, frontend/src/pages/admin/openclaw/ChatTab.jsx |
+| 2026-04-21 | LLM Wiki (Obsidian Vault) 독립 repo 구축 — 14 페이지 MVP, AI_WIKI.md 포인터 전 프로젝트 배포, /end Phase 3.6 active+_deferred 2-pass 라우팅, Claude Desktop MCP 연동 가이드 | docs | C:\WORK\llm-wiki\ (독립 repo), AI_WIKI.md, ~/.claude/skills/end/SKILL.md, ~/.claude/CLAUDE.md |
+| 2026-04-21 | OpenClaw 에이전트 통합 테스트 커밋 (Phase 3.6 트리거 검증용 empty commit) | feat | (empty commit) |
