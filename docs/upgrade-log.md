@@ -68,3 +68,5 @@
 | 2026-04-18 | OpenClaw 에이전트 카드 설명 파싱 개선 + 카드 디자인 정리 (패딩·폰트·아이콘·호버 상태) | feat | backend/services/openclaw_cli.py, frontend/src/pages/admin/AdminOpenClawConsole.module.css, frontend/src/pages/admin/openclaw/ChatTab.jsx |
 | 2026-04-21 | LLM Wiki (Obsidian Vault) 독립 repo 구축 — 14 페이지 MVP, AI_WIKI.md 포인터 전 프로젝트 배포, /end Phase 3.6 active+_deferred 2-pass 라우팅, Claude Desktop MCP 연동 가이드 | docs | C:\WORK\llm-wiki\ (독립 repo), AI_WIKI.md, ~/.claude/skills/end/SKILL.md, ~/.claude/CLAUDE.md |
 | 2026-04-21 | OpenClaw 에이전트 통합 테스트 커밋 (Phase 3.6 트리거 검증용 empty commit) | feat | (empty commit) |
+| 2026-04-24 | OpenClaw 기본 에이전트 모델을 Codex/ChatGPT OAuth 계열 `openai-codex/gpt-5.5` 로 전환하고 Orbitron env 동기화 | infra | Orbitron.yaml, backend/routers/npc_agent.py, ai-shared-registry.md |
+| 2026-04-24 | Codex 용 프로젝트 지침/스킬/워크플로우 추가 — `.agents/skills`, `.agents/workflows/start.md`, `.agents/workflows/end.md` 기반으로 Claude `/start` `/end` 유사 운용 | docs | AGENTS.md, .agents/ |

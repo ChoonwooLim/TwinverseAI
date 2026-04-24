@@ -92,6 +92,11 @@ env:
     required: true
     sync: false
 
+  - key: OPENCLAW_MODEL
+    description: "OpenClaw 기본 에이전트 모델 (Codex/ChatGPT OAuth, Anthropic API 미사용)"
+    value: "openai-codex/gpt-5.5"
+    sync: true
+
   - key: OPENCLAW_SSH_HOST
     description: "twinverse-ai SSH 호스트"
     value: "192.168.219.117"

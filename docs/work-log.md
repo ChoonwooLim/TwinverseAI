@@ -986,3 +986,60 @@
 - **AI_WIKI.md 배포 결과**: 21 프로젝트에 포인터 생성됨. `llm-wiki` / `infra-docs` / `bin` / `UnrealEngine` 은 SkipList 제외.
 
 ---
+
+## 2026-04-24 (OpenClaw 과금 차단 · Codex 전환 · 워크플로우 정비)
+
+### 작업 요약
+
+| 카테고리 | 작업 내용 | 상태 |
+|----------|----------|------|
+| fix | LAN OpenClaw 의 Anthropic API provider 키 제거 + `main` 에이전트 Anthropic 모델 사용 차단 | 완료 |
+| infra | OpenClaw 기본 모델을 `openai-codex/gpt-5.5` 로 전환, `main` / `codex-pro` / `agents.defaults.model.primary` 동기화 | 완료 |
+| infra | `agents.list` drift 복구 — 누락된 Codex/Ollama/Claude CLI 계열 에이전트 재등록, `claude-opus` API 과금 에이전트는 격리 | 완료 |
+| docs | `ai-shared-registry.md` 를 먼저 갱신한 뒤 TwinverseAI 코드/Orbitron 설정 반영 | 완료 |
+| chore | Codex 용 `AGENTS.md` 및 `.agents/skills`, `.agents/workflows` 기반 start/end 사용 경로 정리 | 완료 |
+
+### 세부 내용
+
+- **Anthropic API 비용 원인 추적**: `twinverse-ai` 의 `/srv/openclaw/data/.openclaw/openclaw.json`
+  에 `models.providers.anthropic.apiKey` 가 설정되어 있었고, `main` 에이전트가
+  `anthropic/claude-opus-4-7` 로 지정되어 있었다. 세션 JSONL 기준 2026-04-18~23 사이
+  `main` 중심으로 Anthropic 호출 302 회가 확인되었고, 대부분 비용은 대형 system/tool
+  prompt 의 `cacheWrite` 토큰에서 발생.
+- **즉시 차단**: OpenClaw config 에서 Anthropic API key 를 빈 값으로 제거하고
+  `plugins.entries.anthropic.enabled=false` 처리. `main` 은 임시 `ollama/qwen2.5:7b` 로
+  내렸다가 사용자 요청에 따라 최종 기본 모델을 `openai-codex/gpt-5.5` 로 전환.
+- **기본 모델 전환**: OpenClaw `models.providers.openai-codex.models` 에 `gpt-5.5` 항목을
+  추가하고, `agents.defaults.model.primary`, `main`, `codex-pro` 를 모두
+  `openai-codex/gpt-5.5` 로 설정. `claude-max` 는 Anthropic API 가 아닌
+  `claude-cli/claude-opus-4-6` 로만 유지.
+- **`agents.list` drift 복구**: 디스크에는 존재하지만 config 목록에서 빠졌던
+  `ai-architect`, `debugger`, `devops`, `ue5-engineer`, `bench-qwen25-7b`, `claude-max`,
+  `codex-pro` 를 복구. Anthropic API 과금 주체였던 `claude-opus` 는 목록에 복구하지 않고
+  디렉터리만 남겨 격리.
+- **스키마 오류 복구**: 직접 config 편집 중 `models.providers.anthropic.enabled` 및
+  `agents.list[].displayName` 이 OpenClaw 2026.4.12 스키마에 맞지 않아 reload skip 이
+  발생. 해당 키를 제거하고 `openclaw agents list --json`, `config get` 으로 정상화 확인.
+- **프로젝트 동기화**: `backend/routers/npc_agent.py` 의 `OPENCLAW_MODEL` 기본값을
+  `openai-codex/gpt-5.5` 로 교체하고, `Orbitron.yaml` 에 `OPENCLAW_MODEL` env 항목을
+  추가. 로컬 `backend/.env` 도 같은 값으로 맞췄으나 `.env` 는 gitignore 대상.
+- **Codex 워크플로우 확인**: Claude Code 의 `/start`, `/end` 와 같은 역할을 Codex 에서는
+  `.agents/workflows/start.md`, `.agents/workflows/end.md` 를 읽어 실행하는 방식으로 사용.
+
+### 검증
+
+- `ssh twinverse-ai "docker exec openclaw openclaw agents list --json"` 정상 실행.
+- `main` / `codex-pro` 모델이 `openai-codex/gpt-5.5` 로 표시됨.
+- `agents.defaults.model.primary` 가 `openai-codex/gpt-5.5` 로 표시됨.
+- OpenClaw config 에 Anthropic API key 값이 남아있지 않음.
+- `python -m compileall -q backend` 통과.
+
+### 다음 세션 참고
+
+- Anthropic Console 의 실제 billing/usage 화면에서 2026-04-18~23 사용량을 대조해
+  OpenClaw JSONL 추산치와 일치하는지 확인 필요.
+- `claude-opus` 디렉터리는 의도적으로 `agents.list` 에 복구하지 않았다. 다시 노출할 경우
+  반드시 `anthropic/*` 가 아닌 `claude-cli/*` 또는 `openai-codex/*` 모델로 새로 등록할 것.
+- Orbitron 대시보드에 `OPENCLAW_MODEL=openai-codex/gpt-5.5` 가 실제 sync 되었는지 배포 전 확인.
+
+---
