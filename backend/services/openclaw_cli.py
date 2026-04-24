@@ -13,6 +13,9 @@ OpenClaw 고수준 CLI/RPC 래퍼.
 from __future__ import annotations
 
 import json
+import base64
+import mimetypes
+import posixpath
 import re
 import shlex
 import uuid
@@ -387,6 +390,88 @@ def _agent_workspace(agent_id: str) -> str:
         if a["id"] == agent_id:
             return a.get("workspace") or f"/data/.openclaw/workspace-{agent_id}"
     return f"/data/.openclaw/workspace-{agent_id}"
+
+
+IMAGE_FILE_EXTS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"}
+MAX_WORKSPACE_IMAGE_BYTES = 10 * 1024 * 1024
+
+
+def _is_remote_child(path: str, root: str) -> bool:
+    root = posixpath.normpath(root).rstrip("/")
+    path = posixpath.normpath(path)
+    return path == root or path.startswith(root + "/")
+
+
+def _workspace_image_path(agent_id: str, requested_path: str) -> tuple[str, str]:
+    _require(AGENT_ID_RE, agent_id, "agentId")
+    raw = (requested_path or "").strip().strip("`").strip("'\"")
+    raw = raw.replace("\\", "/")
+    if not raw or "\x00" in raw:
+        raise HTTPException(status_code=400, detail="invalid image path")
+
+    image_path = posixpath.normpath(raw)
+    filename = posixpath.basename(image_path)
+    ext = posixpath.splitext(filename)[1].lower()
+    if ext not in IMAGE_FILE_EXTS:
+        raise HTTPException(status_code=400, detail="unsupported image type")
+
+    workspace = posixpath.normpath(_agent_workspace(agent_id))
+    allowed_roots = {
+        workspace,
+        posixpath.normpath(f"/data/.openclaw/workspace-{agent_id}"),
+        posixpath.normpath("/data/.openclaw/workspace"),
+    }
+
+    if image_path.startswith("/"):
+        if not any(_is_remote_child(image_path, root) for root in allowed_roots):
+            raise HTTPException(status_code=403, detail="image path is outside OpenClaw workspace")
+        return image_path, filename
+
+    resolved = posixpath.normpath(posixpath.join(workspace, image_path))
+    if not _is_remote_child(resolved, workspace):
+        raise HTTPException(status_code=403, detail="image path escapes OpenClaw workspace")
+    return resolved, filename
+
+
+def agents_workspace_image_get(agent_id: str, requested_path: str) -> tuple[bytes, str, str]:
+    """Read an image generated inside an OpenClaw workspace.
+
+    The browser cannot read `/data/.openclaw/...` paths directly, so the admin
+    console fetches the file through this authenticated backend proxy.
+    """
+    ensure_configured()
+    remote_path, filename = _workspace_image_path(agent_id, requested_path)
+    inner = (
+        f"path={shlex.quote(remote_path)}; "
+        "if [ ! -f \"$path\" ]; then echo '__TVAI_NOT_FOUND__'; exit 4; fi; "
+        "size=$(wc -c < \"$path\" 2>/dev/null | tr -d ' '); "
+        "case \"$size\" in ''|*[!0-9]*) echo '__TVAI_BAD_SIZE__'; exit 5;; esac; "
+        f"if [ \"$size\" -gt {MAX_WORKSPACE_IMAGE_BYTES} ]; then echo \"__TVAI_TOO_LARGE__:$size\"; exit 6; fi; "
+        "printf '__TVAI_IMAGE_B64__\\n'; "
+        "base64 \"$path\" | tr -d '\\n'"
+    )
+    cmd = f"docker exec {shlex.quote(CONTAINER)} sh -c {shlex.quote(inner)}"
+    rc, out, err = ssh_run(cmd, timeout=25)
+    if rc != 0:
+        detail = (out or err or "").strip()
+        if "__TVAI_NOT_FOUND__" in detail:
+            raise HTTPException(status_code=404, detail="image not found")
+        if "__TVAI_TOO_LARGE__" in detail:
+            raise HTTPException(status_code=413, detail="image is too large")
+        raise HTTPException(status_code=502, detail=f"image read failed: {(err or out).strip()[:300]}")
+
+    marker = "__TVAI_IMAGE_B64__\n"
+    if marker not in out:
+        raise HTTPException(status_code=502, detail="image read returned invalid payload")
+    b64 = out.split(marker, 1)[1].strip()
+    try:
+        data = base64.b64decode(b64, validate=True)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail="image payload decode failed") from e
+
+    ext = posixpath.splitext(filename)[1].lower()
+    media_type = "image/svg+xml" if ext == ".svg" else (mimetypes.guess_type(filename)[0] or "application/octet-stream")
+    return data, media_type, filename
 
 
 def agents_files_get(agent_id: str, file_name: str) -> str:

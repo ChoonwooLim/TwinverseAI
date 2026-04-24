@@ -19,7 +19,7 @@ from typing import Any
 
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
 from sqlmodel import Session, select
 
@@ -244,6 +244,25 @@ def agent_files_list_endpoint(agent_id: str, _: User = Depends(require_admin)) -
 def agent_file_get_endpoint(agent_id: str, file_name: str, _: User = Depends(require_admin)) -> dict[str, Any]:
     ensure_configured()
     return {"name": file_name, "content": cli.agents_files_get(agent_id, file_name)}
+
+
+@router.get("/agents/{agent_id}/workspace-image")
+def agent_workspace_image_endpoint(
+    agent_id: str,
+    path: str = Query(..., min_length=1, max_length=512),
+    _: User = Depends(require_admin),
+) -> Response:
+    ensure_configured()
+    data, media_type, filename = cli.agents_workspace_image_get(agent_id, path)
+    safe_name = filename.replace('"', "")
+    return Response(
+        content=data,
+        media_type=media_type,
+        headers={
+            "Cache-Control": "private, max-age=60",
+            "Content-Disposition": f'inline; filename="{safe_name}"',
+        },
+    )
 
 
 @router.put("/agents/{agent_id}/files/{file_name}")

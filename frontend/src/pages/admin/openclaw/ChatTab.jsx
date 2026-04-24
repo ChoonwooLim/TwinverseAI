@@ -20,6 +20,8 @@ const DOC_MIMES = ["text/plain", "text/markdown", "application/json"];
 const DOC_EXTS = [".txt", ".md", ".json", ".log", ".csv"];
 const ATTACH_ACCEPT = [...IMAGE_MIMES, ...DOC_MIMES, ...DOC_EXTS].join(",");
 const MAX_ATTACH_BYTES = 9 * 1024 * 1024;
+const IMAGE_PATH_RE = /(?:^|[\s([`'"])(\/data\/\.openclaw\/[^\s`'"<>]+\.(?:png|jpe?g|gif|webp|svg)|(?:\.{0,2}\/)?[A-Za-z0-9._/-]+\.(?:png|jpe?g|gif|webp|svg))(?=$|[\s)`'".,;:!?<>])/gi;
+const IMAGE_MD_RE = /!\[[^\]]*]\(([^)\s]+?\.(?:png|jpe?g|gif|webp|svg))\)/gi;
 
 const VISION_MODEL_HINTS = ["llava", "vision", "minicpm-v", "llama3.2-vision"];
 const isVisionModel = (modelId) => {
@@ -47,6 +49,124 @@ const readFileAsText = (file) => new Promise((resolve, reject) => {
 });
 
 const CONV_BASE = "/api/admin/openclaw/console/conversations";
+
+const cleanImagePath = (value) => (
+  String(value || "")
+    .trim()
+    .replace(/^`+|`+$/g, "")
+    .replace(/^['"]+|['"]+$/g, "")
+    .replace(/[.,;:!?]+$/g, "")
+);
+
+const imageName = (path) => {
+  const clean = cleanImagePath(path);
+  const parts = clean.split(/[\\/]/);
+  return parts[parts.length - 1] || clean;
+};
+
+const extractImageRefs = (content) => {
+  const text = String(content || "");
+  const seen = new Set();
+  const refs = [];
+  const add = (raw) => {
+    const path = cleanImagePath(raw);
+    if (!path || path.includes("://") || seen.has(path)) return;
+    seen.add(path);
+    refs.push(path);
+  };
+
+  for (const match of text.matchAll(IMAGE_MD_RE)) add(match[1]);
+  for (const match of text.matchAll(IMAGE_PATH_RE)) add(match[1]);
+  return refs.slice(0, 6);
+};
+
+function MessageImages({ agentId, refs }) {
+  const [items, setItems] = useState([]);
+  const refKey = refs.join("\n");
+
+  useEffect(() => {
+    if (!agentId || !refKey) {
+      setItems([]);
+      return undefined;
+    }
+
+    let cancelled = false;
+    const urls = [];
+    const paths = refKey.split("\n").filter(Boolean);
+    setItems(paths.map((path) => ({ path, status: "loading" })));
+
+    Promise.all(paths.map(async (path) => {
+      try {
+        const r = await api.get(
+          `/api/admin/openclaw/console/agents/${encodeURIComponent(agentId)}/workspace-image`,
+          { params: { path }, responseType: "blob" }
+        );
+        if (cancelled) return { path, status: "cancelled" };
+        const url = URL.createObjectURL(r.data);
+        urls.push(url);
+        return { path, status: "ready", url };
+      } catch (e) {
+        return {
+          path,
+          status: "error",
+          error: e?.response?.data?.detail || e?.message || "로드 실패",
+        };
+      }
+    })).then((next) => {
+      if (!cancelled) setItems(next.filter((item) => item.status !== "cancelled"));
+    });
+
+    return () => {
+      cancelled = true;
+      urls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [agentId, refKey]);
+
+  if (!items.length) return null;
+
+  return (
+    <div className={styles.msgImages}>
+      {items.map((item) => (
+        <div key={item.path} className={styles.msgImageCard}>
+          {item.status === "ready" ? (
+            <img
+              className={styles.msgImage}
+              src={item.url}
+              alt={imageName(item.path)}
+              loading="lazy"
+            />
+          ) : (
+            <div className={styles.msgImagePlaceholder}>
+              {item.status === "loading" ? "불러오는 중" : "이미지 로드 실패"}
+            </div>
+          )}
+          <div className={styles.msgImageMeta}>
+            <span className={styles.msgImageName} title={item.path}>{imageName(item.path)}</span>
+            {item.status === "ready" && (
+              <a className={styles.msgImageLink} href={item.url} target="_blank" rel="noreferrer">
+                보기
+              </a>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function MessageBubble({ message, agentId }) {
+  const refs = extractImageRefs(message.content);
+  return (
+    <div
+      className={`${styles.msg} ${
+        message.role === "user" ? styles.msgUser : message.role === "system" ? styles.msgSystem : styles.msgAssistant
+      }`}
+    >
+      <div className={styles.msgText}>{message.content}</div>
+      <MessageImages agentId={agentId} refs={refs} />
+    </div>
+  );
+}
 
 export default function ChatTab() {
   const [agents, setAgents] = useState([]);
@@ -628,14 +748,7 @@ export default function ChatTab() {
               </div>
             ) : null}
             {messages.map((m, i) => (
-              <div
-                key={i}
-                className={`${styles.msg} ${
-                  m.role === "user" ? styles.msgUser : m.role === "system" ? styles.msgSystem : styles.msgAssistant
-                }`}
-              >
-                {m.content}
-              </div>
+              <MessageBubble key={i} message={m} agentId={selectedAgent} />
             ))}
           </div>
           {pendingAttachments.length > 0 && (
