@@ -70,3 +70,5 @@
 | 2026-04-21 | OpenClaw 에이전트 통합 테스트 커밋 (Phase 3.6 트리거 검증용 empty commit) | feat | (empty commit) |
 | 2026-04-24 | OpenClaw 기본 에이전트 모델을 Codex/ChatGPT OAuth 계열 `openai-codex/gpt-5.5` 로 전환하고 Orbitron env 동기화 | infra | Orbitron.yaml, backend/routers/npc_agent.py, ai-shared-registry.md |
 | 2026-04-24 | Codex 용 프로젝트 지침/스킬/워크플로우 추가 — `.agents/skills`, `.agents/workflows/start.md`, `.agents/workflows/end.md` 기반으로 Claude `/start` `/end` 유사 운용 | docs | AGENTS.md, .agents/ |
+| 2026-04-24 | DeskRPG 런타임 DB 를 Orbitron PostgreSQL 전용으로 전환 — SQLite lite setup, SQLite compose, SQLite drizzle config 제거 및 `DATABASE_URL` 필수화 | infra | deskrpg-master/bin/deskrpg.js, deskrpg-master/src/db/index.ts, deskrpg-master/src/db/server-db.js, deskrpg-master/src/lib/runtime-paths.*, deskrpg-master/.env.example, deskrpg-master/docker-entrypoint.sh |
+| 2026-04-24 | DeskRPG NPC 태스크 등록 기능 보강 — 채팅 기반 저장 오류 수정 + 좌측 태스크 패널 업무 지시사항 수동 등록 UI/socket handler 추가 | feat | deskrpg-master/src/components/TaskPanel.tsx, deskrpg-master/server.js, deskrpg-master/src/server/socket-handlers.ts, deskrpg-master/src/lib/task-manager.js |

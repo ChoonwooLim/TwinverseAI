@@ -1043,3 +1043,55 @@
 - Orbitron 대시보드에 `OPENCLAW_MODEL=openai-codex/gpt-5.5` 가 실제 sync 되었는지 배포 전 확인.
 
 ---
+
+## 2026-04-24 (DeskRPG 태스크 저장 복구 · PostgreSQL 전환 · 캐릭터 로딩 복구)
+
+### 작업 요약
+
+| 카테고리 | 작업 내용 | 상태 |
+|----------|----------|------|
+| fix | NPC 대화에서 "태스크 등록" 응답 후 실제 태스크 수가 0 으로 남던 저장 오류 수정 | 완료 |
+| feat | 태스크 패널에서 NPC 업무 지시사항을 직접 입력해 등록하는 폼과 socket handler 추가 | 완료 |
+| infra | DeskRPG 런타임 DB 를 SQLite 혼용 없이 Orbitron PostgreSQL 전용으로 전환 | 완료 |
+| fix | `/characters` 화면이 "로딩 중..." 에 멈추던 Next.js 서버 chunk 누락 배포 문제 복구 | 완료 |
+| ops | Orbitron live package 에 checksum 기반 재동기화 후 `deskrpg doctor`, `/game`, `/api/auth/status` 검증 | 완료 |
+
+### 세부 내용
+
+- **태스크 저장 오류 원인**: PostgreSQL 모드에서 timestamp 컬럼에 문자열 ISO 값을 넣어
+  `value.toISOString is not a function` 예외가 발생했고, 런타임 `server-db.js` 의 task schema 에
+  `lastReportedAt` 등 일부 컬럼이 누락되어 있었다. `task-manager.js` 에 DB 타입별 timestamp 변환을
+  추가해 PostgreSQL 은 `Date`, SQLite 레거시 경로는 ISO 문자열을 쓰도록 분기했고, 런타임 schema 를
+  실제 PostgreSQL task 컬럼과 맞췄다.
+- **업무 지시사항 등록 UX**: `TaskPanel.tsx` 에 선택 NPC 기준 태스크 제목/지시사항 입력 폼을 추가하고,
+  `server.js` 및 `src/server/socket-handlers.ts` 에 `task:create` 이벤트를 연결했다. 이제 채팅 흐름과 별개로
+  좌측 태스크 탭에서 NPC 업무 지시를 직접 등록할 수 있다.
+- **PostgreSQL 단일화**: `bin/deskrpg.js`, `src/db/index.ts`, `src/db/server-db.js`,
+  `src/lib/runtime-paths.*`, `.env.example`, `docker-entrypoint.sh` 를 PostgreSQL 전용으로 정리했다.
+  SQLite lite setup, SQLite Docker compose, `drizzle-sqlite.config.ts` 는 제거했고, `DATABASE_URL` 이 없거나
+  `DB_TYPE=sqlite` 인 경우 시작 단계에서 명확히 실패하도록 했다.
+- **Orbitron 런타임 동기화**: 원격 `~/.deskrpg/.env.local` 을 PostgreSQL 모드로 정리하고, DeskRPG npm
+  package 경로에 변경분을 반영했다. 실제 DB URL 값은 Orbitron 환경/secret 으로만 유지하고 문서에는 기록하지 않는다.
+- **캐릭터 로딩 복구**: `npm pack` 산출물의 고정 mtime 과 동일 파일 크기 때문에 `rsync` 가 변경된 Next.js route
+  chunk 를 건너뛰어 `/api/auth/status` 500 및 `/characters` 무한 로딩이 발생했다. 재배포 동기화를
+  `rsync --checksum` 으로 다시 수행해 누락 chunk 를 복구했다.
+
+### 검증
+
+- `npx tsx --test src/lib/runtime-home.test.ts src/lib/task-manager.test.ts` 통과.
+- `npm run build` 통과.
+- Orbitron `deskrpg doctor` 통과.
+- Orbitron 서버 로그에서 `[server-db] PostgreSQL mode - Drizzle ORM initialized` 확인.
+- 라이브 `/api/auth/status` 가 HTTP 200 JSON 을 반환함 확인.
+- 라이브 `/game` 응답 정상 확인.
+- PostgreSQL 임시 task create/delete smoke test 통과.
+- `DB_TYPE=sqlite` 강제 실행 시 PostgreSQL 필수 오류가 발생하는 것 확인.
+
+### 다음 세션 참고
+
+- `deskrpg-master/` 는 루트 `.gitignore` 대상이라 TwinverseAI 루트 Git 상태에는 코드 변경이 표시되지 않는다.
+  이번 DeskRPG 수정은 Orbitron live package 에 반영된 hotfix 성격이며, 별도 DeskRPG upstream 저장소 관리가
+  필요하면 해당 저장소 기준으로 커밋/릴리즈 절차를 따로 진행해야 한다.
+- 이후 DeskRPG 배포 동기화는 timestamp/size 비교만 믿지 말고 checksum 기반 검증을 포함해야 한다.
+
+---
