@@ -630,6 +630,7 @@ async def chat_ws(ws: WebSocket) -> None:
     # for the same assistant reply. Track the message ids we've already
     # forwarded to the browser so we don't render duplicates.
     seen_message_ids: set[str] = set()
+    save_tasks: set[asyncio.Task[Any]] = set()
 
     def _save_message(conv_id: int, role: str, content: str,
                       attachments: list[dict[str, Any]] | None = None) -> None:
@@ -658,6 +659,12 @@ async def chat_ws(ws: WebSocket) -> None:
                 db.commit()
         except Exception:
             logger.exception("chat_ws: failed to persist message conv=%s role=%s", conv_id, role)
+
+    def _schedule_save_message(conv_id: int, role: str, content: str,
+                               attachments: list[dict[str, Any]] | None = None) -> None:
+        task = asyncio.create_task(asyncio.to_thread(_save_message, conv_id, role, content, attachments))
+        save_tasks.add(task)
+        task.add_done_callback(save_tasks.discard)
 
     def _attachment_summary(raw: list[Any] | None) -> list[dict[str, Any]] | None:
         if not raw or not isinstance(raw, list):
@@ -712,7 +719,7 @@ async def chat_ws(ws: WebSocket) -> None:
                         )
                         attachments = _attachment_summary(params.get("attachments"))
                         if isinstance(user_text, str):
-                            _save_message(conv_id, "user", user_text, attachments)
+                            _schedule_save_message(conv_id, "user", user_text, attachments)
                             pending_user_by_id[str(mid)] = conv_id
 
                 frame = {"type": "req", "id": str(mid), "method": method,
@@ -810,7 +817,7 @@ async def chat_ws(ws: WebSocket) -> None:
                             else:
                                 text_out = ""
                             if text_out:
-                                _save_message(conv_id, "assistant", text_out)
+                                _schedule_save_message(conv_id, "assistant", text_out)
                     cleaned_payload = _strip_sensitive(payload)
                     # Always forward under `session.message` for the frontend
                     # (legacy listener). Chat/final and session.message are
@@ -827,7 +834,11 @@ async def chat_ws(ws: WebSocket) -> None:
             try: await ws.close()
             except Exception: pass
 
-    await asyncio.gather(pump_client_to_gw(), pump_gw_to_client())
+    try:
+        await asyncio.gather(pump_client_to_gw(), pump_gw_to_client())
+    finally:
+        if save_tasks:
+            await asyncio.gather(*save_tasks, return_exceptions=True)
 
 
 # ---------------------------------------------------------------------------

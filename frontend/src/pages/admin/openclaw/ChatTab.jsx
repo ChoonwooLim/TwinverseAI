@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { memo, useEffect, useMemo, useRef, useState, useCallback } from "react";
 import api from "../../../services/api";
 import styles from "../AdminOpenClawConsole.module.css";
 
@@ -20,6 +20,9 @@ const DOC_MIMES = ["text/plain", "text/markdown", "application/json"];
 const DOC_EXTS = [".txt", ".md", ".json", ".log", ".csv"];
 const ATTACH_ACCEPT = [...IMAGE_MIMES, ...DOC_MIMES, ...DOC_EXTS].join(",");
 const MAX_ATTACH_BYTES = 9 * 1024 * 1024;
+const REPLAY_TURN_LIMIT = 8;
+const REPLAY_MSG_CHAR_LIMIT = 1200;
+const REPLAY_TOTAL_CHAR_LIMIT = 7000;
 const IMAGE_PATH_RE = /(?:^|[\s([`'"])(\/data\/\.openclaw\/[^\s`'"<>]+\.(?:png|jpe?g|gif|webp|svg)|(?:\.{0,2}\/)?[A-Za-z0-9._/-]+\.(?:png|jpe?g|gif|webp|svg))(?=$|[\s)`'".,;:!?<>])/gi;
 const IMAGE_MD_RE = /!\[[^\]]*]\(([^)\s]+?\.(?:png|jpe?g|gif|webp|svg))\)/gi;
 
@@ -49,6 +52,11 @@ const readFileAsText = (file) => new Promise((resolve, reject) => {
 });
 
 const CONV_BASE = "/api/admin/openclaw/console/conversations";
+
+const truncateReplayText = (value, limit = REPLAY_MSG_CHAR_LIMIT) => {
+  const text = String(value || "");
+  return text.length > limit ? `${text.slice(0, limit)}\n[...truncated...]` : text;
+};
 
 const cleanImagePath = (value) => (
   String(value || "")
@@ -80,7 +88,7 @@ const extractImageRefs = (content) => {
   return refs.slice(0, 6);
 };
 
-function MessageImages({ agentId, refs }) {
+const MessageImages = memo(function MessageImages({ agentId, refs }) {
   const [items, setItems] = useState([]);
   const refKey = refs.join("\n");
 
@@ -152,10 +160,10 @@ function MessageImages({ agentId, refs }) {
       ))}
     </div>
   );
-}
+});
 
-function MessageBubble({ message, agentId }) {
-  const refs = extractImageRefs(message.content);
+const MessageBubble = memo(function MessageBubble({ message, agentId }) {
+  const refs = useMemo(() => extractImageRefs(message.content), [message.content]);
   return (
     <div
       className={`${styles.msg} ${
@@ -166,7 +174,7 @@ function MessageBubble({ message, agentId }) {
       <MessageImages agentId={agentId} refs={refs} />
     </div>
   );
-}
+});
 
 export default function ChatTab() {
   const [agents, setAgents] = useState([]);
@@ -185,6 +193,7 @@ export default function ChatTab() {
 
   const [draft, setDraft] = useState("");
   const [pendingAttachments, setPendingAttachments] = useState([]);
+  const [pendingByConv, setPendingByConv] = useState({});
   const [connState, setConnState] = useState("idle");
   const [err, setErr] = useState("");
 
@@ -201,6 +210,7 @@ export default function ChatTab() {
   const sessionKey = activeConvId ? sessionKeyByConv[activeConvId] || null : null;
   const messages = activeConvId ? (messagesByConv[activeConvId] || []) : [];
   const conversations = selectedAgent ? (convsByAgent[selectedAgent] || []) : [];
+  const isAwaitingAssistant = activeConvId ? Boolean(pendingByConv[activeConvId]) : false;
 
   const appendMessage = (convId, msg) => {
     if (!convId) return;
@@ -447,6 +457,7 @@ export default function ChatTab() {
       const targetConv = convBySessionKey.current[params?.sessionKey];
       if (!targetConv) return;
       appendMessage(targetConv, { role: "assistant", content: text });
+      setPendingByConv((prev) => ({ ...prev, [targetConv]: false }));
     }
   };
 
@@ -507,12 +518,18 @@ export default function ChatTab() {
   };
 
   const buildReplayPrefix = (priorMsgs) => {
-    const slice = priorMsgs.slice(-20); // cap to last 20 turns
+    const slice = priorMsgs.slice(-REPLAY_TURN_LIMIT);
     if (slice.length === 0) return "";
-    const lines = slice.map((m) => {
+    const lines = [];
+    let used = 0;
+    for (const m of slice) {
       const tag = m.role === "assistant" ? "Assistant" : m.role === "system" ? "System" : "User";
-      return `${tag}: ${m.content}`;
-    });
+      const body = truncateReplayText(m.content);
+      const line = `${tag}: ${body}`;
+      if (used + line.length > REPLAY_TOTAL_CHAR_LIMIT) break;
+      used += line.length;
+      lines.push(line);
+    }
     return `[이전 대화 맥락 — 아래 내용을 기억해서 이어받아 주세요]\n${lines.join("\n\n")}\n\n[현재 새 메시지]\n`;
   };
 
@@ -595,6 +612,7 @@ export default function ChatTab() {
     const displayContent = [draft.trim(), chipSummary].filter(Boolean).join("\n\n");
 
     appendMessage(convId, { role: "user", content: displayContent || "(첨부 전송)" });
+    setPendingByConv((prev) => ({ ...prev, [convId]: true }));
     setDraft("");
     setPendingAttachments([]);
     try {
@@ -610,13 +628,14 @@ export default function ChatTab() {
       // Refresh the conversation list so last_message_at / title updates show
       loadConversations(agentId);
     } catch (e) {
+      setPendingByConv((prev) => ({ ...prev, [convId]: false }));
       setErr(typeof e === "string" ? e : (e?.message || "send failed"));
     }
   };
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [messages]);
+  }, [messages, isAwaitingAssistant]);
 
   const handleKey = (e) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
@@ -750,6 +769,13 @@ export default function ChatTab() {
             {messages.map((m, i) => (
               <MessageBubble key={i} message={m} agentId={selectedAgent} />
             ))}
+            {isAwaitingAssistant && (
+              <div className={`${styles.msg} ${styles.msgAssistant} ${styles.msgPending}`}>
+                <span className={styles.typingDot} />
+                <span className={styles.typingDot} />
+                <span className={styles.typingDot} />
+              </div>
+            )}
           </div>
           {pendingAttachments.length > 0 && (
             <div className={styles.attachStrip}>

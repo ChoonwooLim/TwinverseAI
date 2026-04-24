@@ -438,6 +438,28 @@ select.input option {
   color: #eee;
   align-self: flex-start;
 }
+.msgPending {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  width: auto;
+  min-width: 64px;
+  padding: 0.7rem 0.9rem;
+}
+.typingDot {
+  width: 0.38rem;
+  height: 0.38rem;
+  border-radius: 999px;
+  background: #c4b5fd;
+  opacity: 0.45;
+  animation: typingPulse 1s ease-in-out infinite;
+}
+.typingDot:nth-child(2) { animation-delay: 0.14s; }
+.typingDot:nth-child(3) { animation-delay: 0.28s; }
+@keyframes typingPulse {
+  0%, 80%, 100% { opacity: 0.35; transform: translateY(0); }
+  40% { opacity: 1; transform: translateY(-2px); }
+}
 .msgSystem {
   background: rgba(250, 204, 21, 0.1);
   border: 1px solid rgba(250, 204, 21, 0.25);
