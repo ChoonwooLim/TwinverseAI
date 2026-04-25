@@ -331,6 +331,22 @@ export default function AdminOpenClawOverview() {
             <dl className={styles.cardKv}>
               <dt>위상</dt>
               <dd>LAN failover · 외부망 노출 백업</dd>
+              <dt>플랜</dt>
+              <dd>
+                <code>KVM 2</code> (만료 2027-04-04, 자동 갱신)
+              </dd>
+              <dt>OS</dt>
+              <dd>Ubuntu 24.04 LTS</dd>
+              <dt>CPU</dt>
+              <dd>2 코어</dd>
+              <dt>RAM</dt>
+              <dd>8 GB</dd>
+              <dt>디스크</dt>
+              <dd>100 GB (사용 8 GB / 8%)</dd>
+              <dt>대역폭</dt>
+              <dd>8 TB/월</dd>
+              <dt>리전</dt>
+              <dd>Malaysia · Kuala Lumpur</dd>
               <dt>FQDN</dt>
               <dd>
                 <code>srv1557851.hstgr.cloud</code>
@@ -339,12 +355,20 @@ export default function AdminOpenClawOverview() {
               <dd>
                 <code>openclaw-apco.srv1557851.hstgr.cloud</code>
               </dd>
-              <dt>스택</dt>
-              <dd>Express (Node.js) · TLS 종단 → 게이트웨이 컨테이너</dd>
-              <dt>Base spec</dt>
-              <dd>Hostinger 패널에서 추출 필요 (SSH 키 미보관)</dd>
-              <dt>토큰 관리</dt>
-              <dd>Hostinger 공식 docs 의존</dd>
+              <dt>IPv4</dt>
+              <dd>
+                <code>187.127.100.19</code>
+              </dd>
+              <dt>SSH</dt>
+              <dd>
+                <code>ssh root@187.127.100.19</code>
+              </dd>
+              <dt>컨테이너</dt>
+              <dd>Traefik(traefik-86sw) → openclaw-apco</dd>
+              <dt>방화벽</dt>
+              <dd>커스텀 규칙 0개 ⚠ (보강 권장)</dd>
+              <dt>백업</dt>
+              <dd>스냅샷 2개 (자동 일일 미적용)</dd>
               <dt>운영</dt>
               <dd>대기 상태 · 비상 시에만 트래픽 전환</dd>
             </dl>
