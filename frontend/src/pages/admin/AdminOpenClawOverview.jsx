@@ -41,8 +41,9 @@ export default function AdminOpenClawOverview() {
           <p className={styles.heroLede}>
             OpenClaw 는 ChatGPT/Codex · Claude Code · Gemini · Ollama 같은 CLI 에이전트를
             <strong> WebSocket RPC 게이트웨이</strong>로 감싸 persistent session · 도구 사용 ·
-            스트리밍 응답을 표준화한다. TwinverseAI Office NPC(LAN) 와 DeskRPG AI 동료(Hostinger),
-            두 인스턴스가 동일 프로토콜로 운영된다.
+            스트리밍 응답을 표준화한다. <strong>LAN twinverse-ai 가 메인</strong>으로 모든
+            정상 트래픽을 처리하고, <strong>Hostinger VPS 는 비상시 보조</strong>로
+            failover · 외부망 접속 백업 경로 역할을 한다.
           </p>
 
           <div className={styles.heroPills}>
@@ -128,8 +129,9 @@ export default function AdminOpenClawOverview() {
         <div className={styles.sectionHeader}>
           <h2 className={styles.sectionTitle}>
             <span className={styles.sectionNum}>1</span>
-            운영 인스턴스 (2종 · 완전 독립)
+            운영 토폴로지 — 메인 / 비상 보조
           </h2>
+          <p className={styles.sectionSub}>2026-04-26 정정 · LAN 우선, Hostinger 는 failover</p>
         </div>
 
         <div className={styles.cardGrid}>
@@ -137,10 +139,12 @@ export default function AdminOpenClawOverview() {
             <div className={styles.cardHead}>
               <h3 className={styles.cardTitle}>
                 LAN · twinverse-ai
-                <span className={`${styles.cardBadge} ${styles.cardBadgePrimary}`}>운영 ⭐</span>
+                <span className={`${styles.cardBadge} ${styles.cardBadgePrimary}`}>메인 ⭐</span>
               </h3>
             </div>
             <dl className={styles.cardKv}>
+              <dt>위상</dt>
+              <dd>모든 정상 OpenClaw 트래픽의 1차 백엔드</dd>
               <dt>호스트</dt>
               <dd>
                 <code>192.168.219.117</code> (Office)
@@ -163,8 +167,8 @@ export default function AdminOpenClawOverview() {
               </dd>
               <dt>인증</dt>
               <dd>pairing + Ed25519 device key</dd>
-              <dt>용도</dt>
-              <dd>TwinverseAI Office Tier 2 NPC (3D, 슬롯당 최대 3명)</dd>
+              <dt>사용처</dt>
+              <dd>TwinverseAI Office Tier 2 NPC · DeskRPG 백엔드 · 모든 신규 통합</dd>
             </dl>
           </article>
 
@@ -172,10 +176,12 @@ export default function AdminOpenClawOverview() {
             <div className={styles.cardHead}>
               <h3 className={styles.cardTitle}>
                 Hostinger VPS
-                <span className={`${styles.cardBadge} ${styles.cardBadgeWarn}`}>OAuth 취약</span>
+                <span className={`${styles.cardBadge} ${styles.cardBadgeWarn}`}>비상 보조</span>
               </h3>
             </div>
             <dl className={styles.cardKv}>
+              <dt>위상</dt>
+              <dd>LAN 장애·점검·외부망 격리 시 failover 만 사용</dd>
               <dt>호스트</dt>
               <dd>
                 <code>srv1557851.hstgr.cloud</code>
@@ -202,8 +208,8 @@ export default function AdminOpenClawOverview() {
               <dd>pairing + ChatGPT Plus OAuth</dd>
               <dt>제공</dt>
               <dd>Hostinger 매니지드 (Express UI)</dd>
-              <dt>용도</dt>
-              <dd>DeskRPG (tvdesk.twinverse.org) AI 동료, 채널별 n명</dd>
+              <dt>사용처</dt>
+              <dd>비상 failover · 외부망 chat playground</dd>
             </dl>
           </article>
         </div>
@@ -211,9 +217,10 @@ export default function AdminOpenClawOverview() {
         <div style={{ marginTop: "0.75rem" }} className={`${styles.note} ${styles.warn}`}>
           <span className={styles.noteIcon}>⚠</span>
           <span>
-            DeskRPG 인스턴스의 <code>gpt-5.4</code> 는 ChatGPT Plus OAuth refresh 실패에 취약 →
-            야간 알림/모니터링 필수. LAN 인스턴스는 Anthropic API provider 가 2026-04-24
-            비활성화되어 Codex OAuth + Ollama 로만 동작.
+            정상 운영에서는 트래픽이 <strong>전부 LAN</strong> 으로 향합니다. Hostinger 는
+            대기 상태로 두고, LAN 응답 불가 / 외부망 접근 필수 / OAuth refresh 점검 같은
+            예외 상황에서만 수동 또는 폴백 정책으로 전환합니다. Hostinger <code>gpt-5.4</code>
+            는 ChatGPT Plus OAuth refresh 에 취약하니 비상 사용 시 토큰 상태 먼저 확인.
           </span>
         </div>
       </section>
@@ -318,10 +325,12 @@ export default function AdminOpenClawOverview() {
             <div className={styles.cardHead}>
               <h3 className={styles.cardTitle}>
                 Hostinger VPS
-                <span className={`${styles.cardBadge} ${styles.cardBadgeWarn}`}>매니지드</span>
+                <span className={`${styles.cardBadge} ${styles.cardBadgeWarn}`}>비상 보조</span>
               </h3>
             </div>
             <dl className={styles.cardKv}>
+              <dt>위상</dt>
+              <dd>LAN failover · 외부망 노출 백업</dd>
               <dt>FQDN</dt>
               <dd>
                 <code>srv1557851.hstgr.cloud</code>
@@ -336,8 +345,8 @@ export default function AdminOpenClawOverview() {
               <dd>Hostinger 패널에서 추출 필요 (SSH 키 미보관)</dd>
               <dt>토큰 관리</dt>
               <dd>Hostinger 공식 docs 의존</dd>
-              <dt>용도</dt>
-              <dd>DeskRPG 외부망 AI 동료 시스템</dd>
+              <dt>운영</dt>
+              <dd>대기 상태 · 비상 시에만 트래픽 전환</dd>
             </dl>
           </article>
         </div>
@@ -355,32 +364,39 @@ export default function AdminOpenClawOverview() {
 
         <div className={styles.archWrap}>
           <pre className={styles.arch}>
-{`                        ┌────────────────────────────────────────────┐
-                        │           CLI Agents (백엔드)               │
-                        │  ChatGPT/Codex OAuth · Claude Code · Gemini │
-                        │  Ollama (qwen2.5/gemma3) · 기타 어댑터       │
-                        └─────────────────────┬──────────────────────┘
-                                              │ subprocess / native
-                                              ▼
-   ┌──────────────────────────────────────────────────────────────────────┐
-   │            OpenClaw Gateway  (WebSocket · :18789 · RPC v1~v3)         │
-   │                                                                       │
-   │   ┌──────────────────┐   ┌────────────────────────────┐              │
-   │   │ Session Store    │   │ Agent Registry             │              │
-   │   │ agent:{id}:{nm}  │   │ models / scopes / files    │              │
-   │   └──────────────────┘   └────────────────────────────┘              │
-   │   ┌──────────────────┐   ┌────────────────────────────┐              │
-   │   │ Pairing / Auth   │   │ RPC Router                 │              │
-   │   │ Ed25519 device   │   │ agents.* · chat.* · files  │              │
-   │   └──────────────────┘   └────────────────────────────┘              │
-   └─────────────────▲────────────────────────────────▲───────────────────┘
-                     │ wss (TwinverseAI Office)        │ wss (DeskRPG)
-                     │                                  │
-       ┌─────────────┴──────────┐         ┌─────────────┴──────────────┐
-       │ TwinverseAI Office     │         │ DeskRPG (Hostinger)        │
-       │ Tier 2 NPC × 3 / slot  │         │ Node 클라이언트 (this repo) │
-       │ openclaw.twinverse.org │         │ openclaw-gateway.js         │
-       └────────────────────────┘         └────────────────────────────┘`}
+{`        ┌──────────────────────────┐         ┌──────────────────────────┐
+        │ TwinverseAI Office (LAN) │         │ DeskRPG (외부망 클라이언트)│
+        │ Tier 2 NPC × 3 / slot     │         │ Node openclaw-gateway.js  │
+        └─────────────┬─────────────┘         └─────────────┬────────────┘
+                      │ wss (정상)                          │ wss (정상)
+                      └──────────────┐         ┌────────────┘
+                                     ▼         ▼
+   ┌────────────────────────────────────────────────────────────────────┐
+   │  메인 ⭐  OpenClaw Gateway @ twinverse-ai (LAN)                     │
+   │  ws://192.168.219.117:18789  ·  wss://openclaw.twinverse.org        │
+   │   ┌──────────────────┐   ┌────────────────────────────┐            │
+   │   │ Session Store    │   │ Agent Registry             │            │
+   │   │ agent:{id}:{nm}  │   │ models / scopes / files    │            │
+   │   └──────────────────┘   └────────────────────────────┘            │
+   │   ┌──────────────────┐   ┌────────────────────────────┐            │
+   │   │ Pairing / Auth   │   │ RPC Router (v1~v3)         │            │
+   │   │ Ed25519 device   │   │ agents.* · chat.* · files  │            │
+   │   └──────────────────┘   └────────────────────────────┘            │
+   └────────────────────────────────────────┬───────────────────────────┘
+                                            │
+                                            │  비상 시 수동/폴백 전환만
+                                            ▼  (정상 트래픽 X)
+                  ╔════════════════════════════════════════════╗
+                  ║  비상 보조  Hostinger VPS                     ║
+                  ║  wss://openclaw-apco.srv1557851.hstgr.cloud  ║
+                  ║  외부망 접속 / chat playground 백업            ║
+                  ╚════════════════════════════════════════════╝
+
+         ┌──────────────────────────────────────────────────┐
+         │      CLI Agents (게이트웨이가 spawn 하는 백엔드)    │
+         │  ChatGPT/Codex OAuth · Claude Code · Gemini       │
+         │  Ollama (qwen2.5/gemma3) · 기타 어댑터              │
+         └──────────────────────────────────────────────────┘`}
           </pre>
         </div>
       </section>
@@ -579,32 +595,32 @@ export default function AdminOpenClawOverview() {
               <tr>
                 <th>용도</th>
                 <th>프로젝트</th>
-                <th>인스턴스</th>
-                <th>에이전트 수</th>
+                <th>1차 (메인)</th>
+                <th>비상 보조</th>
                 <th>상태</th>
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td>NPC 동료 (업무 위임, 2D)</td>
-                <td>DeskRPG</td>
-                <td>Hostinger VPS</td>
-                <td>채널별 n명</td>
-                <td>✅ 운영 (ChatGPT Codex)</td>
-              </tr>
               <tr className={styles.tableRowHi}>
-                <td>Tier 2 에이전트 NPC (3D)</td>
+                <td>Tier 2 에이전트 NPC (3D, 슬롯당 ≤3)</td>
                 <td>TwinverseAI Office</td>
-                <td>LAN twinverse-ai</td>
-                <td>슬롯당 최대 3명</td>
+                <td>LAN twinverse-ai ⭐</td>
+                <td>Hostinger (LAN 다운 시)</td>
                 <td>✅ 운영 (Codex OAuth + Ollama 폴백)</td>
+              </tr>
+              <tr>
+                <td>NPC 동료 (업무 위임, 2D, 채널별 n명)</td>
+                <td>DeskRPG</td>
+                <td>LAN twinverse-ai ⭐</td>
+                <td>Hostinger (외부망 노출 필요 시)</td>
+                <td>✅ 운영</td>
               </tr>
               <tr>
                 <td>단순 NPC 대화 (말풍선 200자 이하)</td>
                 <td>TwinverseAI Office</td>
-                <td>LAN (OpenClaw 우회)</td>
+                <td>Ollama gemma3:12b 직결</td>
                 <td>—</td>
-                <td>✅ Ollama gemma3:12b 직결</td>
+                <td>✅ OpenClaw 우회 (LAN Ollama)</td>
               </tr>
               <tr>
                 <td>외부 자동화 워커</td>
@@ -616,9 +632,16 @@ export default function AdminOpenClawOverview() {
               <tr>
                 <td>비용 차단 / 오프라인 폴백</td>
                 <td>공용</td>
-                <td>LAN</td>
+                <td>LAN Ollama</td>
                 <td>—</td>
-                <td>✅ Ollama 경유</td>
+                <td>✅ 운영</td>
+              </tr>
+              <tr>
+                <td>외부망 chat playground / 비상 콘솔</td>
+                <td>관리·디버그</td>
+                <td>—</td>
+                <td>Hostinger Web UI</td>
+                <td>✅ 대기 (필요 시 진입)</td>
               </tr>
             </tbody>
           </table>
