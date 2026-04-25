@@ -20,8 +20,9 @@ const SIDEBAR_CONFIG = {
       { label: "게시판 관리", path: "/admin/boards" },
       {
         label: "OpenClaw",
-        path: "/admin/openclaw-console",
+        path: "/admin/openclaw",
         children: [
+          { label: "개요 / 랜딩", path: "/admin/openclaw" },
           { label: "콘솔", path: "/admin/openclaw-console" },
           { label: "에이전트", path: "/admin/openclaw-console/agents" },
           { label: "플러그인", path: "/admin/openclaw-console/plugins" },

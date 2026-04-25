@@ -1,0 +1,478 @@
+.page {
+  max-width: 1400px;
+  padding-bottom: 4rem;
+}
+
+/* ───────── Hero ───────── */
+
+.hero {
+  position: relative;
+  padding: 3rem 2rem;
+  margin-bottom: 2rem;
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(168, 85, 247, 0.25) 0%, transparent 60%),
+    radial-gradient(circle at 100% 100%, rgba(59, 130, 246, 0.18) 0%, transparent 55%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01));
+  border: 1px solid rgba(168, 85, 247, 0.2);
+  overflow: hidden;
+}
+
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(168, 85, 247, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(168, 85, 247, 0.06) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
+  pointer-events: none;
+}
+
+.heroInner { position: relative; z-index: 1; }
+
+.overline {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #c4b5fd;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(168, 85, 247, 0.15);
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  margin-bottom: 1rem;
+}
+
+.heroTitle {
+  font-size: clamp(2.25rem, 4vw, 3.4rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  margin: 0 0 0.85rem;
+  background: linear-gradient(120deg, #fff 0%, #e9d5ff 50%, #c4b5fd 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.heroLede {
+  font-size: 1.05rem;
+  line-height: 1.65;
+  color: #d4d4d8;
+  max-width: 760px;
+  margin: 0 0 1.5rem;
+}
+
+.heroPills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-bottom: 1.5rem;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #e4e4e7;
+}
+.pillDot { width: 0.5rem; height: 0.5rem; border-radius: 999px; }
+.pillDotGreen { background: #4ade80; box-shadow: 0 0 8px rgba(74, 222, 128, 0.55); }
+.pillDotYellow { background: #facc15; }
+.pillDotPurple { background: #a855f7; }
+
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.heroBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.65rem 1.1rem;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: transform 0.12s, background 0.15s, border-color 0.15s;
+}
+.heroBtnPrimary {
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  color: #fff;
+  border: none;
+}
+.heroBtnPrimary:hover { transform: translateY(-1px); opacity: 0.95; }
+.heroBtnGhost {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #e4e4e7;
+}
+.heroBtnGhost:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+/* ───────── Section ───────── */
+
+.section { margin-bottom: 2.5rem; }
+
+.sectionHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sectionTitle {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.sectionNum {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 8px;
+  background: rgba(168, 85, 247, 0.15);
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  color: #d8b4fe;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.sectionSub {
+  color: #a1a1aa;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+/* ───────── Grid card ───────── */
+
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1rem;
+}
+
+.card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 1.25rem;
+  transition: border-color 0.15s, background 0.15s;
+}
+.card:hover {
+  border-color: rgba(168, 85, 247, 0.3);
+  background: rgba(168, 85, 247, 0.04);
+}
+
+.cardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.85rem;
+}
+.cardTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+.cardBadge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+}
+.cardBadgePrimary {
+  color: #d8b4fe;
+  background: rgba(168, 85, 247, 0.12);
+  border: 1px solid rgba(168, 85, 247, 0.35);
+}
+.cardBadgeWarn {
+  color: #fde68a;
+  background: rgba(250, 204, 21, 0.1);
+  border: 1px solid rgba(250, 204, 21, 0.32);
+}
+
+.cardKv {
+  display: grid;
+  grid-template-columns: 7rem 1fr;
+  gap: 0.4rem 0.8rem;
+  font-size: 0.84rem;
+  margin: 0;
+}
+.cardKv dt {
+  color: #71717a;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 600;
+  padding-top: 0.15rem;
+}
+.cardKv dd {
+  color: #e4e4e7;
+  margin: 0;
+  word-break: break-all;
+}
+.cardKv code {
+  font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0.1em 0.4em;
+  border-radius: 4px;
+  font-size: 0.86em;
+  color: #e9d5ff;
+}
+
+/* ───────── Compare table ───────── */
+
+.tableWrap {
+  overflow-x: auto;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+}
+.table th, .table td {
+  padding: 0.7rem 0.9rem;
+  text-align: left;
+  vertical-align: top;
+}
+.table thead th {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #a1a1aa;
+  background: rgba(0, 0, 0, 0.2);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  position: sticky;
+  top: 0;
+}
+.table tbody td {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: #d4d4d8;
+}
+.table tbody tr:last-child td { border-bottom: none; }
+.table tbody tr:hover td { background: rgba(255, 255, 255, 0.025); }
+.table code {
+  font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0.1em 0.38em;
+  border-radius: 4px;
+  font-size: 0.86em;
+  color: #e9d5ff;
+}
+.tableRowHi td {
+  background: rgba(168, 85, 247, 0.04);
+}
+
+/* ───────── Architecture diagram ───────── */
+
+.archWrap {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 1.5rem;
+  overflow-x: auto;
+}
+.arch {
+  font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: #d4d4d8;
+  white-space: pre;
+  margin: 0;
+}
+.archBox { color: #a855f7; font-weight: 700; }
+.archDim { color: #71717a; }
+
+/* ───────── Quick links ───────── */
+
+.linkGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
+}
+.linkTile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 1rem 1.1rem;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  text-decoration: none;
+  color: #e4e4e7;
+  transition: border-color 0.15s, background 0.15s, transform 0.12s;
+}
+.linkTile:hover {
+  border-color: rgba(168, 85, 247, 0.45);
+  background: rgba(168, 85, 247, 0.06);
+  transform: translateY(-1px);
+}
+.linkTileTitle {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.linkTileSub {
+  font-size: 0.78rem;
+  color: #a1a1aa;
+}
+.linkTileArrow { margin-left: auto; color: #a855f7; }
+
+/* ───────── Note / callout ───────── */
+
+.note {
+  display: flex;
+  gap: 0.65rem;
+  padding: 0.85rem 1.1rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.28);
+  color: #bfdbfe;
+}
+.noteIcon { flex: 0 0 auto; }
+
+.warn {
+  background: rgba(250, 204, 21, 0.08);
+  border: 1px solid rgba(250, 204, 21, 0.32);
+  color: #fde68a;
+}
+
+.danger {
+  background: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.32);
+  color: #fca5a5;
+}
+
+/* ───────── Code block ───────── */
+
+.codeBlock {
+  background: #0a0a0a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 1rem 1.1rem;
+  overflow-x: auto;
+  font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  color: #e4e4e7;
+  margin: 0;
+}
+.codeComment { color: #71717a; }
+
+/* ───────── Footer meta ───────── */
+
+.footerMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  color: #71717a;
+  font-size: 0.78rem;
+}
+.footerMeta a { color: #a1a1aa; text-decoration: none; }
+.footerMeta a:hover { color: #d8b4fe; }
+
+/* ───────── Stat strip ───────── */
+
+.statStrip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.stat {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 0.95rem 1rem;
+}
+.statValue {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin-bottom: 0.2rem;
+}
+.statLabel {
+  display: block;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #71717a;
+  font-weight: 600;
+}
+
+/* ───────── List with check ───────── */
+
+.checkList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+.checkList li {
+  display: flex;
+  gap: 0.55rem;
+  padding-left: 0;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: #d4d4d8;
+}
+.checkList li::before {
+  content: "▸";
+  color: #a855f7;
+  font-weight: 700;
+  flex: 0 0 auto;
+}
+
+@media (max-width: 720px) {
+  .cardKv { grid-template-columns: 1fr; gap: 0.15rem; }
+  .cardKv dt { padding-top: 0.4rem; }
+  .heroTitle { font-size: 2rem; }
+}

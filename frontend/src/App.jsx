@@ -22,6 +22,7 @@ const AdminClawCode = lazy(() => import("./pages/admin/AdminClawCode"));
 const AdminClaudeCodeRepo = lazy(() => import("./pages/admin/AdminClaudeCodeRepo"));
 const AdminOpenClawDevices = lazy(() => import("./pages/admin/AdminOpenClawDevices"));
 const AdminOpenClawConsole = lazy(() => import("./pages/admin/AdminOpenClawConsole"));
+const AdminOpenClawOverview = lazy(() => import("./pages/admin/AdminOpenClawOverview"));
 const DeskAnalysis = lazy(() => import("./pages/twinversedesk/DeskAnalysis"));
 const DeskPlan = lazy(() => import("./pages/twinversedesk/DeskPlan"));
 const DeskLaunch = lazy(() => import("./pages/twinversedesk/DeskLaunch"));
@@ -61,6 +62,7 @@ export default function App() {
             <Route path="/admin/news" element={<ProtectedRoute requiredRole="admin"><AdminNews /></ProtectedRoute>} />
             <Route path="/admin/claw-code" element={<ProtectedRoute requiredRole="admin"><AdminClawCode /></ProtectedRoute>} />
             <Route path="/admin/claude-code-repo" element={<ProtectedRoute requiredRole="admin"><AdminClaudeCodeRepo /></ProtectedRoute>} />
+            <Route path="/admin/openclaw" element={<ProtectedRoute requiredRole="admin"><AdminOpenClawOverview /></ProtectedRoute>} />
             <Route path="/admin/openclaw-devices" element={<ProtectedRoute requiredRole="admin"><AdminOpenClawDevices /></ProtectedRoute>} />
             <Route path="/admin/openclaw-console" element={<ProtectedRoute requiredRole="admin"><AdminOpenClawConsole /></ProtectedRoute>} />
             <Route path="/admin/openclaw-console/:tab" element={<ProtectedRoute requiredRole="admin"><AdminOpenClawConsole /></ProtectedRoute>} />
