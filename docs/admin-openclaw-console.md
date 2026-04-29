@@ -53,35 +53,38 @@ twinverse-ai (192.168.219.117)
 | 전역 config | 동일 (dry-run 선행) | 아니오 |
 | 금지 | `docker restart openclaw`, RPC `agents.create` (plugin slot 추가) | **예 — 금지** |
 
-## 부트스트랩 강제 덮어쓰기 (TRAEFIK_HOST 필수, 2026-04-29)
+## 부트스트랩 강제 덮어쓰기 동작 (2026-04-29 회귀로 학습)
 
 `/hostinger/server.mjs` 의 함수 `j()` 가 컨테이너 시작 시마다 `openclaw.json` 의
 일부 키를 환경변수 기반으로 강제 갱신한다. 다음 키는 사용자가 `config set` 해도
 재시작/재생성 시 되돌아간다:
 
-| 키 | `TRAEFIK_HOST` 미설정 | `TRAEFIK_HOST` 설정 |
+| 키 | `TRAEFIK_HOST` 미설정 (현재 운영값) | `TRAEFIK_HOST` 설정 |
 |---|---|---|
 | `gateway.controlUi.dangerouslyDisableDeviceAuth` | `true` 강제 | **delete** (안전 기본값) |
 | `gateway.controlUi.allowInsecureAuth` | `true` 강제 | **delete** |
 | `gateway.controlUi.dangerouslyAllowHostHeaderOriginFallback` | `true` 강제 | **delete** |
 | `gateway.trustedProxies` | `["127.0.0.1/32"]` 강제 | **delete** |
 
-**필수 운영 규칙**: twinverse-ai 의 OpenClaw 컨테이너는 반드시
-`TRAEFIK_HOST=openclaw.twinverse.org` 환경변수와 함께 실행해야 한다.
-빠지면 device 인증이 OFF 인 상태로 외부에 노출된다.
+### ⚠️ TRAEFIK_HOST 사용 금지 (현재 환경)
 
-```bash
-# 컨테이너 재생성 시 반드시 포함
-docker run -d --name openclaw --network host --restart unless-stopped \
-  -v /srv/openclaw/data:/data \
-  -e OPENCLAW_PORT=18789 -e OPENCLAW_HOST=0.0.0.0 \
-  -e OPENCLAW_GATEWAY_TOKEN=<token> \
-  -e TRAEFIK_HOST=openclaw.twinverse.org \   # ← 빠지면 안 됨
-  ghcr.io/hostinger/hvps-openclaw:latest node server.mjs
-```
+처음에는 보안 강화를 위해 `TRAEFIK_HOST=openclaw.twinverse.org` 를 추가해서 dangerous
+플래그를 끄려 했으나, **device 인증이 켜지면 TwinverseAI 백엔드(Python websockets)가
+controlUi WebSocket 연결을 device 페어링으로 강제당해 거부됨** (1008 close, "control ui
+requires device identity"). 동시에 `gateway.trustedProxies` 도 함께 삭제되어 wrapper
+loopback 연결이 "외부 클라이언트"로 분류되어 device 페어링 요건을 더욱 강화시켰다.
+
+**결론**: 현재 wrapper Express + Cloudflare Tunnel 더블 프록시 구조에서는
+`TRAEFIK_HOST` 를 설정하면 안 된다. 보안 강화는 다른 방향으로 풀어야 한다 (예: 백엔드를
+device 로 페어링, 또는 controlUi 가 아닌 RPC 경로로 연결).
 
 `audit` 의 "Reverse proxy headers are not trusted" WARN 은 wrapper Express 가
-X-Forwarded 헤더를 strip 해서 보내는 우리 환경에선 false positive (무시 가능).
+X-Forwarded 헤더를 strip 해서 보내는 우리 환경에선 의미 없음 (무시).
+
+### 보안 critical 잔존 (다음 세션 처리)
+
+`openclaw security audit` 결과 critical 3 개가 그대로 남아 있다. 처리는 별도 세션에서
+controlUi 우회 없이 푸는 방식으로 계획.
 
 ## 주요 REST 엔드포인트
 

@@ -1103,9 +1103,9 @@
 | 카테고리 | 작업 내용 | 상태 |
 |----------|----------|------|
 | infra | OpenClaw (twinverse-ai) `security audit` 첫 실행, critical 3 / warn 3 식별 | 완료 |
-| infra | Phase 0 #1 적용: Control UI dangerous 플래그 3종 제거 (`TRAEFIK_HOST` 환경변수 우회) | 완료 |
-| infra | OpenClaw 컨테이너 재생성 (env 추가) — 데이터 볼륨 보존, 가용성 무중단 ~30s | 완료 |
-| docs | TRAEFIK_HOST 부트스트랩 동작 문서화 (admin-openclaw-console.md) | 완료 |
+| infra | Phase 0 #1 적용 시도 → **롤백** (TRAEFIK_HOST 가 백엔드 WS 연결을 차단하는 회귀 발생) | 롤백 완료 |
+| fix | Dockerfile CMD/HEALTHCHECK 가 Orbitron `PORT` env 를 무시해 502 발생 → `${PORT:-8000}` 으로 수정 (commit 316f2e3) | 완료 |
+| docs | TRAEFIK_HOST 사용 금지 사유 문서화 (admin-openclaw-console.md) | 완료 |
 | design | Windows PC 를 OpenClaw Node 로 페어링하는 셋업 설계 (다층 방어 7계층) | 보류 (#2/#3 결정 후) |
 | design | "1회 허용" Telegram 승인 흐름 설계 — `tools.exec.ask=on-miss` + `approvals.exec` 라우팅 | 검증 완료 |
 
@@ -1144,12 +1144,41 @@
   6. 토큰 위생 — `OPENCLAW_GATEWAY_TOKEN` 정기 로테이션, Windows 노드 토큰도 `openclaw-node` 계정만 접근
   7. 감사 + 킬스위치 — `openclaw nodes reject --all-paired`, `openclaw node stop && uninstall`
 
-### 검증
+### 검증 (Phase 0 #1 적용 직후)
 
 - `openclaw security audit` 결과 변화: critical 3→2, warn 3→1
 - 컨테이너 재생성 후 `cat /data/.openclaw/openclaw.json` → controlUi 에서 dangerous 키 3개 모두 absent (✓ 안전 기본값으로 복귀)
 - `https://openclaw.twinverse.org/` HTTP 200 (Cloudflare 터널 정상)
 - 로컬 게이트웨이 응답 정상 (16ms)
+
+### ⚠️ 회귀 발견 + 롤백
+
+`/end` 직전 어드민 콘솔에서 "Gateway 응답 없음" 발생. gateway 로그에서 거부 사유 확인:
+
+```
+ua=Python/3.11 websockets/13.1 code=1008
+reason=control ui requires device identity (use HTTPS or localhost secure context)
+```
+
+원인 분석:
+
+1. `dangerouslyDisableDeviceAuth=delete` → device 인증 ON → controlUi 경로 전체가 device 페어링 필수
+2. `trustedProxies=delete` 까지 함께 삭제되어 wrapper Express 의 loopback 연결을 gateway 가 "외부 클라이언트" 로 분류
+3. TwinverseAI 백엔드 (Python websockets) 는 controlUi 로 WS 연결하는데, device 페어링은 브라우저 전용 흐름이라 백엔드는 페어링 불가능
+4. 모든 백엔드 → OpenClaw 호출이 1008 close 로 거부됨
+
+롤백: `TRAEFIK_HOST` 환경변수 제거 후 컨테이너 재생성 (`docker rm -f openclaw && docker run -d ... <기존 env, TRAEFIK_HOST 없이>`). 부트스트랩이 dangerous 플래그를 다시 강제로 켰지만 백엔드 연결 정상화 우선. 보안 critical 3 개는 다음 세션에서 다른 방식 (백엔드 RPC 경로 변경 또는 부트스트랩 패치) 으로 재시도.
+
+### 별건: Orbitron Dockerfile PORT 미준수 (502 Bad Gateway)
+
+OpenClaw 롤백 후에도 `https://twinverseai.twinverse.org/admin/...` 가 502 반환. 추적 결과:
+
+- Orbitron 이 `PORT=3441` env 주입 + 호스트 포트 3441→컨테이너 포트 3441 매핑
+- Dockerfile CMD 가 `--port 8000` 하드코딩 → 앱이 8000 에서 listen, 컨테이너 3441 은 비어있음
+- nginx upstream 이 `orbitron-twinverseai-<id>:3441` 으로 연결 → Connection refused → 502
+- 직전 docs 커밋이 Orbitron 재배포를 트리거하면서 그제서야 노출된 잠재 버그 (이전 컨테이너 3 일간 살아 있어 가려져 있었음)
+
+수정 (commit `316f2e3`): Dockerfile CMD/HEALTHCHECK 를 `${PORT:-8000}` 사용하도록 변경. 푸시 후 30 초 만에 새 컨테이너 배포 → `https://twinverseai.twinverse.org/` HTTP 200 복구.
 
 ### 다음 세션 참고
 
@@ -1162,7 +1191,8 @@
   - 유지 + sandbox=on 강제: `code-reviewer` (14b), `planner-a/b`, `dev-b`, `designer-a`, `ai-architect`, `debugger`, `devops`, `ue5-engineer`, `ceo-a` (실작업)
   - 제거: `bench-*` 8개, `testnpc1776519070405`
 - **Phase 1 (Windows Node 셋업)**: Phase 0 정리 후 진행. 필요 입력값 — Steven Telegram chat ID, Windows 격리 사용자명.
-- **백업**: `/srv/openclaw/data/backups/pre-phase0-20260429-131311.tar.gz` 보존 (롤백용).
-- **재발 방지 메모**: 향후 OpenClaw 재배포·이미지 업데이트 시 docker run 명령에 `-e TRAEFIK_HOST=openclaw.twinverse.org` 가 빠지면 dangerous 플래그가 다시 켜진다. 반드시 docker compose 화 필요 (현재 `docker run` 직접 사용 중, `/srv/openclaw/` 에 compose 파일 없음).
+- **백업**: `/srv/openclaw/data/backups/pre-phase0-20260429-131311.tar.gz` 보존.
+- **TRAEFIK_HOST 사용 금지**: 우리 환경(wrapper Express + Cloudflare Tunnel 더블 프록시)에서는 절대 추가 금지. 보안 critical 은 다른 방식으로 — 백엔드를 controlUi 가 아닌 RPC 경로로 연결하거나 부트스트랩 패치 검토.
+- **Phase 0 보안 critical 잔존**: 3 개 그대로 (`dangerouslyDisableDeviceAuth`, `tools.elevated.allowFrom.webchat=["*"]`, 19개 작은 Ollama 모델 web 도구). 새 접근 전략 필요.
 
 ---
