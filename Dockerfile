@@ -37,12 +37,12 @@ RUN mkdir -p /app/uploads
 
 VOLUME ["/app/uploads"]
 
-# Expose port
+# Expose port (Orbitron overrides via PORT env at runtime)
 EXPOSE 8000
 
-# Health check
+# Health check — respect runtime PORT (Orbitron sets PORT=<assigned>)
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
-  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
+  CMD python -c "import urllib.request, os; urllib.request.urlopen('http://localhost:' + os.getenv('PORT', '8000') + '/health')" || exit 1
 
-# Run
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run — bind to ${PORT} so Orbitron-assigned port matches actual listener
+CMD sh -c "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"
