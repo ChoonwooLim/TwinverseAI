@@ -1095,3 +1095,74 @@
 - 이후 DeskRPG 배포 동기화는 timestamp/size 비교만 믿지 말고 checksum 기반 검증을 포함해야 한다.
 
 ---
+
+## 2026-04-29 (OpenClaw 보안 감사 + Phase 0 #1 적용 · Windows Node 도입 설계)
+
+### 작업 요약
+
+| 카테고리 | 작업 내용 | 상태 |
+|----------|----------|------|
+| infra | OpenClaw (twinverse-ai) `security audit` 첫 실행, critical 3 / warn 3 식별 | 완료 |
+| infra | Phase 0 #1 적용: Control UI dangerous 플래그 3종 제거 (`TRAEFIK_HOST` 환경변수 우회) | 완료 |
+| infra | OpenClaw 컨테이너 재생성 (env 추가) — 데이터 볼륨 보존, 가용성 무중단 ~30s | 완료 |
+| docs | TRAEFIK_HOST 부트스트랩 동작 문서화 (admin-openclaw-console.md) | 완료 |
+| design | Windows PC 를 OpenClaw Node 로 페어링하는 셋업 설계 (다층 방어 7계층) | 보류 (#2/#3 결정 후) |
+| design | "1회 허용" Telegram 승인 흐름 설계 — `tools.exec.ask=on-miss` + `approvals.exec` 라우팅 | 검증 완료 |
+
+### 세부 내용
+
+- **OpenClaw 보안 감사 발견 (twinverse-ai 192.168.219.117)**:
+  - `gateway.controlUi.dangerouslyDisableDeviceAuth=true` (CRIT) — Control UI device 인증 자체 OFF
+  - `gateway.controlUi.allowInsecureAuth=true` (WARN) — HTTP 인증 허용
+  - `gateway.controlUi.dangerouslyAllowHostHeaderOriginFallback=true` (WARN) — DNS rebinding 방어 약화
+  - `tools.elevated.allowFrom.webchat=["*"]` (CRIT) — webchat 누구나 elevated 승인 — **다음 세션 Phase 0 #2**
+  - 19개 작은 Ollama 모델(qwen2.5:7b, gemma3:12b, llava:7b 등)에 `web_fetch`/`browser` 활성 (CRIT) — 프롬프트 인젝션 위험 — **다음 세션 Phase 0 #3**
+
+- **TRAEFIK_HOST 부트스트랩 trick (가장 중요한 발견)**:
+  - `/hostinger/server.mjs` 부트스트랩 함수 `j()` 가 컨테이너 시작 시마다 `openclaw.json` 을 강제로 덮어씀
+  - `process.env.TRAEFIK_HOST` 가 truthy 면 → controlUi 의 dangerous 플래그 3종 + `gateway.trustedProxies` 를 `delete` (안전 기본값 복귀)
+  - TRAEFIK_HOST 미설정이면 → 매번 dangerous 플래그를 `true` 로 강제, `trustedProxies=["127.0.0.1/32"]` 강제
+  - 따라서 `openclaw config set` 으로 dangerous 플래그를 끄고 재시작하면 다시 켜짐. **컨테이너 env 에 `TRAEFIK_HOST` 추가가 유일한 정공법**.
+  - `docker stop openclaw && docker rm openclaw && docker run ... -e TRAEFIK_HOST=openclaw.twinverse.org ...` 로 재생성. `/srv/openclaw/data` 바인드 마운트라 데이터 보존됨.
+
+- **wrapper-gateway 분리 구조 확인**:
+  - 컨테이너 내부에 두 개 프로세스: (1) Express wrapper `node server.mjs` (host:18789) (2) `openclaw gateway` (loopback:18789)
+  - Wrapper 가 X-Forwarded-* 헤더 strip 후 loopback 으로 proxy → `trustedProxies` 가 비어도 무해 (audit 의 "Reverse proxy headers not trusted" WARN 은 우리 환경에선 false positive)
+  - Cloudflare Tunnel → Wrapper Express → OpenClaw Gateway 흐름 검증
+
+- **Windows Node 도입 설계 (3개 검증 항목)**:
+  - `openclaw node install` Windows: schtasks 등록, `--user` 플래그 없음 → 설치 시 Windows 사용자로 실행. 격리하려면 별도 `openclaw-node` 표준 사용자로 로그인 후 설치하거나 schtasks 수동 재구성 필요.
+  - `openclaw approvals` 정책: `tools.exec.security ∈ {deny|allowlist|full}` × `ask ∈ {off|on-miss|always}` × `approvals.exec.targets` 조합. Telegram 라우팅으로 "1회 허용" 가능.
+  - `gateway.nodes.{allowCommands,denyCommands}` 로 invoke 명령 단위 화이트/블랙리스트. `system.run` 같은 임의 셸 실행 차단 가능.
+
+- **다층 방어 설계 (7계층)**:
+  1. OS 격리 — 전용 `openclaw-node` 표준 사용자, ACL 로 `C:\WORK`·`.ssh`·real Chrome profile 차단, `C:\OpenClawSandbox\` 만 허용
+  2. Chrome 분리 — `--user-data-dir=C:\OpenClawSandbox\Chrome`, Anthropic Console·은행·Gmail 절대 로그인 X
+  3. 권한 분업 컨벤션 — OpenClaw AI 는 main 푸시·.env 수정·secrets 접근 금지, `openclaw/<topic>` 브랜치만
+  4. 서비스 운영 — schtasks "스티븐 로그온 시" 트리거 (24/7 X)
+  5. 승인 게이트 — `approvals.exec` Telegram 1회 승인
+  6. 토큰 위생 — `OPENCLAW_GATEWAY_TOKEN` 정기 로테이션, Windows 노드 토큰도 `openclaw-node` 계정만 접근
+  7. 감사 + 킬스위치 — `openclaw nodes reject --all-paired`, `openclaw node stop && uninstall`
+
+### 검증
+
+- `openclaw security audit` 결과 변화: critical 3→2, warn 3→1
+- 컨테이너 재생성 후 `cat /data/.openclaw/openclaw.json` → controlUi 에서 dangerous 키 3개 모두 absent (✓ 안전 기본값으로 복귀)
+- `https://openclaw.twinverse.org/` HTTP 200 (Cloudflare 터널 정상)
+- 로컬 게이트웨이 응답 정상 (16ms)
+
+### 다음 세션 참고
+
+- **Phase 0 #2 결정 필요**: `tools.elevated.allowFrom.webchat=["*"]` 어떻게 처리?
+  - (a) `tools.elevated.enabled=false` — webchat elevated 완전 OFF
+  - (b) sender ID 명시 — 첫 webchat 접속 후 device ID 추출
+  - (c) `webchat: []` — webchat 채널만 차단, 다른 채널 유지
+  - 단, `tools.elevated.allowFrom.webchat=["*"]` 이 부트스트랩 기본 템플릿에 하드코딩되어 있어 단순 `config set` 으로 안 통할 가능성 있음. 검증 필요.
+- **Phase 0 #3 결정 필요**: 19개 작은 Ollama 모델 web 도구 정책. Steven 의도: "고성능 작업하는 모델들만 web 유지". 분류:
+  - 유지 + sandbox=on 강제: `code-reviewer` (14b), `planner-a/b`, `dev-b`, `designer-a`, `ai-architect`, `debugger`, `devops`, `ue5-engineer`, `ceo-a` (실작업)
+  - 제거: `bench-*` 8개, `testnpc1776519070405`
+- **Phase 1 (Windows Node 셋업)**: Phase 0 정리 후 진행. 필요 입력값 — Steven Telegram chat ID, Windows 격리 사용자명.
+- **백업**: `/srv/openclaw/data/backups/pre-phase0-20260429-131311.tar.gz` 보존 (롤백용).
+- **재발 방지 메모**: 향후 OpenClaw 재배포·이미지 업데이트 시 docker run 명령에 `-e TRAEFIK_HOST=openclaw.twinverse.org` 가 빠지면 dangerous 플래그가 다시 켜진다. 반드시 docker compose 화 필요 (현재 `docker run` 직접 사용 중, `/srv/openclaw/` 에 compose 파일 없음).
+
+---

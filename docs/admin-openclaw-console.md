@@ -53,6 +53,36 @@ twinverse-ai (192.168.219.117)
 | 전역 config | 동일 (dry-run 선행) | 아니오 |
 | 금지 | `docker restart openclaw`, RPC `agents.create` (plugin slot 추가) | **예 — 금지** |
 
+## 부트스트랩 강제 덮어쓰기 (TRAEFIK_HOST 필수, 2026-04-29)
+
+`/hostinger/server.mjs` 의 함수 `j()` 가 컨테이너 시작 시마다 `openclaw.json` 의
+일부 키를 환경변수 기반으로 강제 갱신한다. 다음 키는 사용자가 `config set` 해도
+재시작/재생성 시 되돌아간다:
+
+| 키 | `TRAEFIK_HOST` 미설정 | `TRAEFIK_HOST` 설정 |
+|---|---|---|
+| `gateway.controlUi.dangerouslyDisableDeviceAuth` | `true` 강제 | **delete** (안전 기본값) |
+| `gateway.controlUi.allowInsecureAuth` | `true` 강제 | **delete** |
+| `gateway.controlUi.dangerouslyAllowHostHeaderOriginFallback` | `true` 강제 | **delete** |
+| `gateway.trustedProxies` | `["127.0.0.1/32"]` 강제 | **delete** |
+
+**필수 운영 규칙**: twinverse-ai 의 OpenClaw 컨테이너는 반드시
+`TRAEFIK_HOST=openclaw.twinverse.org` 환경변수와 함께 실행해야 한다.
+빠지면 device 인증이 OFF 인 상태로 외부에 노출된다.
+
+```bash
+# 컨테이너 재생성 시 반드시 포함
+docker run -d --name openclaw --network host --restart unless-stopped \
+  -v /srv/openclaw/data:/data \
+  -e OPENCLAW_PORT=18789 -e OPENCLAW_HOST=0.0.0.0 \
+  -e OPENCLAW_GATEWAY_TOKEN=<token> \
+  -e TRAEFIK_HOST=openclaw.twinverse.org \   # ← 빠지면 안 됨
+  ghcr.io/hostinger/hvps-openclaw:latest node server.mjs
+```
+
+`audit` 의 "Reverse proxy headers are not trusted" WARN 은 wrapper Express 가
+X-Forwarded 헤더를 strip 해서 보내는 우리 환경에선 false positive (무시 가능).
+
 ## 주요 REST 엔드포인트
 
 ```
