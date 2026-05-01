@@ -44,7 +44,7 @@ twinverse-ai (192.168.219.117)
 | 작업 | 방법 | 재시작? |
 |---|---|---|
 | 에이전트 생성 | `openclaw agents add --id ... --name ... --model ...` | **아니오** (plugin slot 미추가) |
-| 에이전트 삭제 | `openclaw agents delete <id> --yes` | 아니오 |
+| 에이전트 삭제 | `openclaw agents delete <id> --yes` | ⚠️ **상황 따라 예** — 2026-05-01 회귀: agents.delete 가 `commands.ownerDisplay` / 일부 `plugins.entries.*.config` 변경을 동반해 SIGUSR1 → full process restart 트리거. 운영 중에는 가능하면 회피하거나 사용자가 적은 시간대에 수행. |
 | 에이전트 이름/테마/이모지 | `openclaw agents set-identity` | 아니오 |
 | 에이전트 모델 | `gateway call agents.update {model}` | 아니오 |
 | 에이전트 IDENTITY.md | `gateway call agents.files.set` | 아니오 |
@@ -52,6 +52,8 @@ twinverse-ai (192.168.219.117)
 | 플러그인 config | `config set --batch-file --strict-json --dry-run` → 실제 적용 | 아니오 |
 | 전역 config | 동일 (dry-run 선행) | 아니오 |
 | 금지 | `docker restart openclaw`, RPC `agents.create` (plugin slot 추가) | **예 — 금지** |
+
+**재시작 시 발생하는 영향**: 모든 기존 WS 연결이 끊김 (TwinverseAI 백엔드의 `chat_ws` 세션, DeskRPG 의 OpenClaw 게이트웨이 세션 포함). 클라이언트 자동 재연결이 항상 보장되지는 않으므로 사용자는 새로고침이 필요할 수 있다. 2026-05-01 인시던트에서 agents.delete 가 트리거한 재시작이 Windows admin 채팅을 갑자기 끊어 사용자 panic 을 유발했다 (재발 방지: 다음 시도 전 사용자 공지 + DeskRPG/TwinverseAI 양쪽 reconnect 로직 강화).
 
 ## 부트스트랩 강제 덮어쓰기 동작 (2026-04-29 회귀로 학습)
 

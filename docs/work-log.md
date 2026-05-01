@@ -1196,3 +1196,56 @@ OpenClaw 롤백 후에도 `https://twinverseai.twinverse.org/admin/...` 가 502 
 - **Phase 0 보안 critical 잔존**: 3 개 그대로 (`dangerouslyDisableDeviceAuth`, `tools.elevated.allowFrom.webchat=["*"]`, 19개 작은 Ollama 모델 web 도구). 새 접근 전략 필요.
 
 ---
+
+## 2026-05-01 (DeskRPG 멀티유저 회귀 복구 + 재발방지)
+
+### 작업 요약
+
+| 카테고리 | 작업 내용 | 상태 |
+|----------|----------|------|
+| fix | DeskRPG `tvdesk.twinverse.org` 멀티유저 회귀 복구 — proxy.js USER_MAP 갱신 | 완료 |
+| infra | OpenClaw `agents.delete` 가 SIGUSR1 게이트웨이 재시작을 트리거한다는 사실 발견·문서화 | 완료 |
+| docs | admin-openclaw-console.md 재시작 표 갱신 (agents.delete caveat) | 완료 |
+| docs | DeskRPG USER_MAP 동기화 절차 메모리 신설 | 완료 |
+| infra | infrastructure repo (orbitron-infrastructure) 에 proxy.js 변경 commit + push | 완료 |
+
+### 세부 내용
+
+- **증상 (사용자 보고)**:
+  - Windows admin: chat 작동했다 안 했다 (캐시 token 만료 시 실패)
+  - Linux limp2004 (twinverse-ai), Linux sodam2025hl (Orbitron): admin 콘솔 "AI 연결" 패널이 "게이트웨이 설정 로딩중..." 에서 멈춤, 같은 방의 다른 캐릭터 안 보임
+  - DevTools: `WebSocket connection to wss://tvdesk.twinverse.org/socket.io/... failed: WebSocket is closed before the connection is established`
+
+- **근본 원인**: `~/.deskrpg/proxy.js` 의 `USER_MAP` 이 stale.
+  - 원래 `admintop` 키로 등록 (실제 TwinverseAI username 은 `admin` — 오타)
+  - 새로 추가된 `sodam2025hl` 사용자 entry 누락
+  - 매핑 못 찾으면 `token` 쿠키 주입을 silent skip → DeskRPG socket.io 가 인증 없는 upgrade 즉시 reject
+
+- **인접 트리거 (양쪽 회귀가 시간 겹침)**:
+  - 같은 시간대 OpenClaw 에 `agents.delete` RPC 가 호출됨 → `commands.ownerDisplay` 와 `plugins.entries.*.config` 변경을 동반 → SIGUSR1 → full process restart → 모든 chat WS 가 한꺼번에 끊김
+  - 그래서 "Windows 도 갑자기 끊김 + 리눅스도 안 됨" 패닉 상황으로 보였음
+  - admin-openclaw-console.md 재시작 표는 기존엔 `agents.create` 만 위험으로 표기 — 이번 인시던트 caveat 으로 갱신
+
+- **수정 (3 단)**:
+  1. `~/.deskrpg/proxy.js` 의 `USER_MAP` 을 `admin`/`limp2004`/`sodam2025hl` 정확 entry 로 교체. proxy 재시작.
+  2. 누락 매핑 시 `console.error` 로 사용자명 + 현재 매핑 키 목록을 출력하도록 개선 (silent → loud, 다음 회귀 즉시 발견 가능).
+  3. `~/WORK/infrastructure/deskrpg/proxy.js` 에 sync + commit `d1fd44a` (orbitron-infrastructure repo). 운영본만 고치고 끝낸 패턴이 다음 deploy 시 손실되는 걸 차단.
+
+- **잘못된 가설 추적 기록 (학습용)**:
+  - 처음에 IPv6 가설 → twinverse-ai 의 IPv6 라우트 비어있음을 발견했지만, curl 은 IPv4 fallback 정상이라 진짜 원인 X. `gai.conf` 와 `sysctl disable_ipv6` 시도 후 모두 revert.
+  - 다음 가설은 OpenClaw 의 `client.id="openclaw-tui"` 하드코딩 충돌 → 그러나 git blame 결과 그 코드 이전부터 멀티유저 작동했다고 Steven 확인 → 가설 폐기.
+  - Steven 의 결정적 단서 ("전에는 멀티유저 됐었다" + "다른 ID 로 로그인했는데 1인으로 인식") 가 USER_MAP 으로 좁혀준 핵심.
+
+### 검증
+
+- Windows admin / Linux limp2004 / Linux sodam2025hl 세 클라이언트 모두 Chrome 시크릿 창 새로 열어서 같은 방 입장 → 채팅 정상, 캐릭터 상호 표시 확인.
+- proxy.log 에 `[proxy] Injected DeskRPG token for: admin -> Twinverse` 등 정상 로그 출력 확인.
+- `git push` 로 `https://github.com/ChoonwooLim/orbitron-infrastructure` 에 영구 반영.
+
+### 다음 세션 참고
+
+- TwinverseAI 사용자 추가 시 `USER_MAP` 동기화 절차는 `memory/reference_deskrpg_user_map.md` 에 정리됨.
+- OpenClaw 운영 중 `agents.delete` 사용 시 사용자 공지 + 새로고침 안내 권장 (단기). 장기적으론 백엔드 `chat_ws` 의 자동 재연결 로직 도입 검토.
+- `[OpenClawGW] WebSocket error: 502` 가 deskrpg server.log 에 다수 — 오늘 OpenClaw 컨테이너 추적 manipulation 영향. DeskRPG 측 retry/backoff 개선 검토.
+
+---
