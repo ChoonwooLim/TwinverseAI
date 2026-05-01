@@ -1301,3 +1301,59 @@ OpenClaw 롤백 후에도 `https://twinverseai.twinverse.org/admin/...` 가 502 
 - **`[OpenClawGW] WebSocket error: 502`** 가 deskrpg server.log 에 다수 — 오늘 OpenClaw 컨테이너 추적 manipulation 영향. DeskRPG 측 retry/backoff 개선 검토
 
 ---
+
+## 2026-05-01 (이어서 — task-reporting 추가 fix + 자가복구 socket 패턴 + deskrpg repo 신설)
+
+### 작업 요약
+
+| 카테고리 | 작업 내용 | 상태 |
+|----------|----------|------|
+| fix | `task-reporting.ts` 추가 2 군데 — `markReportDelivered:351` + `markReportConsumed:368` 의 `nowIso() as unknown as Date` → `new Date()` | 완료 (라이브 + deskrpg repo) |
+| infra | `deskrpg-master/` 를 별도 GitHub repo (`ChoonwooLim/deskrpg`, private) 로 분리 — 영구 git 추적 확보 | 완료 |
+| feat | DeskRPG socket 자가복구 (Layer 1+2): server bootId 발급 + auth-rejected emit + 클라 reconnectionAttempts 한정 + bootId mismatch 감지 시 자동 reload + auth flavored connect_error 시 쿠키 클리어 + reconnect_failed prompt | 완료 (라이브 + deskrpg repo `bae0be54`) |
+
+### 세부 내용
+
+- **task-reporting.ts 후속 fix**:
+  - 첫 fix (`createdAt: nowIso()` → `new Date()`) 이후에도 server.log 에 `[task-reporting] Progress nudge failed` + `[task-reporting] Error marking report consumed` 잔존 → 같은 패턴이 2 군데 더 있었음:
+    - line 351 `markReportDelivered`: `deliveredAt: nowIso() as unknown as Date`
+    - line 368 `markReportConsumed`: `consumedAt: nowIso() as unknown as Date`
+  - `as unknown as Date` 캐스트는 거짓말 — 런타임은 string 이라 drizzle 직렬화 시 동일 toISOString 에러
+  - 양쪽 다 `new Date()` 로 변경. 이후 DeskRPG 재시작으로 server.log 깨끗.
+
+- **`ChoonwooLim/deskrpg` repo 신설**:
+  - 기존: `deskrpg-master/` 가 TwinverseAI `.gitignore` 대상이라 fix 가 라이브 + Windows 로컬에만 보존됨 → 영구성 X
+  - 신규: `cd deskrpg-master && git init -b main && gh repo create ChoonwooLim/deskrpg --private --source=. --push`
+  - 첫 commit 에 task-reporting.ts 3건 fix 모두 포함
+  - 향후 hotfix 들이 이 repo 에 commit 으로 영구화
+
+- **자가복구 socket 패턴 (Layer 1 + Layer 2)**:
+  - **문제**: DeskRPG 재시작할 때마다 사용자 브라우저가 stale 쿠키·dead session 들고 무한 stuck 됨. 매번 수동으로 쿠키 삭제 / 시크릿 창 사용 필요.
+  - **Layer 1 — 클라이언트 자가 진단**:
+    - `reconnectionAttempts: Infinity` → `8` (한정해야 `reconnect_failed` 가 발화)
+    - `connect_error` 핸들러 강화: `auth/token/unauthorized` 메시지 감지 → 쿠키 즉시 클리어
+    - 새 `reconnect_failed` 핸들러: 8회 실패 시 `confirm()` 으로 새로고침 prompt
+  - **Layer 2 — 서버 stamp + 클라 비교**:
+    - 서버 (`socket-handlers.ts`) 가 시작 시 `SERVER_BOOT_ID` 생성, `connection` 마다 `socket.emit("server:hello", { bootId })` (인증 전)
+    - 인증 거절 시 `socket.emit("auth:rejected", { reason })` 후 disconnect
+    - 클라 (`GamePageClient.tsx`) 가 `server:hello` 수신 → localStorage 저장 → 다음 connect 시 비교 → 다르면 자동 `location.reload()`
+    - `auth:rejected` 수신 시 쿠키 클리어 + `/auth` 리다이렉트
+  - **적용**:
+    - 서버측 `src/server/socket-handlers.ts` 라이브 직접 수정 (npm package 의 `files` 에 포함)
+    - 클라이언트측 `src/app/game/GamePageClient.tsx` 는 `.next/` 빌드 산출물이라 `npm run build` 후 `.next/server/` + `.next/static/` 을 라이브 npx 캐시로 scp
+    - DeskRPG 재시작으로 적용
+    - deskrpg repo `commit bae0be54` push
+
+### 검증
+
+- 일반 Chrome 으로 tvdesk.twinverse.org 접속 후, DeskRPG `start.sh` 재시작 → 사용자 화면 변화 인지조차 못함 (socket.io transparent reconnect 가 처리, bootId 는 backup 으로 대기)
+- 이전: stale 쿠키 → "게이트웨이 설정 로딩중..." 무한 stuck → 수동 쿠키 클리어 필요
+- 이후: 자동 복구. 만약 socket.io 가 처리 못 하는 케이스 (token 진짜 만료 등) 면 bootId/auth-rejected 핸들러가 fallback 으로 자동 reload/redirect.
+
+### 다음 세션 참고
+
+- **DeskRPG json:task 자동 승인 카드 (Option C)** — 미적용. `extractTaskBlocks` 와 socket `task:create` 만 연결하면 끝.
+- **deskrpg npm publish** — 오늘 fix 들이 `ChoonwooLim/deskrpg` repo 에는 들어갔지만 npm package 재발행 안 됨. 새 머신/캐시에서 재설치 시 fix 누락 위험. 다음 release 절차에 적용.
+- **bootId reload 실제 발화 확인** — 이번 테스트에서 socket.io transparent reconnect 가 처리해서 bootId path 미발화. 진짜 stale auth 시나리오 (token 만료 등) 에서 발화 검증 필요.
+
+---
