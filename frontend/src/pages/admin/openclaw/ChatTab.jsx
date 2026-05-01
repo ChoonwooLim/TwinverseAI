@@ -1,6 +1,33 @@
 import { memo, useEffect, useMemo, useRef, useState, useCallback } from "react";
+import ReactMarkdown from "react-markdown";
 import api from "../../../services/api";
 import styles from "../AdminOpenClawConsole.module.css";
+
+const OPENCLAW_PUBLIC_BASE = "https://openclaw.twinverse.org";
+
+// Rewrite hrefs that point at OpenClaw-internal canvas/workspace paths to the
+// public Cloudflare-tunneled origin so links the agent emits actually resolve
+// from the browser. Internal: /__openclaw__/* and /data/.openclaw/*. Anything
+// else is left alone.
+function resolveOpenClawHref(raw) {
+  if (typeof raw !== "string" || raw.length === 0) return raw;
+  if (raw.startsWith("/__openclaw__/")) return `${OPENCLAW_PUBLIC_BASE}${raw}`;
+  if (raw.startsWith("/data/.openclaw/")) {
+    // Best-effort: workspace files live behind canvas/documents/<basename>
+    // when the agent stages them; if not staged the raw path won't work
+    // anyway, so this stays a no-op fallback.
+    return raw;
+  }
+  return raw;
+}
+
+const MARKDOWN_COMPONENTS = {
+  a: ({ node: _node, href, children, ...props }) => (
+    <a {...props} href={resolveOpenClawHref(href)} target="_blank" rel="noopener noreferrer">
+      {children}
+    </a>
+  ),
+};
 
 /**
  * ChatTab — browser <-> backend /api/admin/openclaw/console/chat <-> OpenClaw gateway
@@ -170,7 +197,13 @@ const MessageBubble = memo(function MessageBubble({ message, agentId }) {
         message.role === "user" ? styles.msgUser : message.role === "system" ? styles.msgSystem : styles.msgAssistant
       }`}
     >
-      <div className={styles.msgText}>{message.content}</div>
+      <div className={styles.msgText}>
+        {message.role === "user" ? (
+          message.content
+        ) : (
+          <ReactMarkdown components={MARKDOWN_COMPONENTS}>{message.content}</ReactMarkdown>
+        )}
+      </div>
       <MessageImages agentId={agentId} refs={refs} />
     </div>
   );
