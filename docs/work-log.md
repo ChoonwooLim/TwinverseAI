@@ -1246,6 +1246,58 @@ OpenClaw 롤백 후에도 `https://twinverseai.twinverse.org/admin/...` 가 502 
 
 - TwinverseAI 사용자 추가 시 `USER_MAP` 동기화 절차는 `memory/reference_deskrpg_user_map.md` 에 정리됨.
 - OpenClaw 운영 중 `agents.delete` 사용 시 사용자 공지 + 새로고침 안내 권장 (단기). 장기적으론 백엔드 `chat_ws` 의 자동 재연결 로직 도입 검토.
-- `[OpenClawGW] WebSocket error: 502` 가 deskrpg server.log 에 다수 — 오늘 OpenClaw 컨테이너 추적 manipulation 영향. DeskRPG 측 retry/backoff 개선 검토.
+
+---
+
+## 2026-05-01 (이어서 — task-reporting timestamp + chat 마크다운/URL + IDENTITY 가드)
+
+### 작업 요약
+
+| 카테고리 | 작업 내용 | 상태 |
+|----------|----------|------|
+| fix | DeskRPG `task-reporting.ts:274` `createdAt: nowIso()` → `new Date()` (PG timestamp 직렬화 에러 잔존분 해결) | 완료 |
+| fix | OpenClaw chat (ChatTab.jsx) 마크다운 렌더링 + `/__openclaw__/*` 절대 URL 자동 변환 | 완료 (commit 13dd631) |
+| infra | 17 개 OpenClaw 에이전트 IDENTITY.md 에 운영 가이드 append (절대 URL 강제 + 태스크 환각 차단) | 완료 (live) |
+| docs | bugfix-log 에 task-reporting + ChatTab 두 회귀 기록 | 완료 |
+
+### 세부 내용
+
+- **task-reporting.ts createdAt fix**:
+  - DeskRPG server.log 에 `[TaskManager] Error handling task action: TypeError: value.toISOString is not a function` 다수 잔존 — 4-24 fix 가 `task-manager.js` 만 패치하고 `task-reporting.ts` 누락
+  - `buildQueuedReportRow` 가 `createdAt: nowIso()` (ISO string) 으로 row 생성 → PG `npcReports.createdAt` (timestamp 컬럼) insert 시 drizzle 이 `.toISOString()` 호출 → string 에 메서드 없음 → 에러
+  - 라이브 (`~/.npm/_npx/8203af7a5561361c/.../task-reporting.ts`) + 소스 (`deskrpg-master/src/lib/task-reporting.ts`) 양쪽 적용. `start.sh` 로 DeskRPG 재시작 → 로그 깨끗
+  - `deskrpg-master/` 는 TwinverseAI repo 의 gitignore 대상이라 별도 commit 없음. npm publish 재실행은 Steven 측 별도 절차
+
+- **ChatTab.jsx 마크다운 + URL 변환**:
+  - 사용자 보고: NPC 가 만든 PDF 링크가 plain text 로만 표시, 클릭 불가. 컨테이너 내부 경로 (`/data/.openclaw/workspace-myjini/reports/...`) 를 그대로 노출해 사용자 못 찾음
+  - 라인 [173] 이 `<div>{message.content}</div>` plain text. `react-markdown` 은 설치돼 있는데 사용 안 함
+  - 수정 (commit 13dd631):
+    1. assistant 메시지를 `<ReactMarkdown>` 으로 래핑 (user 메시지는 plain text 유지)
+    2. `resolveOpenClawHref` 가 `/__openclaw__/*` href 를 `https://openclaw.twinverse.org/__openclaw__/...` 로 자동 prepend
+    3. 모든 링크에 `target=_blank rel=noopener noreferrer`
+  - Orbitron 자동 재배포로 즉시 반영 (HTTP 200 검증)
+
+- **17 개 IDENTITY.md 운영 가이드**:
+  - 대상: main, code-reviewer, ceo-a, planner-a/b/e, dev-b, designer-a, ai-architect, debugger, devops, ue5-engineer, claude-max, codex-pro, marketer-a, myjini, testnpc... (bench-* 제외)
+  - 추가 내용:
+    - 태스크 등록은 사용자 명시 ("등록해줘") + 승인 카드 클릭 필수. "등록 완료" 환각 절대 금지
+    - 파일 링크는 항상 `https://openclaw.twinverse.org/__openclaw__/canvas/...` 절대 URL. 컨테이너 내부 경로 노출 X
+    - 한국어 응답 + KST 시간대 명시
+  - 적용 위치: `/data/.openclaw/workspace-<id>/IDENTITY.md` 끝에 append. 백업 `*.bak.20260501-cli-fix` 보존
+  - 라이브 적용. Git 추적 X (OpenClaw 컨테이너 내부 파일)
+
+### 검증
+
+- DeskRPG server.log: 재시작 후 TaskManager toISOString 에러 사라짐
+- TwinverseAI 자동 재배포 후 `https://twinverseai.twinverse.org/` HTTP 200
+- 빌드된 ChatTab 번들이 `react-markdown` 포함되어 배포되었는지는 사용자 강력 새로고침 후 실제 NPC 응답 클릭 테스트로 확정 (END 시점 미테스트)
+
+### 다음 세션 참고
+
+- **DeskRPG json:task 자동 승인 카드 (Option C)** — `task-block-utils.js` 의 `extractTaskBlocks` 가 payload 추출까지는 하는데 UI 미연결. NpcDialog/ChatPanel 에 카드 컴포넌트 + socket task:create 연동 추가하면 끝. 30~45 분 예상
+- **DeskRPG 멀티유저 캐릭터 표시** — 오늘 USER_MAP fix 후 첫 검증은 됐으나 이후 캐릭터 broadcast 가 OpenClaw 게이트웨이 재시작·proxy 재시작 동안 어떻게 흘러가는지 추가 관찰 필요
+- **ChatTab 사용자 검증 대기** — Ctrl+Shift+R 한 번 후 NPC 가 보낸 마크다운 링크 클릭 → 새 탭에서 PDF 열림 확인
+- **deskrpg-master 의 npm publish 절차** — `task-reporting.ts` fix 가 라이브 + 로컬 소스에만 있고 npm package 재발행 안 됐음. 새로 npx cache 가 비워지면 fix 누락. 다음 release 절차에서 적용 필요
+- **`[OpenClawGW] WebSocket error: 502`** 가 deskrpg server.log 에 다수 — 오늘 OpenClaw 컨테이너 추적 manipulation 영향. DeskRPG 측 retry/backoff 개선 검토
 
 ---
