@@ -1,0 +1,1399 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TwinverseAI 2026 Business Plan — Preview (Slides 1-3, overflow-safe)</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+<style>
+  /* ---------- Tokens ---------- */
+  :root {
+    --primary: #1456f0;
+    --secondary: #3b82f6;
+    --accent-light: #60a5fa;
+    --light-blue-bg: #bfdbfe;
+    --brand-deep: #17437d;
+    --brand-pink: #ea5ec1;
+    --ink: #222222;
+    --ink-dark: #18181b;
+    --secondary-text: #45515e;
+    --muted: #8e8e93;
+    --surface-2: #f0f0f0;
+    --divider: #f2f3f5;
+    --border: #e5e7eb;
+    --shadow-standard: 0 4px 6px rgba(0, 0, 0, 0.08);
+    --shadow-brand-glow: 0 0 15px rgba(44, 30, 116, 0.16);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: #2a2d33;
+    font-family: "Pretendard", "Pretendard Variable", -apple-system, system-ui, sans-serif;
+    color: #e5e7eb;
+    min-height: 100vh;
+  }
+  .deck-toolbar {
+    position: sticky; top: 0; z-index: 100;
+    background: #18181b; color: #fff;
+    padding: 14px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid #2a2d33;
+  }
+  .deck-toolbar h1 { font-size: 14px; font-weight: 600; }
+  .deck-toolbar .meta { font-size: 12px; color: #8e8e93; font-weight: 500; }
+  .scale-controls { display: flex; gap: 8px; align-items: center; font-size: 12px; }
+  .scale-controls button {
+    background: rgba(255,255,255,0.08); color: #fff; border: none;
+    padding: 6px 12px; border-radius: 6px; font-family: inherit; font-size: 12px;
+    cursor: pointer; transition: background 0.15s;
+  }
+  .scale-controls button:hover { background: rgba(255,255,255,0.16); }
+  .deck { padding: 32px 0; display: flex; flex-direction: column; align-items: center; gap: 32px; }
+  .slide-wrap {
+    transform: scale(var(--slide-scale, 0.55));
+    transform-origin: top center;
+    width: 1920px; height: 1080px;
+    margin-bottom: calc(-1 * (1 - var(--slide-scale, 0.55)) * 1080px);
+  }
+
+  /* ---------- Slide base (1920x1080 native, 1" = 144px) ---------- */
+  /* Slide BG = subtle tint (visible OUTSIDE the frame).
+     Frame inner area = pure white #ffffff (via ::before background) */
+  .slide {
+    width: 1920px; height: 1080px;
+    background: #f5f6f8;        /* subtle tint — visible outside the frame (header / footer area) */
+    position: relative;
+    overflow: hidden;
+    color: var(--ink);
+    box-shadow: 0 30px 80px rgba(0,0,0,0.45);
+  }
+  .slide.theme-dark {
+    background: #181e25;        /* uniform dark — no outer/inner contrast (frame hidden below) */
+  }
+
+  /* Outer frame wrapping ONLY headline + subtitle + body
+     Header strip (chapter + wordmark) and footer strip (page + source) stay OUTSIDE the frame.
+     Inner area filled with white (or #181e25 for dark) to contrast with slide tint. */
+  .slide::before {
+    content: "";
+    position: absolute;
+    top: 130px;         /* ≈ 0.90" from slide top (gap 0.2" below header strip 0.7") */
+    bottom: 80px;       /* frame bottom at page Y 1000 ≈ 6.94" (gap 0.11" above footer 7.05") */
+    left: 57.6px;       /* 0.40" from slide left */
+    right: 57.6px;      /* 0.40" from slide right */
+    border-radius: 22px;
+    background: #ffffff;                 /* inner card BG (light theme) */
+    border: 1px solid var(--border);     /* #e5e7eb */
+    pointer-events: none;
+    z-index: 0;
+  }
+  .slide.theme-dark::before {
+    display: none;                                /* dark slides have no outer frame */
+  }
+  /* Make sure content sits above the frame */
+  .slide > * { position: relative; z-index: 1; }
+  .slide > .header-strip,
+  .slide > .footer-strip { z-index: 2; }
+
+  /* ---- Locked zones (overflow-safe spec) ---- */
+  /* Header strip: 0.4"–0.7"  =>  57.6px–100.8px */
+  .header-strip {
+    position: absolute;
+    top: 57.6px;
+    left: 100.8px;       /* 0.7" margin (widened) */
+    right: 100.8px;
+    height: 43.2px;      /* 0.3" */
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .chapter-name { font-size: 24px; font-weight: 600; color: var(--muted); letter-spacing: 0.02em; }
+  .wordmark { font-size: 28px; font-weight: 700; color: var(--ink-dark); letter-spacing: -0.01em; }
+
+  /* Headline: 1.0"–1.80"  =>  144px–259.2px (height 115.2px = 0.80")
+     Single-line guaranteed via JS auto-shrink. Bottom-anchored so headline
+     hugs subtitle as one unit, regardless of font size. */
+  .headline {
+    position: absolute;
+    top: 144px;
+    left: 100.8px;
+    right: 100.8px;
+    height: 115.2px;
+    font-size: 72px;       /* 36pt default */
+    font-weight: 700;
+    color: var(--ink);
+    line-height: 1.20;
+    letter-spacing: -0.02em;
+    white-space: nowrap;          /* HARD: single line guaranteed */
+    overflow: hidden;
+    text-overflow: clip;
+    display: flex; align-items: flex-end;     /* bottom-anchor: tight to subtitle */
+  }
+  .headline.size-40 { font-size: 80px; }   /* 40pt */
+  .headline.size-32 { font-size: 64px; }
+  .headline.size-28 { font-size: 56px; }
+  .headline.size-24 { font-size: 48px; }   /* 24pt — absolute floor */
+
+  /* Subtitle: 1.85"–2.25"  =>  266.4px–324px (height 57.6px) */
+  .subtitle {
+    position: absolute;
+    top: 266.4px;
+    left: 100.8px;
+    right: 100.8px;
+    height: 57.6px;
+    font-size: 32px;       /* 16pt */
+    font-weight: 500;
+    color: var(--secondary-text);
+    line-height: 1.45;
+    overflow: hidden;
+    display: flex; align-items: flex-start;
+  }
+
+  /* Body box: 2.40"–6.85"  =>  345.6px–986.4px (height 640.8px = 4.45")
+     No inner frame — single outer frame on .slide-content-frame wraps everything */
+  .body-box {
+    position: absolute;
+    top: 345.6px;
+    left: 100.8px;
+    right: 100.8px;
+    height: 640.8px;
+  }
+
+  /* Footer: 7.05"–7.30"  =>  1015.2px–1051.2px (unchanged) */
+  .footer-strip {
+    position: absolute;
+    top: 1015.2px;
+    left: 100.8px;
+    right: 100.8px;
+    height: 36px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .page-num { font-size: 20px; font-weight: 500; color: var(--muted); }
+  .source-line { font-size: 18px; font-weight: 400; color: var(--muted); }
+
+  /* ---------- Slide 1: Cover ---------- */
+  /* body-box 640.8px tall × 1718.4px wide (no inner padding now).
+     Within: hero card 820 + gap 14 + tiles 884 = 1718 */
+  .s1-hero {
+    position: absolute;
+    left: 0; top: 0;
+    width: 820px;
+    height: 640.8px;
+    border-radius: 24px;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 50%, var(--accent-light) 100%);
+    box-shadow: var(--shadow-brand-glow);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    color: #ffffff;
+    padding: 48px;
+  }
+  .s1-hero .big-num { font-size: 200px; font-weight: 700; line-height: 1.10; letter-spacing: -0.03em; }
+  .s1-hero .label { font-size: 32px; font-weight: 500; color: rgba(255,255,255,0.85); margin-top: 24px; text-align: center; }
+  .s1-hero .pill {
+    position: absolute; left: 32px; bottom: 32px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 9999px;
+    padding: 12px 28px;
+    font-size: 22px; font-weight: 600; color: rgba(255,255,255,0.95);
+  }
+
+  .s1-tiles {
+    position: absolute;
+    left: 834px;              /* 820 hero + 14 gap */
+    top: 0;
+    width: 884px;             /* fills remaining space */
+    height: 640.8px;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .s1-tile {
+    flex: 1;
+    background: #ffffff;
+    border-radius: 13px;
+    box-shadow: var(--shadow-standard);
+    padding: 36px 40px;
+    display: flex; flex-direction: column; justify-content: center;
+    border: 1px solid var(--divider);
+  }
+  .s1-tile .tile-title { font-size: 44px; font-weight: 700; color: var(--primary); letter-spacing: -0.02em; line-height: 1.15; }
+  .s1-tile .tile-label { font-size: 24px; font-weight: 400; color: var(--secondary-text); line-height: 1.4; margin-top: 14px; }
+
+  /* ---------- Slide 2: Problem ---------- */
+  /* 4 KPI cards (top, 238px) + chart card (bottom, fills remainder) */
+  .s2-kpi-row {
+    position: absolute;
+    left: 0; top: 0; right: 0;
+    height: 238px;            /* 1.65" */
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+  .s2-kpi {
+    background: #ffffff;
+    border-radius: 13px;
+    box-shadow: var(--shadow-standard);
+    padding: 32px 28px;
+    display: flex; flex-direction: column; justify-content: center;
+    border: 1px solid var(--divider);
+  }
+  .s2-kpi .num { font-size: 72px; font-weight: 700; color: var(--primary); line-height: 1.10; letter-spacing: -0.02em; }
+  .s2-kpi .lbl { font-size: 22px; font-weight: 500; color: var(--secondary-text); line-height: 1.4; margin-top: 14px; }
+
+  .s2-chart-card {
+    position: absolute;
+    left: 0; right: 0;
+    top: 274px;
+    bottom: 0;                /* extends to body-box bottom (576px) */
+    background: #ffffff;
+    border-radius: 13px;
+    border: 1px solid var(--divider);
+    padding: 24px 32px;
+    display: flex; flex-direction: column;
+  }
+  .s2-chart-title { font-size: 26px; font-weight: 600; color: var(--ink); margin-bottom: 14px; }
+  .s2-bars { flex: 1; display: flex; flex-direction: column; justify-content: space-around; padding: 4px 0; }
+  .s2-bar-row { display: flex; align-items: center; gap: 16px; }
+  .s2-bar-label { width: 240px; font-size: 20px; font-weight: 400; color: var(--secondary-text); }
+  .s2-bar-track { flex: 1; height: 22px; background: var(--divider); border-radius: 4px; overflow: hidden; position: relative; }
+  .s2-bar-fill { height: 100%; background: var(--secondary); border-radius: 4px; }
+  .s2-bar-value { width: 64px; font-size: 22px; font-weight: 600; color: var(--ink); text-align: right; }
+  .s2-source { font-size: 16px; font-weight: 400; color: var(--muted); margin-top: 12px; }
+
+  /* ---------- Slide 3: Solution ---------- */
+  /* Stack diagram (top) + caption boxes (bottom) — fits in 640.8px body-box
+     Body-box width: 1718.4px */
+  .s3-stack {
+    position: absolute;
+    left: 84px;              /* equal inset within body-box */
+    width: 1550px;
+    top: 0;
+    height: 470px;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .s3-band {
+    flex: 1;
+    border-radius: 11px;
+    padding: 0 36px;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .s3-band .b-title { font-size: 26px; font-weight: 600; }
+  .s3-band .b-sub { font-size: 22px; font-weight: 400; margin-top: 6px; }
+  .s3-band-1 { background: var(--light-blue-bg); }
+  .s3-band-1 .b-title { color: var(--brand-deep); }
+  .s3-band-1 .b-sub { color: var(--secondary-text); }
+  .s3-band-2 { background: var(--accent-light); color: #fff; }
+  .s3-band-2 .b-sub { color: rgba(255,255,255,0.85); }
+  .s3-band-3 { background: var(--secondary); color: #fff; }
+  .s3-band-3 .b-sub { color: rgba(255,255,255,0.85); }
+  .s3-band-4 { background: var(--primary); color: #fff; }
+  .s3-band-4 .b-sub { color: rgba(255,255,255,0.85); }
+
+  .s3-captions {
+    position: absolute;
+    left: 0; right: 0;
+    top: 490px;
+    bottom: 0;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+  .s3-cap {
+    background: var(--surface-2);
+    border-radius: 11px;
+    padding: 18px 22px;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .s3-cap .c-title { font-size: 24px; font-weight: 600; color: var(--ink); }
+  .s3-cap .c-body { font-size: 20px; font-weight: 400; color: var(--secondary-text); line-height: 1.4; margin-top: 6px; }
+
+  /* ---------- Slide 2: TOC (목차) ---------- */
+  /* 2-column × 7-row list of 14 chapters */
+  .s2t-grid {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 48px;
+  }
+  .s2t-col {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .s2t-item {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    padding: 16px 8px;
+    border-bottom: 1px solid var(--divider);
+  }
+  .s2t-item:last-child {
+    border-bottom: none;
+  }
+  .s2t-num {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--primary);
+    letter-spacing: -0.02em;
+    min-width: 56px;
+  }
+  .s2t-name {
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--ink);
+    line-height: 1.3;
+  }
+
+  /* ========================================================
+     Generic helpers for slides 5-15
+     ======================================================== */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .row { display: flex; gap: 16px; }
+  .full-abs { position: absolute; left: 0; right: 0; top: 0; bottom: 0; }
+
+  .card {
+    background: #ffffff;
+    border: 1px solid var(--divider);
+    border-radius: 13px;
+    box-shadow: var(--shadow-standard);
+    padding: 24px;
+    display: flex; flex-direction: column;
+  }
+  .card-title { font-size: 22px; font-weight: 600; color: var(--ink); line-height: 1.3; }
+  .card-sub { font-size: 16px; font-weight: 400; color: var(--secondary-text); line-height: 1.45; margin-top: 8px; }
+  .card-num { font-size: 56px; font-weight: 700; color: var(--primary); line-height: 1.10; letter-spacing: -0.02em; }
+  .card-num-sm { font-size: 36px; font-weight: 700; color: var(--primary); line-height: 1.10; letter-spacing: -0.02em; }
+  .card-label { font-size: 18px; font-weight: 500; color: var(--secondary-text); line-height: 1.4; }
+  .badge {
+    display: inline-block;
+    padding: 4px 12px;
+    background: rgba(20, 86, 240, 0.08);
+    color: var(--primary);
+    font-size: 14px; font-weight: 600;
+    border-radius: 9999px;
+    align-self: flex-start;
+  }
+
+  /* ---------- Slide 5: Why Now (3 trends + convergence) ---------- */
+  .s5-trends { position: absolute; left: 0; top: 0; width: 1080px; height: 100%; display: flex; flex-direction: column; gap: 14px; }
+  .s5-trend {
+    flex: 1; background: #ffffff; border: 1px solid var(--divider); border-radius: 13px;
+    box-shadow: var(--shadow-standard); padding: 22px 28px;
+    display: flex; align-items: center; gap: 24px;
+  }
+  .s5-trend-num { font-size: 48px; font-weight: 700; color: var(--accent-light); line-height: 1; min-width: 80px; letter-spacing: -0.03em; }
+  .s5-trend-body { flex: 1; }
+  .s5-trend-title { font-size: 22px; font-weight: 600; color: var(--ink); line-height: 1.3; }
+  .s5-trend-desc { font-size: 16px; font-weight: 400; color: var(--secondary-text); line-height: 1.45; margin-top: 6px; }
+
+  .s5-converge {
+    position: absolute; right: 0; top: 0;
+    width: 600px; height: 100%;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 50%, var(--accent-light) 100%);
+    border-radius: 20px;
+    box-shadow: var(--shadow-brand-glow);
+    padding: 40px;
+    display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;
+    color: #fff;
+  }
+  .s5-converge-label { font-size: 18px; font-weight: 500; color: rgba(255,255,255,0.85); letter-spacing: 0.02em; }
+  .s5-converge-big { font-size: 72px; font-weight: 700; color: #fff; line-height: 1.15; margin-top: 16px; letter-spacing: -0.02em; }
+  .s5-converge-desc { font-size: 18px; font-weight: 400; color: rgba(255,255,255,0.85); line-height: 1.5; margin-top: 20px; }
+
+  /* ---------- Slide 6: Product (4 modules) ---------- */
+  .s6-modules { position: absolute; left: 0; right: 0; top: 0; bottom: 0; display: grid; grid-template-columns: repeat(2, 1fr); grid-template-rows: 1fr 1fr; gap: 16px; }
+  .s6-mod {
+    background: #ffffff; border: 1px solid var(--divider); border-radius: 13px;
+    box-shadow: var(--shadow-standard); padding: 24px 28px;
+    display: flex; flex-direction: column;
+  }
+  .s6-mod-icon { width: 48px; height: 48px; border-radius: 12px; background: rgba(20,86,240,0.08); display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 700; color: var(--primary); }
+  .s6-mod-title { font-size: 24px; font-weight: 700; color: var(--ink); margin-top: 14px; line-height: 1.25; }
+  .s6-mod-tag { font-size: 14px; font-weight: 600; color: var(--primary); margin-top: 4px; letter-spacing: 0.02em; }
+  .s6-mod-desc { font-size: 15px; font-weight: 400; color: var(--secondary-text); line-height: 1.5; margin-top: 10px; }
+  .s6-mod-bullets { margin-top: auto; padding-top: 12px; display: flex; flex-direction: column; gap: 4px; }
+  .s6-mod-bullet { font-size: 14px; color: var(--ink); font-weight: 500; }
+
+  /* ---------- Slide 7: Market Size (TAM/SAM/SOM) ---------- */
+  .s7-circles { position: absolute; left: 0; top: 0; width: 700px; height: 100%; display: flex; align-items: center; justify-content: center; }
+  .s7-circ-tam { width: 540px; height: 540px; border-radius: 50%; background: rgba(20,86,240,0.08); border: 2px solid rgba(20,86,240,0.2); display: flex; align-items: flex-start; justify-content: center; padding-top: 32px; position: relative; }
+  .s7-circ-sam { width: 380px; height: 380px; border-radius: 50%; background: rgba(20,86,240,0.16); border: 2px solid rgba(20,86,240,0.35); display: flex; align-items: flex-start; justify-content: center; padding-top: 28px; position: absolute; }
+  .s7-circ-som { width: 220px; height: 220px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; flex-direction: column; position: absolute; bottom: 80px; }
+  .s7-lbl { font-size: 18px; font-weight: 600; color: var(--brand-deep); }
+  .s7-lbl-som { color: #fff; }
+  .s7-val { font-size: 28px; font-weight: 700; color: var(--brand-deep); margin-top: 4px; letter-spacing: -0.02em; }
+  .s7-val-som { color: #fff; font-size: 36px; }
+
+  .s7-side { position: absolute; right: 0; top: 0; width: 950px; height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 20px; }
+  .s7-row { display: flex; align-items: flex-start; gap: 24px; padding: 18px 0; border-bottom: 1px solid var(--divider); }
+  .s7-row:last-child { border-bottom: none; }
+  .s7-row-tag { font-size: 14px; font-weight: 700; color: var(--primary); letter-spacing: 0.05em; min-width: 60px; padding-top: 4px; }
+  .s7-row-body { flex: 1; }
+  .s7-row-title { font-size: 22px; font-weight: 600; color: var(--ink); line-height: 1.3; }
+  .s7-row-amt { font-size: 32px; font-weight: 700; color: var(--primary); line-height: 1.2; letter-spacing: -0.02em; margin-top: 2px; }
+  .s7-row-desc { font-size: 14px; font-weight: 400; color: var(--secondary-text); line-height: 1.5; margin-top: 6px; }
+
+  /* ---------- Slide 8: Traction (4 KPI + line chart) ---------- */
+  .s8-kpi-row { position: absolute; left: 0; right: 0; top: 0; height: 220px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .s8-kpi { background: #fff; border: 1px solid var(--divider); border-radius: 13px; box-shadow: var(--shadow-standard); padding: 24px 26px; display: flex; flex-direction: column; justify-content: center; }
+  .s8-kpi .lbl { font-size: 14px; font-weight: 600; color: var(--secondary-text); letter-spacing: 0.02em; text-transform: uppercase; }
+  .s8-kpi .num { font-size: 56px; font-weight: 700; color: var(--primary); line-height: 1.05; letter-spacing: -0.02em; margin-top: 8px; }
+  .s8-kpi .delta { font-size: 14px; font-weight: 500; color: #16a34a; margin-top: 6px; }
+  .s8-chart { position: absolute; left: 0; right: 0; top: 240px; bottom: 0; background: #fff; border: 1px solid var(--divider); border-radius: 13px; padding: 24px 28px; display: flex; flex-direction: column; }
+  .s8-chart-title { font-size: 22px; font-weight: 600; color: var(--ink); }
+  .s8-chart-area { flex: 1; position: relative; margin-top: 16px; }
+  .s8-line-svg { width: 100%; height: 100%; }
+  .s8-source { font-size: 14px; color: var(--muted); margin-top: 8px; }
+
+  /* ---------- Slide 9: Business Model (4 revenue streams) ---------- */
+  .s9-streams { position: absolute; left: 0; right: 0; top: 0; bottom: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .s9-stream { background: #fff; border: 1px solid var(--divider); border-radius: 13px; box-shadow: var(--shadow-standard); padding: 28px 24px; display: flex; flex-direction: column; }
+  .s9-stream-head { display: flex; align-items: center; justify-content: space-between; }
+  .s9-stream-tag { font-size: 12px; font-weight: 700; color: var(--primary); letter-spacing: 0.08em; }
+  .s9-stream-pct { font-size: 18px; font-weight: 700; color: var(--ink); }
+  .s9-stream-title { font-size: 24px; font-weight: 700; color: var(--ink); line-height: 1.25; margin-top: 12px; }
+  .s9-stream-desc { font-size: 15px; font-weight: 400; color: var(--secondary-text); line-height: 1.5; margin-top: 10px; }
+  .s9-stream-pricing { font-size: 18px; font-weight: 600; color: var(--primary); margin-top: auto; padding-top: 16px; }
+  .s9-stream-bar { height: 4px; background: var(--divider); border-radius: 2px; margin-top: 6px; overflow: hidden; }
+  .s9-stream-bar-fill { height: 100%; background: var(--primary); border-radius: 2px; }
+
+  /* ---------- Slide 10: Competitive Landscape (2x2 matrix) ---------- */
+  .s10-matrix { position: absolute; left: 0; right: 0; top: 0; bottom: 0; display: grid; grid-template-columns: 90px 1fr 1fr 90px; grid-template-rows: 60px 1fr 1fr 60px; gap: 0; }
+  .s10-y-label { grid-column: 1; grid-row: 2 / 4; display: flex; align-items: center; justify-content: center; writing-mode: vertical-rl; transform: rotate(180deg); font-size: 16px; font-weight: 600; color: var(--secondary-text); }
+  .s10-x-label { grid-column: 2 / 4; grid-row: 4; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 600; color: var(--secondary-text); }
+  .s10-y-tl { grid-column: 1; grid-row: 1; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 500; color: var(--muted); }
+  .s10-y-bl { grid-column: 1; grid-row: 4; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 500; color: var(--muted); }
+  .s10-x-l { grid-column: 2; grid-row: 4; display: flex; align-items: flex-start; justify-content: flex-start; font-size: 13px; font-weight: 500; color: var(--muted); padding-top: 8px; }
+  .s10-x-r { grid-column: 3; grid-row: 4; display: flex; align-items: flex-start; justify-content: flex-end; font-size: 13px; font-weight: 500; color: var(--muted); padding-top: 8px; }
+  .s10-quad { background: rgba(20,86,240,0.03); border: 1px solid var(--divider); border-radius: 11px; padding: 20px 22px; display: flex; flex-direction: column; gap: 10px; }
+  .s10-q-tl { grid-column: 2; grid-row: 2; }
+  .s10-q-tr { grid-column: 3; grid-row: 2; background: linear-gradient(135deg, rgba(20,86,240,0.10) 0%, rgba(96,165,250,0.18) 100%); border: 2px solid var(--primary); }
+  .s10-q-bl { grid-column: 2; grid-row: 3; }
+  .s10-q-br { grid-column: 3; grid-row: 3; }
+  .s10-quad-name { font-size: 13px; font-weight: 700; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; }
+  .s10-tag { display: inline-block; background: #fff; border: 1px solid var(--divider); padding: 6px 14px; border-radius: 9999px; font-size: 14px; font-weight: 600; color: var(--ink); }
+  .s10-tag.us { background: var(--primary); color: #fff; border-color: var(--primary); box-shadow: 0 4px 14px rgba(20,86,240,0.4); }
+
+  /* ---------- Slide 11: Team ---------- */
+  .s11-grid { position: absolute; left: 0; right: 0; top: 0; bottom: 0; display: grid; grid-template-columns: 1.2fr 1fr; gap: 24px; }
+  .s11-founder { background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 50%, var(--accent-light) 100%); border-radius: 20px; padding: 36px; color: #fff; display: flex; flex-direction: column; box-shadow: var(--shadow-brand-glow); }
+  .s11-founder-tag { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.8); letter-spacing: 0.1em; text-transform: uppercase; }
+  .s11-founder-name { font-size: 56px; font-weight: 700; color: #fff; line-height: 1.1; margin-top: 8px; letter-spacing: -0.02em; }
+  .s11-founder-role { font-size: 22px; font-weight: 500; color: rgba(255,255,255,0.9); margin-top: 6px; }
+  .s11-founder-bio { font-size: 17px; font-weight: 400; color: rgba(255,255,255,0.88); line-height: 1.5; margin-top: 24px; }
+  .s11-founder-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: auto; padding-top: 28px; }
+  .s11-stat { background: rgba(255,255,255,0.10); border-radius: 11px; padding: 14px 16px; }
+  .s11-stat-num { font-size: 28px; font-weight: 700; color: #fff; line-height: 1.1; }
+  .s11-stat-lbl { font-size: 12px; font-weight: 500; color: rgba(255,255,255,0.85); margin-top: 4px; }
+
+  .s11-side { display: flex; flex-direction: column; gap: 16px; }
+  .s11-side-card { flex: 1; background: #fff; border: 1px solid var(--divider); border-radius: 13px; box-shadow: var(--shadow-standard); padding: 24px 26px; display: flex; flex-direction: column; }
+  .s11-side-tag { font-size: 12px; font-weight: 700; color: var(--primary); letter-spacing: 0.08em; text-transform: uppercase; }
+  .s11-side-title { font-size: 22px; font-weight: 700; color: var(--ink); margin-top: 6px; line-height: 1.25; }
+  .s11-side-list { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+  .s11-side-item { font-size: 15px; color: var(--ink); font-weight: 500; line-height: 1.4; }
+
+  /* ---------- Slide 12: Roadmap (Q1-Q4 timeline) ---------- */
+  .s12-track { position: absolute; left: 30px; right: 30px; top: 70px; height: 4px; background: linear-gradient(90deg, var(--primary) 0%, var(--accent-light) 100%); border-radius: 2px; }
+  .s12-cols { position: absolute; left: 0; right: 0; top: 0; bottom: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding-top: 40px; }
+  .s12-col { display: flex; flex-direction: column; align-items: stretch; }
+  .s12-dot { width: 24px; height: 24px; border-radius: 50%; background: var(--primary); border: 4px solid #fff; box-shadow: 0 0 0 2px var(--primary); align-self: center; margin-top: 18px; position: relative; z-index: 2; }
+  .s12-q { font-size: 14px; font-weight: 700; color: var(--primary); letter-spacing: 0.1em; text-align: center; margin-top: 14px; }
+  .s12-q-name { font-size: 22px; font-weight: 700; color: var(--ink); text-align: center; margin-top: 4px; line-height: 1.3; }
+  .s12-card { background: #fff; border: 1px solid var(--divider); border-radius: 13px; box-shadow: var(--shadow-standard); padding: 18px 20px; margin-top: 18px; flex: 1; display: flex; flex-direction: column; gap: 8px; }
+  .s12-item { font-size: 14px; color: var(--ink); font-weight: 500; line-height: 1.45; padding-left: 14px; position: relative; }
+  .s12-item::before { content: ""; position: absolute; left: 0; top: 8px; width: 6px; height: 6px; border-radius: 50%; background: var(--primary); }
+
+  /* ---------- Slide 13: Financials (P&L + economics) ---------- */
+  .s13-grid { position: absolute; left: 0; right: 0; top: 0; bottom: 0; display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px; }
+  .s13-pnl-card { background: #fff; border: 1px solid var(--divider); border-radius: 13px; box-shadow: var(--shadow-standard); padding: 24px 28px; display: flex; flex-direction: column; }
+  .s13-card-title { font-size: 20px; font-weight: 700; color: var(--ink); margin-bottom: 16px; }
+  .s13-table { width: 100%; border-collapse: collapse; }
+  .s13-table thead th { font-size: 13px; font-weight: 700; color: var(--secondary-text); text-align: right; padding: 10px 12px; border-bottom: 2px solid var(--border); }
+  .s13-table thead th:first-child { text-align: left; }
+  .s13-table tbody td { font-size: 16px; font-weight: 500; color: var(--ink); text-align: right; padding: 12px; border-bottom: 1px solid var(--divider); }
+  .s13-table tbody td:first-child { text-align: left; font-weight: 600; }
+  .s13-table tr.row-emph td { background: rgba(20,86,240,0.04); font-weight: 700; color: var(--primary); }
+  .s13-table tr:last-child td { border-bottom: none; }
+
+  .s13-eco { display: flex; flex-direction: column; gap: 16px; }
+  .s13-eco-card { flex: 1; background: #fff; border: 1px solid var(--divider); border-radius: 13px; box-shadow: var(--shadow-standard); padding: 22px 26px; display: flex; flex-direction: column; justify-content: center; }
+  .s13-eco-tag { font-size: 12px; font-weight: 700; color: var(--secondary-text); letter-spacing: 0.08em; text-transform: uppercase; }
+  .s13-eco-num { font-size: 44px; font-weight: 700; color: var(--primary); line-height: 1.1; margin-top: 8px; letter-spacing: -0.02em; }
+  .s13-eco-desc { font-size: 14px; color: var(--secondary-text); line-height: 1.45; margin-top: 8px; }
+
+  /* ---------- Slide 14: The Ask ---------- */
+  .s14-grid { position: absolute; left: 0; right: 0; top: 0; bottom: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .s14-hero {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 50%, var(--accent-light) 100%);
+    border-radius: 24px; padding: 44px 40px;
+    color: #fff;
+    display: flex; flex-direction: column; justify-content: center;
+    box-shadow: var(--shadow-brand-glow);
+  }
+  .s14-hero-tag { font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.85); letter-spacing: 0.12em; text-transform: uppercase; }
+  .s14-hero-amt { font-size: 120px; font-weight: 700; color: #fff; line-height: 1.05; margin-top: 16px; letter-spacing: -0.04em; }
+  .s14-hero-round { font-size: 22px; font-weight: 500; color: rgba(255,255,255,0.85); margin-top: 8px; }
+  .s14-hero-desc { font-size: 16px; font-weight: 400; color: rgba(255,255,255,0.85); line-height: 1.55; margin-top: 28px; }
+
+  .s14-uses { display: flex; flex-direction: column; gap: 14px; }
+  .s14-uses-title { font-size: 18px; font-weight: 700; color: var(--ink); padding: 0 4px; }
+  .s14-use { background: #fff; border: 1px solid var(--divider); border-radius: 13px; padding: 18px 22px; box-shadow: var(--shadow-standard); }
+  .s14-use-row { display: flex; justify-content: space-between; align-items: baseline; }
+  .s14-use-name { font-size: 17px; font-weight: 600; color: var(--ink); }
+  .s14-use-pct { font-size: 22px; font-weight: 700; color: var(--primary); letter-spacing: -0.02em; }
+  .s14-use-bar { height: 6px; background: var(--divider); border-radius: 3px; margin-top: 10px; overflow: hidden; }
+  .s14-use-bar-fill { height: 100%; background: var(--primary); border-radius: 3px; }
+  .s14-use-desc { font-size: 13px; color: var(--secondary-text); margin-top: 6px; line-height: 1.45; }
+
+  /* ---------- Slide 15: Closing (dark) ---------- */
+  .s15-vision {
+    position: absolute; left: 0; right: 0; top: 0; bottom: 0;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    text-align: center; padding: 40px;
+  }
+  .s15-mark { font-size: 18px; font-weight: 600; color: var(--accent-light); letter-spacing: 0.2em; text-transform: uppercase; }
+  .s15-quote { font-size: 64px; font-weight: 700; color: #fff; line-height: 1.25; max-width: 1400px; margin-top: 32px; letter-spacing: -0.02em; }
+  .s15-attrib { font-size: 20px; font-weight: 500; color: rgba(255,255,255,0.7); margin-top: 36px; }
+  .s15-cta { display: flex; gap: 16px; margin-top: 40px; }
+  .s15-cta-pill {
+    padding: 14px 28px; border-radius: 9999px;
+    background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.18);
+    color: #fff; font-size: 16px; font-weight: 600;
+  }
+  .s15-cta-pill.primary { background: #fff; color: var(--primary); border-color: #fff; }
+
+  /* Optional debug: show zone outlines */
+  .debug .header-strip,
+  .debug .headline,
+  .debug .subtitle,
+  .debug .body-box,
+  .debug .footer-strip { outline: 1px dashed rgba(255, 0, 0, 0.4); }
+
+  /* ---------- Theme: Dark (Cover / Section divider / Closing) ---------- */
+  .slide.theme-dark {
+    background: #181e25;
+    color: #ffffff;
+  }
+  .slide.theme-dark .chapter-name { color: rgba(255, 255, 255, 0.55); }
+  .slide.theme-dark .wordmark { color: #ffffff; }
+  .slide.theme-dark .headline { color: #ffffff; }
+  .slide.theme-dark .subtitle { color: rgba(255, 255, 255, 0.78); }
+  .slide.theme-dark .page-num { color: rgba(255, 255, 255, 0.55); }
+  .slide.theme-dark .source-line { color: rgba(255, 255, 255, 0.55); }
+
+  /* Right tiles on dark cover — elevated dark cards with brand-blue rim */
+  .slide.theme-dark .s1-tile {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+  }
+  .slide.theme-dark .s1-tile .tile-title {
+    color: var(--accent-light);     /* #60a5fa glows on dark */
+  }
+  .slide.theme-dark .s1-tile .tile-label {
+    color: rgba(255, 255, 255, 0.72);
+  }
+</style>
+</head>
+<body>
+
+<header class="deck-toolbar">
+  <h1>TwinverseAI 2026 사업계획서 — 전체 15장 완성본</h1>
+  <div class="scale-controls">
+    <span class="meta">Native 1920 × 1080 · Scale</span>
+    <button onclick="setScale(0.4)">40%</button>
+    <button onclick="setScale(0.55)">55%</button>
+    <button onclick="setScale(0.7)">70%</button>
+    <button onclick="setScale(1)">100%</button>
+    <button onclick="toggleDebug()">Zones</button>
+  </div>
+  <div class="meta">15 slides · 표지+마무리 dark · 13장 light frame · 한글 + Pretendard</div>
+</header>
+
+<main class="deck" id="deck">
+
+  <!-- ===================== SLIDE 1 — 표지 (Dark theme) ===================== -->
+  <div class="slide-wrap">
+    <section class="slide theme-dark" id="slide-1">
+      <div class="header-strip">
+        <span class="chapter-name">01 / 15 — 표지</span>
+        <span class="wordmark">TwinverseAI</span>
+      </div>
+
+      <h1 class="headline size-40">사람과 AI가 함께 만드는 미래</h1>
+      <p class="subtitle">TwinverseAI 2026 사업계획서 — 사람–AI 공존의 가장 일관된 생태계를 만듭니다.</p>
+
+      <div class="body-box">
+
+        <div class="s1-hero">
+          <div class="big-num">1</div>
+          <div class="label">세계 최고 수준의 사람–AI 생태계</div>
+          <div class="pill">Series A · 2026</div>
+        </div>
+
+        <div class="s1-tiles">
+          <div class="s1-tile">
+            <div class="tile-title">TwinverseDesk</div>
+            <div class="tile-label">UE5 Pixel Streaming 가상 데스크탑 · 1인 기업 OS</div>
+          </div>
+          <div class="s1-tile">
+            <div class="tile-title">Twinverse Platform</div>
+            <div class="tile-label">통합 워크스페이스 · 에이전트 · 크리에이터 경제</div>
+          </div>
+          <div class="s1-tile">
+            <div class="tile-title">Steven Lim</div>
+            <div class="tile-label">창업자 · 아키텍트 — 2030 비전을 향해</div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="footer-strip">
+        <span class="page-num">01</span>
+        <span class="source-line">TwinverseAI · 대외비 · 2026 사업계획서 v1.0</span>
+      </div>
+    </section>
+  </div>
+
+  <!-- ===================== SLIDE 2 — 목차 (TOC) ===================== -->
+  <div class="slide-wrap">
+    <section class="slide" id="slide-2-toc">
+      <div class="header-strip">
+        <span class="chapter-name">02 / 15 — 목차</span>
+        <span class="wordmark">TwinverseAI</span>
+      </div>
+
+      <h1 class="headline">TwinverseAI 2026 사업계획서 구성</h1>
+      <p class="subtitle"></p>
+
+      <div class="body-box">
+        <div class="s2t-grid">
+          <div class="s2t-col">
+            <div class="s2t-item"><span class="s2t-num">01</span><span class="s2t-name">표지</span></div>
+            <div class="s2t-item"><span class="s2t-num">03</span><span class="s2t-name">문제 — 분절된 도구 속 지식 노동자</span></div>
+            <div class="s2t-item"><span class="s2t-num">04</span><span class="s2t-name">솔루션 — TwinverseDesk 통합 워크스페이스</span></div>
+            <div class="s2t-item"><span class="s2t-num">05</span><span class="s2t-name">Why Now — 시장 타이밍</span></div>
+            <div class="s2t-item"><span class="s2t-num">06</span><span class="s2t-name">제품 — TwinverseDesk · 1인 기업 OS · UE5</span></div>
+            <div class="s2t-item"><span class="s2t-num">07</span><span class="s2t-name">시장 규모 — TAM / SAM / SOM</span></div>
+            <div class="s2t-item"><span class="s2t-num">08</span><span class="s2t-name">트랙션 — 지표와 이정표</span></div>
+          </div>
+          <div class="s2t-col">
+            <div class="s2t-item"><span class="s2t-num">09</span><span class="s2t-name">비즈니스 모델 — 수익 구조</span></div>
+            <div class="s2t-item"><span class="s2t-num">10</span><span class="s2t-name">경쟁 환경 — 2×2 매트릭스</span></div>
+            <div class="s2t-item"><span class="s2t-num">11</span><span class="s2t-name">팀</span></div>
+            <div class="s2t-item"><span class="s2t-num">12</span><span class="s2t-name">로드맵 2026</span></div>
+            <div class="s2t-item"><span class="s2t-num">13</span><span class="s2t-name">재무 — 3년 P&amp;L · CAC / LTV</span></div>
+            <div class="s2t-item"><span class="s2t-num">14</span><span class="s2t-name">The Ask — 투자 요청</span></div>
+            <div class="s2t-item"><span class="s2t-num">15</span><span class="s2t-name">Closing — 비전 리캡</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer-strip">
+        <span class="page-num">02</span>
+        <span class="source-line">TwinverseAI · 대외비 · 2026 사업계획서 v1.0</span>
+      </div>
+    </section>
+  </div>
+
+  <!-- ===================== SLIDE 3 — 문제 ===================== -->
+  <div class="slide-wrap">
+    <section class="slide" id="slide-3-problem">
+      <div class="header-strip">
+        <span class="chapter-name">03 / 15 — 문제</span>
+        <span class="wordmark">TwinverseAI</span>
+      </div>
+
+      <h1 class="headline">지식 노동자는 분절된 도구 속에 갇혀 있습니다</h1>
+      <p class="subtitle">AI는 어디에나 있지만, 데스크탑·팀·스택은 여전히 서로를 모릅니다.</p>
+
+      <div class="body-box">
+
+        <div class="s2-kpi-row">
+          <div class="s2-kpi">
+            <div class="num">9.4</div>
+            <div class="lbl">지식 노동자 1인이 하루에 사용하는 평균 SaaS 앱 수</div>
+          </div>
+          <div class="s2-kpi">
+            <div class="num">32%</div>
+            <div class="lbl">도구 간 컨텍스트 전환에 사라지는 업무 시간</div>
+          </div>
+          <div class="s2-kpi">
+            <div class="num">&lt;8%</div>
+            <div class="lbl">프로덕션 규모로 확장되는 생성형 AI 파일럿 비율</div>
+          </div>
+          <div class="s2-kpi">
+            <div class="num">$1.3T</div>
+            <div class="lbl">분절된 업무 환경이 야기하는 연간 생산성 손실</div>
+          </div>
+        </div>
+
+        <div class="s2-chart-card">
+          <div class="s2-chart-title">도구 수 증가에 비례해 생산성 저하 심화</div>
+          <div class="s2-bars">
+            <div class="s2-bar-row">
+              <span class="s2-bar-label">도구 전환</span>
+              <div class="s2-bar-track"><div class="s2-bar-fill" style="width:84%"></div></div>
+              <span class="s2-bar-value">32%</span>
+            </div>
+            <div class="s2-bar-row">
+              <span class="s2-bar-label">알림 과부하</span>
+              <div class="s2-bar-track"><div class="s2-bar-fill" style="width:74%"></div></div>
+              <span class="s2-bar-value">28%</span>
+            </div>
+            <div class="s2-bar-row">
+              <span class="s2-bar-label">권한 마찰</span>
+              <div class="s2-bar-track"><div class="s2-bar-fill" style="width:63%"></div></div>
+              <span class="s2-bar-value">24%</span>
+            </div>
+            <div class="s2-bar-row">
+              <span class="s2-bar-label">데이터 사일로 조회</span>
+              <div class="s2-bar-track"><div class="s2-bar-fill" style="width:58%"></div></div>
+              <span class="s2-bar-value">22%</span>
+            </div>
+            <div class="s2-bar-row">
+              <span class="s2-bar-label">컨텍스트 손실</span>
+              <div class="s2-bar-track"><div class="s2-bar-fill" style="width:50%"></div></div>
+              <span class="s2-bar-value">19%</span>
+            </div>
+          </div>
+          <div class="s2-source">출처: Asana Anatomy of Work 2024, Microsoft Work Trend Index 2024, McKinsey State of AI 2024</div>
+        </div>
+
+      </div>
+
+      <div class="footer-strip">
+        <span class="page-num">03</span>
+        <span class="source-line">TwinverseAI · 대외비 · 2026 사업계획서 v1.0</span>
+      </div>
+    </section>
+  </div>
+
+  <!-- ===================== SLIDE 4 — 솔루션 ===================== -->
+  <div class="slide-wrap">
+    <section class="slide" id="slide-4-solution">
+      <div class="header-strip">
+        <span class="chapter-name">04 / 15 — 솔루션</span>
+        <span class="wordmark">TwinverseAI</span>
+      </div>
+
+      <h1 class="headline">사람–AI 워크스페이스를 위한 하나의 일관된 화면</h1>
+      <p class="subtitle">TwinverseDesk가 데스크탑·에이전트·팀을 하나의 스트리밍 환경으로 통합합니다.</p>
+
+      <div class="body-box">
+
+        <div class="s3-stack">
+          <div class="s3-band s3-band-1">
+            <div class="b-title">경험 레이어 (Experience)</div>
+            <div class="b-sub">TwinverseDesk · Pixel-Streamed UE5 데스크탑</div>
+          </div>
+          <div class="s3-band s3-band-2">
+            <div class="b-title">에이전트 레이어 (Agent)</div>
+            <div class="b-sub">멀티 에이전트 오케스트레이션 · 1인 기업 OS</div>
+          </div>
+          <div class="s3-band s3-band-3">
+            <div class="b-title">지식 레이어 (Knowledge)</div>
+            <div class="b-sub">통합 컨텍스트 그래프 · 세션 간 영속 메모리</div>
+          </div>
+          <div class="s3-band s3-band-4">
+            <div class="b-title">인프라 레이어 (Infrastructure)</div>
+            <div class="b-sub">GPU 스트리밍 런타임 · 멀티 테넌트 보안 기반</div>
+          </div>
+        </div>
+
+        <div class="s3-captions">
+          <div class="s3-cap">
+            <div class="c-title">설치 없이, 스트리밍</div>
+            <div class="c-body">어떤 기기에서도 워크스테이션급 컴퓨팅. 로컬 설치 0.</div>
+          </div>
+          <div class="s3-cap">
+            <div class="c-title">같은 화면 위의 에이전트</div>
+            <div class="c-body">에이전트가 사용자가 보는 것을 보고, 옆이 아닌 데스크탑 안에서 행동합니다.</div>
+          </div>
+          <div class="s3-cap">
+            <div class="c-title">도구를 넘나드는 하나의 기억</div>
+            <div class="c-body">컨텍스트 그래프가 세션·에이전트·팀원 사이에서 지속됩니다.</div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="footer-strip">
+        <span class="page-num">04</span>
+        <span class="source-line">TwinverseAI · 대외비 · 2026 사업계획서 v1.0</span>
+      </div>
+    </section>
+  </div>
+
+  <!-- ===================== SLIDE 5 — Why Now ===================== -->
+  <div class="slide-wrap">
+    <section class="slide" id="slide-5">
+      <div class="header-strip"><span class="chapter-name">05 / 15 — Why Now</span><span class="wordmark">TwinverseAI</span></div>
+      <h1 class="headline">세 가지 거대 흐름이 2026년 한 점에서 만납니다</h1>
+      <p class="subtitle">LLM · GPU 스트리밍 · 1인 기업 — 각각 성숙한 기술 곡선이 동시에 임계점을 넘었습니다.</p>
+      <div class="body-box">
+        <div class="s5-trends">
+          <div class="s5-trend">
+            <div class="s5-trend-num">01</div>
+            <div class="s5-trend-body">
+              <div class="s5-trend-title">LLM 성능이 인간 전문가 수준에 도달</div>
+              <div class="s5-trend-desc">GPT-5 / Claude 4.7 / Gemini 3 — 코딩 · 분석 · 글쓰기 모두 시니어 전문가급. 추론 비용은 2년 새 90% 하락.</div>
+            </div>
+          </div>
+          <div class="s5-trend">
+            <div class="s5-trend-num">02</div>
+            <div class="s5-trend-body">
+              <div class="s5-trend-title">GPU 픽셀 스트리밍이 메인스트림에 진입</div>
+              <div class="s5-trend-desc">UE5 + WebRTC + 5G 결합으로 워크스테이션급 데스크탑을 어떤 기기에서나 8ms 지연 내 렌더링 가능.</div>
+            </div>
+          </div>
+          <div class="s5-trend">
+            <div class="s5-trend-num">03</div>
+            <div class="s5-trend-body">
+              <div class="s5-trend-title">1인 기업이 새 경제 단위로 부상</div>
+              <div class="s5-trend-desc">AI 에이전트 위임으로 1인 운영 매출 $1M+ 사례 급증. 미국·한국 합산 1인 기업 1,800만 명, 연 11% 성장.</div>
+            </div>
+          </div>
+        </div>
+        <div class="s5-converge">
+          <div class="s5-converge-label">CONVERGENCE WINDOW</div>
+          <div class="s5-converge-big">2026년<br/>지금이 적기</div>
+          <div class="s5-converge-desc">세 흐름이 동시에 임계점을 넘는 24개월의 창. TwinverseAI는 이 시점에 포지셔닝된 유일한 통합 플랫폼.</div>
+        </div>
+      </div>
+      <div class="footer-strip"><span class="page-num">05</span><span class="source-line">출처: a16z State of AI 2024 · Stripe Atlas Solo Report · TwinverseAI 분석</span></div>
+    </section>
+  </div>
+
+  <!-- ===================== SLIDE 6 — 제품 (Product) ===================== -->
+  <div class="slide-wrap">
+    <section class="slide" id="slide-6">
+      <div class="header-strip"><span class="chapter-name">06 / 15 — 제품</span><span class="wordmark">TwinverseAI</span></div>
+      <h1 class="headline">하나의 데스크탑, 네 개의 통합 모듈</h1>
+      <p class="subtitle">TwinverseDesk를 중심으로 에이전트·지식·인프라가 하나의 워크스페이스에 결합됩니다.</p>
+      <div class="body-box">
+        <div class="s6-modules">
+          <div class="s6-mod">
+            <div class="s6-mod-icon">TD</div>
+            <div class="s6-mod-tag">FLAGSHIP</div>
+            <div class="s6-mod-title">TwinverseDesk</div>
+            <div class="s6-mod-desc">UE5 Pixel Streaming 기반 가상 데스크탑. 워크스테이션급 컴퓨팅을 어떤 기기에서나 사용.</div>
+            <div class="s6-mod-bullets">
+              <div class="s6-mod-bullet">• 1080p 60fps · 8ms latency</div>
+              <div class="s6-mod-bullet">• Windows 11 환경 그대로</div>
+              <div class="s6-mod-bullet">• 전 세계 GPU 노드 자동 분배</div>
+            </div>
+          </div>
+          <div class="s6-mod">
+            <div class="s6-mod-icon">AG</div>
+            <div class="s6-mod-tag">AGENTS</div>
+            <div class="s6-mod-title">1인 기업 OS</div>
+            <div class="s6-mod-desc">멀티 에이전트가 데스크탑 안에서 직접 행동. 마케팅·재무·고객지원 자동 운영.</div>
+            <div class="s6-mod-bullets">
+              <div class="s6-mod-bullet">• 12종 사전 학습 직무 에이전트</div>
+              <div class="s6-mod-bullet">• 사용자 화면 동시 인식</div>
+              <div class="s6-mod-bullet">• Slack/Notion/Stripe 통합</div>
+            </div>
+          </div>
+          <div class="s6-mod">
+            <div class="s6-mod-icon">KG</div>
+            <div class="s6-mod-tag">KNOWLEDGE</div>
+            <div class="s6-mod-title">통합 컨텍스트 그래프</div>
+            <div class="s6-mod-desc">세션·도구·팀원을 가로지르는 영속 메모리. AI 에이전트가 사용자의 모든 맥락을 기억.</div>
+            <div class="s6-mod-bullets">
+              <div class="s6-mod-bullet">• 벡터 + 그래프 하이브리드</div>
+              <div class="s6-mod-bullet">• 세션 무한 영속</div>
+              <div class="s6-mod-bullet">• 팀 지식 자동 합성</div>
+            </div>
+          </div>
+          <div class="s6-mod">
+            <div class="s6-mod-icon">PF</div>
+            <div class="s6-mod-tag">PLATFORM</div>
+            <div class="s6-mod-title">Twinverse Platform</div>
+            <div class="s6-mod-desc">크리에이터·기업이 자체 에이전트와 워크플로우를 만들어 마켓플레이스에 출시.</div>
+            <div class="s6-mod-bullets">
+              <div class="s6-mod-bullet">• 노코드 에이전트 빌더</div>
+              <div class="s6-mod-bullet">• 70/30 수익 분배</div>
+              <div class="s6-mod-bullet">• Q3 2026 베타 오픈</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="footer-strip"><span class="page-num">06</span><span class="source-line">TwinverseAI · 대외비 · 2026 사업계획서 v1.0</span></div>
+    </section>
+  </div>
+
+  <!-- ===================== SLIDE 7 — 시장 규모 ===================== -->
+  <div class="slide-wrap">
+    <section class="slide" id="slide-7">
+      <div class="header-strip"><span class="chapter-name">07 / 15 — 시장 규모</span><span class="wordmark">TwinverseAI</span></div>
+      <h1 class="headline">$340B 시장, 우리가 노리는 첫 조각은 $4.8B</h1>
+      <p class="subtitle">생산성 SW + AI 에이전트 + 가상 데스크탑 합산 시장에서, 1인 기업·소규모 팀 세그먼트부터 침투합니다.</p>
+      <div class="body-box">
+        <div class="s7-circles">
+          <div class="s7-circ-tam">
+            <div style="text-align: center;">
+              <div class="s7-lbl">TAM</div>
+              <div class="s7-val">$340B</div>
+            </div>
+          </div>
+          <div class="s7-circ-sam">
+            <div style="text-align: center;">
+              <div class="s7-lbl">SAM</div>
+              <div class="s7-val">$48B</div>
+            </div>
+          </div>
+          <div class="s7-circ-som">
+            <div class="s7-lbl s7-lbl-som">SOM</div>
+            <div class="s7-val s7-val-som">$4.8B</div>
+          </div>
+        </div>
+        <div class="s7-side">
+          <div class="s7-row">
+            <div class="s7-row-tag">TAM</div>
+            <div class="s7-row-body">
+              <div class="s7-row-title">Total Addressable Market</div>
+              <div class="s7-row-amt">$340B (2027E)</div>
+              <div class="s7-row-desc">생산성 SW ($240B) + AI 에이전트 ($60B) + DaaS·가상 데스크탑 ($40B) 글로벌 합산 (Gartner, IDC, McKinsey 종합).</div>
+            </div>
+          </div>
+          <div class="s7-row">
+            <div class="s7-row-tag">SAM</div>
+            <div class="s7-row-body">
+              <div class="s7-row-title">Serviceable Addressable Market</div>
+              <div class="s7-row-amt">$48B</div>
+              <div class="s7-row-desc">영어·한국어·일본어 시장 + 1인~50인 규모 SMB·솔로프리너 세그먼트. 14% of TAM.</div>
+            </div>
+          </div>
+          <div class="s7-row">
+            <div class="s7-row-tag">SOM</div>
+            <div class="s7-row-body">
+              <div class="s7-row-title">Serviceable Obtainable Market (5년)</div>
+              <div class="s7-row-amt">$4.8B</div>
+              <div class="s7-row-desc">5년 내 SAM의 10% 점유 목표. 한국·일본 얼리어답터 → 미국 확장 순. ARPU $99~$499/월 가정.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="footer-strip"><span class="page-num">07</span><span class="source-line">출처: Gartner Productivity 2025, IDC AI Agents 2025, McKinsey DaaS Outlook 2024</span></div>
+    </section>
+  </div>
+
+  <!-- ===================== SLIDE 8 — 트랙션 ===================== -->
+  <div class="slide-wrap">
+    <section class="slide" id="slide-8">
+      <div class="header-strip"><span class="chapter-name">08 / 15 — 트랙션</span><span class="wordmark">TwinverseAI</span></div>
+      <h1 class="headline">베타 6개월, 핵심 지표 모두 초기 PMF 신호</h1>
+      <p class="subtitle">베타 사용자 3,200명 · MRR $48K · 7일 리텐션 64% — 전형적 SaaS 평균을 모든 면에서 상회.</p>
+      <div class="body-box">
+        <div class="s8-kpi-row">
+          <div class="s8-kpi"><div class="lbl">BETA USERS</div><div class="num">3,200</div><div class="delta">▲ 기준 6개월 누적</div></div>
+          <div class="s8-kpi"><div class="lbl">MRR</div><div class="num">$48K</div><div class="delta">▲ 전월 대비 +38%</div></div>
+          <div class="s8-kpi"><div class="lbl">7일 리텐션</div><div class="num">64%</div><div class="delta">▲ SaaS 평균 35%</div></div>
+          <div class="s8-kpi"><div class="lbl">NPS</div><div class="num">62</div><div class="delta">▲ "World-class" 임계 (50+)</div></div>
+        </div>
+        <div class="s8-chart">
+          <div class="s8-chart-title">월별 활성 사용자 증가 추이 (베타 시작 2025-08 → 2026-04)</div>
+          <div class="s8-chart-area">
+            <svg class="s8-line-svg" viewBox="0 0 1600 320" preserveAspectRatio="none">
+              <!-- gridlines -->
+              <line x1="0" y1="60" x2="1600" y2="60" stroke="#f2f3f5" stroke-width="1"/>
+              <line x1="0" y1="140" x2="1600" y2="140" stroke="#f2f3f5" stroke-width="1"/>
+              <line x1="0" y1="220" x2="1600" y2="220" stroke="#f2f3f5" stroke-width="1"/>
+              <line x1="0" y1="300" x2="1600" y2="300" stroke="#e5e7eb" stroke-width="1"/>
+              <!-- area under line -->
+              <path d="M 50 280 L 220 252 L 390 220 L 560 188 L 730 152 L 900 116 L 1070 86 L 1240 60 L 1410 38 L 1410 300 L 50 300 Z" fill="rgba(20,86,240,0.12)"/>
+              <!-- line -->
+              <polyline points="50,280 220,252 390,220 560,188 730,152 900,116 1070,86 1240,60 1410,38" fill="none" stroke="#1456f0" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+              <!-- dots -->
+              <g fill="#1456f0">
+                <circle cx="50" cy="280" r="6"/><circle cx="220" cy="252" r="6"/><circle cx="390" cy="220" r="6"/><circle cx="560" cy="188" r="6"/><circle cx="730" cy="152" r="6"/><circle cx="900" cy="116" r="6"/><circle cx="1070" cy="86" r="6"/><circle cx="1240" cy="60" r="6"/><circle cx="1410" cy="38" r="6"/>
+              </g>
+              <!-- x-axis labels -->
+              <g font-family="Pretendard" font-size="14" fill="#8e8e93" text-anchor="middle">
+                <text x="50" y="318">Aug</text><text x="220" y="318">Sep</text><text x="390" y="318">Oct</text><text x="560" y="318">Nov</text><text x="730" y="318">Dec</text><text x="900" y="318">Jan</text><text x="1070" y="318">Feb</text><text x="1240" y="318">Mar</text><text x="1410" y="318">Apr</text>
+              </g>
+            </svg>
+          </div>
+          <div class="s8-source">출처: TwinverseAI 내부 베타 분석 (2025-08 ~ 2026-04). 활성 사용자 = 주 3회 이상 로그인.</div>
+        </div>
+      </div>
+      <div class="footer-strip"><span class="page-num">08</span><span class="source-line">TwinverseAI · 대외비 · 2026 사업계획서 v1.0</span></div>
+    </section>
+  </div>
+
+  <!-- ===================== SLIDE 9 — 비즈니스 모델 ===================== -->
+  <div class="slide-wrap">
+    <section class="slide" id="slide-9">
+      <div class="header-strip"><span class="chapter-name">09 / 15 — 비즈니스 모델</span><span class="wordmark">TwinverseAI</span></div>
+      <h1 class="headline">네 갈래 수익원, 구독을 중심으로 균형 설계</h1>
+      <p class="subtitle">예측 가능한 SaaS 구독을 코어로, 마켓플레이스·엔터프라이즈·인프라가 마진을 견인합니다.</p>
+      <div class="body-box">
+        <div class="s9-streams">
+          <div class="s9-stream">
+            <div class="s9-stream-head"><span class="s9-stream-tag">CORE</span><span class="s9-stream-pct">62%</span></div>
+            <div class="s9-stream-bar"><div class="s9-stream-bar-fill" style="width:62%"></div></div>
+            <div class="s9-stream-title">Subscription</div>
+            <div class="s9-stream-desc">개인·팀 단위 월정액. Pro $99/mo · Team $299/seat/mo. 가장 예측 가능한 ARR 베이스.</div>
+            <div class="s9-stream-pricing">$99 ~ $299 / 월</div>
+          </div>
+          <div class="s9-stream">
+            <div class="s9-stream-head"><span class="s9-stream-tag">GROWTH</span><span class="s9-stream-pct">18%</span></div>
+            <div class="s9-stream-bar"><div class="s9-stream-bar-fill" style="width:18%"></div></div>
+            <div class="s9-stream-title">Marketplace</div>
+            <div class="s9-stream-desc">크리에이터가 만든 에이전트·워크플로우 거래. 70/30 수익 분배. Q3 2026 출시.</div>
+            <div class="s9-stream-pricing">30% take rate</div>
+          </div>
+          <div class="s9-stream">
+            <div class="s9-stream-head"><span class="s9-stream-tag">EXPANSION</span><span class="s9-stream-pct">15%</span></div>
+            <div class="s9-stream-bar"><div class="s9-stream-bar-fill" style="width:15%"></div></div>
+            <div class="s9-stream-title">Enterprise</div>
+            <div class="s9-stream-desc">100인 이상 기업 대상 SSO·전용 클러스터·SLA·온프레 옵션. 연 단가 $50K+.</div>
+            <div class="s9-stream-pricing">$50K+ / 연</div>
+          </div>
+          <div class="s9-stream">
+            <div class="s9-stream-head"><span class="s9-stream-tag">INFRA</span><span class="s9-stream-pct">5%</span></div>
+            <div class="s9-stream-bar"><div class="s9-stream-bar-fill" style="width:5%"></div></div>
+            <div class="s9-stream-title">GPU Compute Add-on</div>
+            <div class="s9-stream-desc">고사양 워크로드용 GPU 시간 추가 구매. 사용량 기반 과금. 마진 65%+.</div>
+            <div class="s9-stream-pricing">$0.40 / GPU-hour</div>
+          </div>
+        </div>
+      </div>
+      <div class="footer-strip"><span class="page-num">09</span><span class="source-line">TwinverseAI · 대외비 · 2026 사업계획서 v1.0</span></div>
+    </section>
+  </div>
+
+  <!-- ===================== SLIDE 10 — 경쟁 환경 ===================== -->
+  <div class="slide-wrap">
+    <section class="slide" id="slide-10">
+      <div class="header-strip"><span class="chapter-name">10 / 15 — 경쟁 환경</span><span class="wordmark">TwinverseAI</span></div>
+      <h1 class="headline">통합 워크스페이스 + AI 네이티브, 우리만 자리잡은 사분면</h1>
+      <p class="subtitle">기존 SaaS는 분절돼 있고, AI 도구는 데스크탑과 분리돼 있습니다 — 두 축을 모두 충족하는 플레이어는 TwinverseAI 단독입니다.</p>
+      <div class="body-box">
+        <div class="s10-matrix">
+          <div class="s10-y-label">Workspace ↑ Integrated</div>
+          <div class="s10-quad s10-q-tl">
+            <div class="s10-quad-name">통합 / Non-AI</div>
+            <span class="s10-tag">Notion</span>
+            <span class="s10-tag">Microsoft 365</span>
+            <span class="s10-tag">Google Workspace</span>
+          </div>
+          <div class="s10-quad s10-q-tr">
+            <div class="s10-quad-name">통합 / AI 네이티브</div>
+            <span class="s10-tag us">TwinverseAI</span>
+            <span style="font-size: 13px; color: var(--secondary-text); margin-top: 6px;">유일한 풀스택 통합 플레이어</span>
+          </div>
+          <div class="s10-quad s10-q-bl">
+            <div class="s10-quad-name">분절 / Non-AI</div>
+            <span class="s10-tag">Slack</span>
+            <span class="s10-tag">Asana</span>
+            <span class="s10-tag">Zoom</span>
+          </div>
+          <div class="s10-quad s10-q-br">
+            <div class="s10-quad-name">분절 / AI 네이티브</div>
+            <span class="s10-tag">ChatGPT</span>
+            <span class="s10-tag">Cursor</span>
+            <span class="s10-tag">Perplexity</span>
+            <span class="s10-tag">Claude</span>
+          </div>
+          <div class="s10-x-label">AI Nativeness →</div>
+        </div>
+      </div>
+      <div class="footer-strip"><span class="page-num">10</span><span class="source-line">TwinverseAI 경쟁 분석 (2026-04). X축: AI 네이티브성 / Y축: 워크스페이스 통합도.</span></div>
+    </section>
+  </div>
+
+  <!-- ===================== SLIDE 11 — 팀 ===================== -->
+  <div class="slide-wrap">
+    <section class="slide" id="slide-11">
+      <div class="header-strip"><span class="chapter-name">11 / 15 — 팀</span><span class="wordmark">TwinverseAI</span></div>
+      <h1 class="headline">한 명의 비전가가 풀스택으로 만들어가는 팀</h1>
+      <p class="subtitle">창업자가 UE5·AI·풀스택·디자인 모든 레이어를 직접 구축. 7명 핵심 채용 진행 중.</p>
+      <div class="body-box">
+        <div class="s11-grid">
+          <div class="s11-founder">
+            <div class="s11-founder-tag">FOUNDER</div>
+            <div class="s11-founder-name">Steven Lim</div>
+            <div class="s11-founder-role">창업자 · 아키텍트 · CEO</div>
+            <div class="s11-founder-bio">
+              UE5 / Pixel Streaming · React + FastAPI 풀스택 · AI 에이전트 시스템 설계 · 디자인 시스템 구축까지 모든 레이어를 직접 구현. 사람과 AI가 공존하는 세계 최고의 생태계를 만든다는 비전으로 TwinverseAI 단독 창업.
+            </div>
+            <div class="s11-founder-stats">
+              <div class="s11-stat"><div class="s11-stat-num">15+</div><div class="s11-stat-lbl">Years 풀스택 + 게임 엔진</div></div>
+              <div class="s11-stat"><div class="s11-stat-num">3</div><div class="s11-stat-lbl">Prior 창업 경험</div></div>
+              <div class="s11-stat"><div class="s11-stat-num">100%</div><div class="s11-stat-lbl">제품 직접 구현</div></div>
+            </div>
+          </div>
+          <div class="s11-side">
+            <div class="s11-side-card">
+              <div class="s11-side-tag">ADVISORS</div>
+              <div class="s11-side-title">검증된 어드바이저 5인</div>
+              <div class="s11-side-list">
+                <div class="s11-side-item">• 전 Epic Games 시니어 엔지니어 (UE5 전문)</div>
+                <div class="s11-side-item">• 전 Anthropic 프로덕트 리드</div>
+                <div class="s11-side-item">• 전 토스 PO (한국 SaaS GTM)</div>
+                <div class="s11-side-item">• YC 시리즈 A 다수 멘토</div>
+                <div class="s11-side-item">• 미국 VC 파트너 (시드 투자자)</div>
+              </div>
+            </div>
+            <div class="s11-side-card">
+              <div class="s11-side-tag">HIRING (Q2-Q3 2026)</div>
+              <div class="s11-side-title">7명 핵심 채용 진행 중</div>
+              <div class="s11-side-list">
+                <div class="s11-side-item">• 시니어 AI 엔지니어 × 2 (에이전트)</div>
+                <div class="s11-side-item">• UE5 / 그래픽스 엔지니어 × 1</div>
+                <div class="s11-side-item">• 인프라 / GPU 오케스트레이션 × 1</div>
+                <div class="s11-side-item">• 디자이너 (프로덕트 + 모션) × 1</div>
+                <div class="s11-side-item">• GTM 리드 (US + KR) × 2</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="footer-strip"><span class="page-num">11</span><span class="source-line">TwinverseAI · 대외비 · 2026 사업계획서 v1.0</span></div>
+    </section>
+  </div>
+
+  <!-- ===================== SLIDE 12 — 로드맵 2026 ===================== -->
+  <div class="slide-wrap">
+    <section class="slide" id="slide-12">
+      <div class="header-strip"><span class="chapter-name">12 / 15 — 로드맵 2026</span><span class="wordmark">TwinverseAI</span></div>
+      <h1 class="headline">분기별 마일스톤, 매 분기 명확한 출시 이벤트</h1>
+      <p class="subtitle">베타 → GA → 마켓플레이스 → 엔터프라이즈, 한 해 동안 4단 로켓 점화.</p>
+      <div class="body-box">
+        <div style="position: relative; width: 100%; height: 100%;">
+          <div class="s12-track"></div>
+          <div class="s12-cols">
+            <div class="s12-col">
+              <div class="s12-dot"></div>
+              <div class="s12-q">Q1 2026</div>
+              <div class="s12-q-name">베타 확장</div>
+              <div class="s12-card">
+                <div class="s12-item">베타 사용자 10,000명 돌파</div>
+                <div class="s12-item">한국어 LLM 최적화 v2</div>
+                <div class="s12-item">7명 핵심 채용 완료</div>
+                <div class="s12-item">시리즈 A 클로징 (목표 $12M)</div>
+              </div>
+            </div>
+            <div class="s12-col">
+              <div class="s12-dot"></div>
+              <div class="s12-q">Q2 2026</div>
+              <div class="s12-q-name">정식 출시 (GA)</div>
+              <div class="s12-card">
+                <div class="s12-item">TwinverseDesk 1.0 GA</div>
+                <div class="s12-item">유료 구독 본격 전환</div>
+                <div class="s12-item">미국 / 일본 동시 런칭</div>
+                <div class="s12-item">MRR $200K 목표</div>
+              </div>
+            </div>
+            <div class="s12-col">
+              <div class="s12-dot"></div>
+              <div class="s12-q">Q3 2026</div>
+              <div class="s12-q-name">마켓플레이스 오픈</div>
+              <div class="s12-card">
+                <div class="s12-item">크리에이터 마켓플레이스 베타</div>
+                <div class="s12-item">에이전트 빌더 노코드 SDK</div>
+                <div class="s12-item">파트너 50개 사 온보딩</div>
+                <div class="s12-item">유료 사용자 5,000명</div>
+              </div>
+            </div>
+            <div class="s12-col">
+              <div class="s12-dot"></div>
+              <div class="s12-q">Q4 2026</div>
+              <div class="s12-q-name">엔터프라이즈 진입</div>
+              <div class="s12-card">
+                <div class="s12-item">엔터프라이즈 플랜 출시</div>
+                <div class="s12-item">SOC2 Type II 인증 완료</div>
+                <div class="s12-item">대형 고객 10개 사 확보</div>
+                <div class="s12-item">ARR $5M 도달</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="footer-strip"><span class="page-num">12</span><span class="source-line">TwinverseAI · 대외비 · 2026 사업계획서 v1.0</span></div>
+    </section>
+  </div>
+
+  <!-- ===================== SLIDE 13 — 재무 ===================== -->
+  <div class="slide-wrap">
+    <section class="slide" id="slide-13">
+      <div class="header-strip"><span class="chapter-name">13 / 15 — 재무</span><span class="wordmark">TwinverseAI</span></div>
+      <h1 class="headline">3년 내 ARR $50M, Unit Economics는 이미 양호</h1>
+      <p class="subtitle">CAC 회수 6개월 · LTV/CAC 6.7배 — 시리즈 A 단계 SaaS로서 매우 견고한 구조.</p>
+      <div class="body-box">
+        <div class="s13-grid">
+          <div class="s13-pnl-card">
+            <div class="s13-card-title">3개년 P&amp;L 전망 (USD)</div>
+            <table class="s13-table">
+              <thead><tr><th></th><th>2026</th><th>2027</th><th>2028</th></tr></thead>
+              <tbody>
+                <tr><td>매출 (ARR)</td><td>$5.0M</td><td>$18M</td><td>$50M</td></tr>
+                <tr><td>매출원가 (GPU·LLM)</td><td>$1.7M</td><td>$5.4M</td><td>$13M</td></tr>
+                <tr class="row-emph"><td>총이익</td><td>$3.3M (66%)</td><td>$12.6M (70%)</td><td>$37M (74%)</td></tr>
+                <tr><td>S&amp;M</td><td>$2.5M</td><td>$7.2M</td><td>$15M</td></tr>
+                <tr><td>R&amp;D</td><td>$3.0M</td><td>$5.4M</td><td>$10M</td></tr>
+                <tr><td>G&amp;A</td><td>$1.0M</td><td>$2.0M</td><td>$4.0M</td></tr>
+                <tr class="row-emph"><td>EBITDA</td><td>−$3.2M</td><td>−$2.0M</td><td>+$8M</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="s13-eco">
+            <div class="s13-eco-card"><div class="s13-eco-tag">CAC</div><div class="s13-eco-num">$280</div><div class="s13-eco-desc">평균 유료 전환 비용. 베타 → 유료 13% 전환율 기준.</div></div>
+            <div class="s13-eco-card"><div class="s13-eco-tag">LTV</div><div class="s13-eco-num">$1,880</div><div class="s13-eco-desc">평균 구독 유지 19개월 × 월 $99 + 추가 구매. 다운그레이드 반영.</div></div>
+            <div class="s13-eco-card"><div class="s13-eco-tag">PAYBACK</div><div class="s13-eco-num">6개월</div><div class="s13-eco-desc">CAC 회수 기간. SaaS A급 기준치 (12개월) 대비 절반.</div></div>
+            <div class="s13-eco-card"><div class="s13-eco-tag">LTV / CAC</div><div class="s13-eco-num">6.7×</div><div class="s13-eco-desc">건강한 SaaS 기준 (3×) 대비 2배 이상. 가격 결정력 강함을 의미.</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="footer-strip"><span class="page-num">13</span><span class="source-line">TwinverseAI 재무 모델 v1.0 (보수적 시나리오 기준). USD 환산.</span></div>
+    </section>
+  </div>
+
+  <!-- ===================== SLIDE 14 — The Ask ===================== -->
+  <div class="slide-wrap">
+    <section class="slide" id="slide-14">
+      <div class="header-strip"><span class="chapter-name">14 / 15 — The Ask</span><span class="wordmark">TwinverseAI</span></div>
+      <h1 class="headline">시리즈 A — 제품·시장·팀, 세 축에 집중 투자</h1>
+      <p class="subtitle">2026 GA 출시와 미국·일본 시장 확장을 18개월 런웨이로 완수합니다.</p>
+      <div class="body-box">
+        <div class="s14-grid">
+          <div class="s14-hero">
+            <div class="s14-hero-tag">SERIES A · 2026</div>
+            <div class="s14-hero-amt">$12M</div>
+            <div class="s14-hero-round">Pre-money $48M · Post-money $60M</div>
+            <div class="s14-hero-desc">18개월 런웨이 확보. 2027 Q4 ARR $18M 도달 시 시리즈 B 진입 (목표 $30M+).</div>
+          </div>
+          <div class="s14-uses">
+            <div class="s14-uses-title">자금 사용 (Use of Funds)</div>
+            <div class="s14-use">
+              <div class="s14-use-row"><span class="s14-use-name">제품 개발 (R&amp;D)</span><span class="s14-use-pct">42%</span></div>
+              <div class="s14-use-bar"><div class="s14-use-bar-fill" style="width:42%"></div></div>
+              <div class="s14-use-desc">엔지니어 7인 충원 · 마켓플레이스 빌드 · 엔터프라이즈 기능</div>
+            </div>
+            <div class="s14-use">
+              <div class="s14-use-row"><span class="s14-use-name">마케팅 / GTM</span><span class="s14-use-pct">28%</span></div>
+              <div class="s14-use-bar"><div class="s14-use-bar-fill" style="width:28%"></div></div>
+              <div class="s14-use-desc">미국·일본 동시 런칭 · 콘텐츠 마케팅 · 파트너십</div>
+            </div>
+            <div class="s14-use">
+              <div class="s14-use-row"><span class="s14-use-name">인프라 (GPU · 데이터센터)</span><span class="s14-use-pct">22%</span></div>
+              <div class="s14-use-bar"><div class="s14-use-bar-fill" style="width:22%"></div></div>
+              <div class="s14-use-desc">3개 리전 GPU 클러스터 확보 · 픽셀 스트리밍 엣지 노드</div>
+            </div>
+            <div class="s14-use">
+              <div class="s14-use-row"><span class="s14-use-name">G&amp;A · 운영</span><span class="s14-use-pct">8%</span></div>
+              <div class="s14-use-bar"><div class="s14-use-bar-fill" style="width:8%"></div></div>
+              <div class="s14-use-desc">법무 · 회계 · SOC2 · 인사 시스템</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="footer-strip"><span class="page-num">14</span><span class="source-line">TwinverseAI · 대외비 · 2026 사업계획서 v1.0</span></div>
+    </section>
+  </div>
+
+  <!-- ===================== SLIDE 15 — Closing (dark) ===================== -->
+  <div class="slide-wrap">
+    <section class="slide theme-dark" id="slide-15">
+      <div class="header-strip"><span class="chapter-name">15 / 15 — 마무리</span><span class="wordmark">TwinverseAI</span></div>
+      <h1 class="headline">이제, 함께 만들 차례입니다</h1>
+      <p class="subtitle"></p>
+      <div class="body-box">
+        <div class="s15-vision">
+          <div class="s15-mark">TWINVERSE 2030</div>
+          <div class="s15-quote">"사람과 AI가 함께 만드는 세계 최고의 생태계."</div>
+          <div class="s15-attrib">Steven Lim · Founder, TwinverseAI</div>
+          <div class="s15-cta">
+            <div class="s15-cta-pill primary">steven@twinverseai.com</div>
+            <div class="s15-cta-pill">twinverseai.com</div>
+            <div class="s15-cta-pill">@twinverseai</div>
+          </div>
+        </div>
+      </div>
+      <div class="footer-strip"><span class="page-num">15</span><span class="source-line">TwinverseAI · 대외비 · 2026 사업계획서 v1.0</span></div>
+    </section>
+  </div>
+
+</main>
+
+<script>
+  function setScale(v) {
+    document.documentElement.style.setProperty('--slide-scale', v);
+    document.querySelectorAll('.slide-wrap').forEach(w => {
+      w.style.marginBottom = `calc(-1 * (1 - ${v}) * 1080px)`;
+    });
+  }
+  function toggleDebug() {
+    document.getElementById('deck').classList.toggle('debug');
+  }
+
+  /* Headline 2-pass deck-wide unification — Rule 5 + Rule 5.7 enforcement.
+     Pass 1: measure each headline's largest 1-line-fit size from {40, 36, 32, 28, 24} pt
+     Pass 2: apply the SMALLEST fitted size across the whole deck (bottleneck) so all headlines match.
+     Floor: 24pt. If a headline doesn't fit even at 24pt → warn (rephrase needed). */
+  function fitHeadlines() {
+    const stops = [80, 72, 64, 56, 48];           // 40,36,32,28,24pt @ 144dpi
+    const ptLabels = [40, 36, 32, 28, 24];
+    const headlines = Array.from(document.querySelectorAll('.headline'));
+    if (!headlines.length) return;
+
+    // ---- Pass 1: measure largest 1-line-fit size per headline ----
+    let deckBottleneckIdx = 0;     // start optimistic (largest size index)
+    const perHeadline = [];
+
+    headlines.forEach(el => {
+      let fittedIdx = stops.length - 1;            // default to floor (worst case)
+      for (let i = 0; i < stops.length; i++) {
+        el.style.fontSize = stops[i] + 'px';
+        // Force reflow + measure
+        if (el.scrollWidth <= el.clientWidth) {
+          fittedIdx = i;
+          break;
+        }
+      }
+      perHeadline.push({ el, fittedIdx });
+      if (fittedIdx > deckBottleneckIdx) deckBottleneckIdx = fittedIdx;
+    });
+
+    // ---- Pass 2: apply unified size across deck ----
+    const unifiedSize = stops[deckBottleneckIdx];
+    const unifiedPt = ptLabels[deckBottleneckIdx];
+    let overflowCount = 0;
+
+    perHeadline.forEach(({ el, fittedIdx }) => {
+      el.style.fontSize = unifiedSize + 'px';
+      const isOverflow = el.scrollWidth > el.clientWidth;
+      if (isOverflow) {
+        el.dataset.fittedAt = unifiedSize + 'px (OVERFLOW — rephrase needed)';
+        console.warn('[Headline overflow at unified size]', el.textContent.trim());
+        overflowCount++;
+      } else {
+        const wasBottleneck = fittedIdx === deckBottleneckIdx;
+        el.dataset.fittedAt = unifiedSize + 'px' + (wasBottleneck ? ' (bottleneck)' : '');
+      }
+    });
+
+    console.log(
+      `[Deck headline unified] All ${headlines.length} headlines set to ${unifiedSize}px (${unifiedPt}pt). ` +
+      `Bottleneck slide(s): ${perHeadline.filter(h => h.fittedIdx === deckBottleneckIdx).map(h => '"' + h.el.textContent.trim().slice(0, 40) + '..."').join(', ')}. ` +
+      (overflowCount ? `${overflowCount} overflow(s) — rephrase needed.` : 'No overflow.')
+    );
+  }
+
+  // Wait for fonts to load (Pretendard is web font — width measurements depend on it)
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(() => {
+      fitHeadlines();
+      setScale(0.55);
+    });
+  } else {
+    window.addEventListener('load', () => {
+      fitHeadlines();
+      setScale(0.55);
+    });
+  }
+  // Initial scale set immediately so layout doesn't jump
+  setScale(0.55);
+</script>
+</body>
+</html>

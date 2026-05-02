@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { label: "회사소개", path: "/about" },
   { label: "서비스", path: "/services" },
   { label: "커뮤니티", path: "/community/notice" },
+  { label: "사업계획서", external: "/business-plan-2026.html", newTab: true },
 ];
 
 const DESK_ITEMS = [
@@ -56,11 +57,29 @@ function TopBar() {
           <span /><span /><span />
         </button>
         <nav className={`${styles.nav} ${menuOpen ? styles.navOpen : ""}`}>
-          {NAV_ITEMS.map((item) => (
-            <Link key={item.path} to={item.path} className={`${styles.navLink} ${isActive(item.path) ? styles.active : ""}`} onClick={() => setMenuOpen(false)}>
-              {item.label}
-            </Link>
-          ))}
+          {NAV_ITEMS.map((item) =>
+            item.external ? (
+              <a
+                key={item.external}
+                href={item.external}
+                target={item.newTab ? "_blank" : undefined}
+                rel={item.newTab ? "noopener noreferrer" : undefined}
+                className={styles.navLink}
+                onClick={() => setMenuOpen(false)}
+              >
+                {item.label}
+              </a>
+            ) : (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`${styles.navLink} ${isActive(item.path) ? styles.active : ""}`}
+                onClick={() => setMenuOpen(false)}
+              >
+                {item.label}
+              </Link>
+            )
+          )}
           <div className={styles.dropdown} ref={deskRef}>
             <button
               className={`${styles.navLink} ${styles.dropdownTrigger} ${isActive("/twinversedesk") ? styles.active : ""}`}
