@@ -1357,3 +1357,59 @@ OpenClaw 롤백 후에도 `https://twinverseai.twinverse.org/admin/...` 가 502 
 - **bootId reload 실제 발화 확인** — 이번 테스트에서 socket.io transparent reconnect 가 처리해서 bootId path 미발화. 진짜 stale auth 시나리오 (token 만료 등) 에서 발화 검증 필요.
 
 ---
+## 2026-05-03
+
+### 작업 요약
+
+| 카테고리 | 작업 내용 | 상태 |
+|----------|----------|------|
+| feat | TwinverseAI 2026 사업계획서(BP) 15장 HTML 프리뷰 + 사업계획서 메뉴 추가 | 완료 |
+| feat | 신규 글로벌 스킬 2종 (`seedance-universal`, `ppt`) 작성 + 글로벌 등록 | 완료 |
+| chore | 6개 프로젝트(C:\WORK\) 로컬 `.claude/skills/` 정리 — 117개 폴더 삭제, 글로벌 통합 | 완료 |
+| chore | `project-start-{api,blank,web}` 변형 frontmatter description 보강 | 완료 |
+
+### 세부 내용
+
+- **신규 스킬 2종 생성 (글로벌 `~/.claude/skills/`):**
+  - `seedance-universal`: Higgsfield Seedance 2.0 video prompt director — 5 모드 자동 라우팅(Cinematic / Ad Brief / Signature / Short Film / Hybrid), 영문 프롬프트 + 한국어 해설 출력. 부속 파일 3개(examples.md / engine-constraints.md / camera-language.md).
+  - `ppt`: Brandlogy 디자인 시스템 기반 PPT 생성 — Phase 0 인테이크 → 토큰 치환 → 슬라이드 생성. Hard Rules 6개(16:9 only / locked zones / body density / English output / headline 1-line auto-shrink / outer frame + tinted BG). PPT_Basic.md 베이스 + SKILL.md 인테이크 로직.
+
+- **TwinverseAI 2026 사업계획서 (BP) 15장 HTML 프리뷰 (`frontend/public/business-plan-2026.html`):**
+  - 1: Cover (dark) → 2: TOC → 3: 문제 → 4: 솔루션 → 5: Why Now → 6: 제품 → 7: 시장 규모 → 8: 트랙션 → 9: 비즈니스 모델 → 10: 경쟁 환경 → 11: 팀 → 12: 로드맵 2026 → 13: 재무 → 14: The Ask → 15: Closing (dark)
+  - 디자인 시스템: 16:9 (1920×1080) / Pretendard / Brandlogy Blue (#1456f0 → #3b82f6 → #60a5fa) / 표지·마무리 dark theme, 13장 light + outer frame + tinted BG (#f5f6f8) / locked zones (header 0.4–0.7" / headline 1.0–1.80" bottom-anchor / subtitle 1.85–2.25" / body 2.40–6.85" / footer 7.05–7.30")
+  - 헤드라인 1-line 강제 + 5단계 auto-shrink (40→36→32→28→24pt) + deck-wide unification (가장 긴 헤드라인 기준 통일)
+  - 좌우 여백 0.7" (이전 0.5"), 외곽 frame은 headline+subtitle+body만 감쌈 (header/footer 외곽 tint 위에 배치)
+
+- **프론트엔드 메뉴 통합:**
+  - `TopBar.jsx`: NAV_ITEMS에 `{ label: "사업계획서", external: "/business-plan-2026.html", newTab: true }` 추가
+  - 렌더링 로직: `item.external` 있으면 `<a target="_blank">`, 없으면 React Router `<Link>` (분기 처리)
+
+- **6개 프로젝트 로컬 스킬 정리 — 글로벌 통합:**
+  - 정책: DUP_SAME(글로벌과 100% 동일) 일괄 삭제 / DUP_DIFF 옛 design 스킬 삭제 (글로벌 최신) / DUP_DIFF customized init·end·start·project-start만 보존
+  - IIFF: 25 → 4 (end / init / project-start / start — Next.js·i18n·GSAP 특화 보존)
+  - JooJooLand: 25 → 0
+  - SodamFN: 23 → 2 (end / start — "셈하나" 특화 보존)
+  - TanTanEDU: 25 → 0
+  - TwinverseAI: 25 → 0
+  - gaongn.net: 25 → 0
+  - 합계 123 → 6 (117개 폴더 삭제)
+  - 효과: 글로벌 스킬 셋이 모든 프로젝트에 일관 적용. design 스킬 업데이트 시 자동 전파.
+
+- **글로벌 신규 등록 / description 보강:**
+  - `seedance-universal`, `ppt` (이번 세션 신규)
+  - `init`, `project-start` (TwinverseAI 로컬에서 글로벌로 승격 — 이번 세션 초반)
+  - `project-start-api`, `project-start-blank`, `project-start-web` 3개 변형은 frontmatter 자체가 없어서 description이 슬래시 명령만 표시되던 상태 → frontmatter (`name` / `description` / `user-invocable: true`) 추가하여 발견성 향상.
+
+### Git 활동
+
+- 커밋: `feat: 사업계획서 메뉴 추가 + TwinverseAI 2026 BP 15장 프리뷰` (592f301) — frontend/src/components/layout/TopBar.jsx + frontend/public/business-plan-2026.html
+- 미커밋: `.claude/skills/*` 35개 폴더 삭제 (글로벌 정리 결과) — 본 /end 세션에서 별도 commit 예정
+
+### 다음 세션 참고
+
+- **루트 작업용 사본**: `twinverseai-2026-bp-preview.html` 가 프로젝트 루트에 untracked로 남아 있음. `frontend/public/business-plan-2026.html` 가 정식 배포본. 한 쪽만 수정 시 동기화 어긋남 주의 — 향후 사본 삭제 또는 `.gitignore` 추가 검토.
+- **BP 데이터**: 차트·KPI·재무 수치는 placeholder. 실제 TwinverseAI 트랙션·재무로 교체 필요.
+- **PPTX 변환**: HTML 프리뷰는 시각 검증용. 발표용 .pptx는 python-pptx 스크립트로 변환 가능 (next session).
+- **Slide 11 (팀)** 의 Hero Gradient 카드는 deck 전체 max 3개 룰에서 4번째에 해당 — 정식 적용 시 확인 필요.
+
+---
