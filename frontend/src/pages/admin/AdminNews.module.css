@@ -41,6 +41,45 @@
   line-height: 1.6;
 }
 
+/* ── Status Filter Bar ── */
+
+.filterBar {
+  display: flex;
+  gap: var(--sp-2, 0.5rem);
+  flex-wrap: wrap;
+  margin-top: var(--sp-4, 1rem);
+}
+
+.filterBtn {
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: 500;
+  padding: 0.4rem 0.85rem;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-tertiary, #888);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  border-radius: var(--radius-sm, 5px);
+  cursor: pointer;
+  transition: all var(--dur-fast, 120ms);
+}
+
+.filterBtn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary, #ccc);
+  border-color: var(--border-default, rgba(255, 255, 255, 0.15));
+}
+
+.filterBtnActive {
+  background: rgba(0, 212, 255, 0.12);
+  color: var(--neon-cyan, #00d4ff);
+  border-color: rgba(0, 212, 255, 0.4);
+}
+
+.filterBtnActive:hover {
+  background: rgba(0, 212, 255, 0.18);
+  color: var(--neon-cyan, #00d4ff);
+}
+
 /* ── News List ── */
 
 .list {

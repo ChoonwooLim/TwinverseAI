@@ -456,7 +456,19 @@ async def lifespan(app: FastAPI):
             cleanup_orphaned_sessions(db)
     except Exception as e:
         print(f"[ps2] Orphan cleanup error: {e}")
+    # Start news-watch scheduler (daily Claude Code/skill/plugin crawl)
+    try:
+        from services.news_crawler.scheduler import start_scheduler
+        start_scheduler()
+    except Exception as e:
+        print(f"[news_crawler] scheduler start error (non-fatal): {e}")
     yield
+    # Shutdown
+    try:
+        from services.news_crawler.scheduler import stop_scheduler
+        stop_scheduler()
+    except Exception as e:
+        print(f"[news_crawler] scheduler stop error (non-fatal): {e}")
 
 app = FastAPI(title="TwinverseAI API", lifespan=lifespan)
 app.state.limiter = limiter

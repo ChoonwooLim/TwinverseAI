@@ -13,3 +13,4 @@ psutil==7.0.0
 httpx
 paramiko==3.5.0
 websockets==13.1
+apscheduler==3.10.4
