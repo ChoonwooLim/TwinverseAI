@@ -1413,3 +1413,75 @@ OpenClaw 롤백 후에도 `https://twinverseai.twinverse.org/admin/...` 가 502 
 - **Slide 11 (팀)** 의 Hero Gradient 카드는 deck 전체 max 3개 룰에서 4번째에 해당 — 정식 적용 시 확인 필요.
 
 ---
+
+## 2026-05-05 (Claude Code news-watch 자동화 + Karpathy 모드 + claude-mem 도입)
+
+### 작업 요약
+
+| 카테고리 | 작업 내용 | 상태 |
+|---------|----------|------|
+| infra | Karpathy 4원칙 발췌를 글로벌 CLAUDE.md 에, 풀버전을 `karpathy-mode` 스킬로 도입 | 완료 |
+| feat | news-watch 백엔드 (DB 스키마 + LLM 분석 + 4 크롤러 + APScheduler cron + 6 endpoint) | 완료 |
+| feat | OpenClaw 풀 Python WebSocket 클라이언트 (Ed25519, 463줄) — NPC chat (Task 0.5.12) 동시 unblock | 완료 |
+| feat | AdminNews 행별 [적용][무시] 버튼 + NewsActionModal (apply_action.type 별 분기) | 완료 |
+| feat | LLM 프롬프트 강화 (잡음 필터링) + 신뢰도 floor 0.7→0.8 | 완료 |
+| fix | NewsActionModal 의 멀티스텝 명령을 N개 번호 블록으로 분리 (Windows paste merge 버그 차단) | 완료 |
+| docs | TwinverseAI 2026 BP preview HTML (slides 1-3, overflow-safe) | 완료 |
+| chore | claude-mem 플러그인 도입 (project + user scope) | 완료 |
+
+### 세부 내용
+
+- **Karpathy 모드 도입 (`forrestchang/andrej-karpathy-skills` 4원칙)**
+  - 분석: 시스템 프롬프트와 50% 중복, 진짜 새 가치는 원칙 1 (Think Before Coding) + 원칙 4 (verify-loop)
+  - 도입 방식: 옵션 E + D 결합 — 글로벌 CLAUDE.md 상단에 발췌 12줄, 풀 4원칙은 `~/.claude/skills/karpathy-mode/SKILL.md` (152줄)
+  - 자동 발동: 비자명 task 시 모델 판단, 명시 호출 `/karpathy-mode`
+  - trivial task 제외 명시 (오타·한 줄 수정·명확한 명령은 미적용)
+
+- **news-watch 자동화 시스템 — 6 Phase 완성**
+  - **Phase 1 — DB 스키마**: `claudenews` 에 `apply_status` (pending/applied/info_only/needs_approval/approved/ignored/failed), `apply_action` (JSON), `applied_at`, `requires_approval` 4 컬럼 + 2 인덱스. Alembic `f1a2b3c4d5e6` 마이그레이션, 기존 5 행은 `info_only` 로 backfill.
+  - **Phase 2.1 — OpenClaw Python 클라이언트** (`backend/services/openclaw_gateway.py`, 463줄, async): WebSocket + Ed25519 device 서명 + 모던 프로토콜 v3 handshake + tick keepalive + chat.send 스트리밍. NPC chat (Task 0.5.12 Step 3) 도 동일 클래스로 unblock.
+  - **Phase 2.2 — LLM 분석기** (`backend/services/news_crawler/llm.py`): Ollama qwen2.5:7b 1차 (JSON-mode 강제) + OpenClaw `openai-codex/gpt-5.5` 2차 폴백 (신뢰도 < 0.8 또는 Ollama 실패 시 escalate). 한국어 출력 + JSON 스키마 강제 + apply_action.type 자동 결정.
+  - **Phase 2.3-2.5 — 4 크롤러**: `claude_code_releases` (anthropics/claude-code GitHub releases) + `plugin_marketplace` (topic:claude-code-plugin top10) + `skill_marketplace` (topic:claude-code-skill top10) + `curator_repos` (forrestchang/obra 등 하드코딩 큐레이터 commits). dedup by source_url + 부정적 캐시 (irrelevant 도 ignored 로 적재해 재분석 방지).
+  - **Phase 4 — APScheduler cron + 엔드포인트**: 매일 09:00 KST 자동 실행 (`NEWS_CRAWL_CRON` env 로 변경), `NEWS_CRAWL_ENABLED=0` 비활성, `NEWS_CRAWL_RUN_ON_STARTUP=1` 부팅 직후 실행. 신규 6 엔드포인트: `/list?status=`, `/{id}`, `/refresh` (admin), `/scheduler/status` (admin), `/{id}/mark-applied`, `/{id}/ignore`, `/{id}/approve`.
+  - **Phase 5 — `news-watch` Claude Code 스킬** (`~/.claude/skills/news-watch/SKILL.md`): pending/approved/needs_approval 항목 브리핑 + apply_action.type 별 처리 (install_skill clone / install_plugin 명령 안내 / edit_claude_md 큐잉 / info_only 인식 표시). 안전장치: 화이트리스트 (anthropics/forrestchang/obra) + stars ≥ 100 미달 시 사용자 confirm.
+  - **Phase 6 — AdminNews UI**: apply_status 뱃지 + 5단 필터 (전체/대기/승인필요/적용됨/정보) + 행별 [적용][무시] 버튼 + `NewsActionModal` (apply_action.type 별 모달).
+
+- **Orbitron 배포 + 토큰/페어링 동기화**
+  - 푸시 후 자동 배포 트리거 → 컨테이너 재기동 (Cloudflare 터널 일시 502 발생, 사용자 재부팅 + 수동 fix 로 해결)
+  - Orbitron 컨테이너의 `OPENCLAW_TOKEN` 이 게이트웨이 `gateway.auth.token` 과 이미 일치 확인 (sha256 동일)
+  - Orbitron Python device 가 처음 connect 시 NOT_PAIRED → twinverse-ai 게이트웨이에서 `openclaw devices approve <requestId>` 로 승인 → e2e chat 라운드트립 ("pong") 검증
+  - 로컬 Python device 도 동일 절차로 페어링 (메모리 카드 `reference_openclaw_python_client.md` 추가)
+
+- **NewsActionModal 멀티스텝 명령 분리 (회귀 차단)**
+  - 증상: 모달의 두 명령 (`/plugin marketplace add` + `/plugin install`) 을 사용자가 한 번에 paste → Claude Code 가 두 슬래시를 한 명령으로 합쳐 처리 → Windows 경로에 줄바꿈/공백 침입 → "Failed to clone marketplace repository: Invalid argument"
+  - 해결: `commandBlocks` 배열 도입, 각 명령이 1️⃣ 2️⃣ 라벨 + 자체 [복사] 버튼을 가지는 독립 카드. 한 번에 복사할 수 없는 구조로 회귀 차단.
+
+- **LLM 프롬프트 강화 + 신뢰도 floor 상향**
+  - 화면에서 관측된 분류 미스 (포맷팅 commit → "일반/대기", v2.1.111 → "기능") 를 줄이기 위해 프롬프트에 ALWAYS_RELEVANT 화이트리스트 + NOT_RELEVANT 패턴 명시 + 카테고리 결정 트리 추가.
+  - 신뢰도 floor 0.7 → 0.8 (0.7~0.79 애매한 케이스는 OpenClaw `gpt-5.5` 폴백으로 재평가).
+  - 5개 테스트 케이스 모두 의도대로 분류 검증.
+
+- **claude-mem 플러그인 도입 (자동 메모리 압축)**
+  - 출처: `thedotmack/claude-mem` (admin/news 의 #1 pending 항목)
+  - 설치: `/plugin marketplace add thedotmack/claude-mem` + `/plugin install claude-mem` (project + user scope)
+  - 활성화: `/reload-plugins` 후 6개 훅 자동 등록 (Setup / SessionStart / UserPromptSubmit / PreToolUse / PostToolUse / Stop)
+
+### Git 활동
+
+- 커밋:
+  - `3c38478 feat: news-watch 자동 크롤러 + LLM 분석 + Claude Code 스킬 통합`
+  - `dbaaac9 feat: AdminNews 행별 [적용][무시] 버튼 + 액션 모달`
+  - `79a5e07 docs: TwinverseAI 2026 Business Plan preview HTML`
+  - `589549f feat: news LLM 프롬프트 강화 + 신뢰도 floor 0.7→0.8`
+  - `942a7d5 fix(news-watch): 모달의 멀티스텝 명령을 N개 번호 블록으로 분리`
+- 미커밋: `.claude/settings.json` (claude-mem 활성화 — 본 /end 에서 commit)
+
+### 다음 세션 참고
+
+- **news-watch 자동 크롤 09:00 KST 첫 실행 결과** 확인. 새 항목이 들어왔는지 admin/news 페이지에서 점검.
+- **claude-mem 효과**: 이 세션 종료 → 다음 세션 시작 시 SessionStart 훅이 발동, 이전 세션 메모리 압축본을 자동 주입. 처음 한 번은 메모리가 비어있어 효과 미미할 수 있고, 두세 세션 누적 후 실효 발생.
+- **claude-mem scope 정리**: 현재 project + user 양쪽 등록. 의심 시 `/plugin uninstall claude-mem` 후 user scope 만 재설치.
+- **OpenClaw Python 클라이언트 NPC chat 활용**: `backend/routers/npc_agent.py` stub 을 같은 클래스로 채워 NPC 채팅 unblock (Task 0.5.12 Step 3) — 별도 세션에서 진행.
+- **TwinverseDesk Office 메타버스 (마일스톤 6)** 는 이 세션 외 — 다음 세션 우선순위.
+
+---

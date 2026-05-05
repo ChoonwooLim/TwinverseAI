@@ -4,26 +4,224 @@
       "title": "공식 플러그인",
       "desc": "Claude Code에 설치된 공식 플러그인 (settings.json)",
       "plugins": [
-        { "name": "superpowers", "displayName": "Superpowers", "source": "claude-plugins-official", "desc": "고급 개발 워크플로우 자동화 — 브레인스토밍, 계획 수립, 코드 리뷰, 디버깅, TDD 등", "features": ["brainstorming: 아이디어 발산 및 구조화", "writing-plans: 다단계 구현 계획 수립", "executing-plans: 체크포인트 기반 단계별 실행", "code-review: PR 코드 리뷰 및 피드백", "systematic-debugging: 체계적 버그 추적", "test-driven-development: TDD 기반 개발", "verification-before-completion: 작업 완료 전 검증", "dispatching-parallel-agents: 독립 작업 병렬 실행", "using-git-worktrees: Git worktree 기반 격리 작업"], "usage": "자동 활성화. 복잡한 작업 시 AI가 자동으로 적절한 워크플로우를 선택합니다.", "requiresKey": false },
-        { "name": "code-review", "displayName": "Code Review", "source": "claude-plugins-official", "desc": "PR 단위 코드 리뷰", "features": ["PR diff 자동 분석 및 라인별 코멘트", "보안 취약점 및 성능 이슈 식별", "코딩 컨벤션 준수 확인"], "usage": "/code-review 명령으로 현재 PR을 리뷰합니다.", "requiresKey": false },
-        { "name": "github", "displayName": "GitHub", "source": "claude-plugins-official", "desc": "GitHub 통합 — Issue, PR, 리포지토리 관리", "features": ["Issue 생성/조회/수정", "PR 생성/리뷰/머지", "리포지토리 정보 조회"], "usage": "gh auth 토큰 연동 후 자동 활성화.", "requiresKey": false },
-        { "name": "figma", "displayName": "Figma", "source": "claude-plugins-official", "desc": "Figma 디자인 통합 — 디자인을 코드로 변환", "features": ["Figma 디자인을 프로덕션 코드로 1:1 변환", "디자인 시스템 규칙 자동 생성", "Code Connect 템플릿 관리", "컴포넌트 라이브러리 생성"], "usage": "/figma-implement-design으로 디자인을 코드로 변환.", "requiresKey": false }
+        {
+          "name": "superpowers",
+          "displayName": "Superpowers",
+          "source": "claude-plugins-official",
+          "desc": "고급 개발 워크플로우 자동화 — 브레인스토밍, 계획 수립, 코드 리뷰, 디버깅, TDD 등",
+          "features": [
+            "brainstorming: 아이디어 발산 및 구조화",
+            "writing-plans: 다단계 구현 계획 수립",
+            "executing-plans: 체크포인트 기반 단계별 실행",
+            "code-review: PR 코드 리뷰 및 피드백",
+            "systematic-debugging: 체계적 버그 추적",
+            "test-driven-development: TDD 기반 개발",
+            "verification-before-completion: 작업 완료 전 검증",
+            "dispatching-parallel-agents: 독립 작업 병렬 실행",
+            "using-git-worktrees: Git worktree 기반 격리 작업"
+          ],
+          "usage": "자동 활성화. 복잡한 작업 시 AI가 자동으로 적절한 워크플로우를 선택합니다.",
+          "requiresKey": false
+        },
+        {
+          "name": "code-review",
+          "displayName": "Code Review",
+          "source": "claude-plugins-official",
+          "desc": "PR 단위 코드 리뷰",
+          "features": [
+            "PR diff 자동 분석 및 라인별 코멘트",
+            "보안 취약점 및 성능 이슈 식별",
+            "코딩 컨벤션 준수 확인"
+          ],
+          "usage": "/code-review 명령으로 현재 PR을 리뷰합니다.",
+          "requiresKey": false
+        },
+        {
+          "name": "github",
+          "displayName": "GitHub",
+          "source": "claude-plugins-official",
+          "desc": "GitHub 통합 — Issue, PR, 리포지토리 관리",
+          "features": [
+            "Issue 생성/조회/수정",
+            "PR 생성/리뷰/머지",
+            "리포지토리 정보 조회"
+          ],
+          "usage": "gh auth 토큰 연동 후 자동 활성화.",
+          "requiresKey": false
+        },
+        {
+          "name": "figma",
+          "displayName": "Figma",
+          "source": "claude-plugins-official",
+          "desc": "Figma 디자인 통합 — 디자인을 코드로 변환",
+          "features": [
+            "Figma 디자인을 프로덕션 코드로 1:1 변환",
+            "디자인 시스템 규칙 자동 생성",
+            "Code Connect 템플릿 관리",
+            "컴포넌트 라이브러리 생성"
+          ],
+          "usage": "/figma-implement-design으로 디자인을 코드로 변환.",
+          "requiresKey": false
+        }
       ]
     },
     {
       "title": "MCP 서버",
       "desc": "Model Context Protocol 기반 외부 도구 서버 (settings.local.json)",
       "plugins": [
-        { "name": "context7", "displayName": "Context7", "source": "@upstash/context7-mcp", "desc": "라이브러리 최신 문서 실시간 조회", "features": ["npm/PyPI 라이브러리 최신 문서 조회", "API 변경사항 자동 반영", "코드 작성 시 최신 사용법 참조"], "usage": "자동 활성화. 코드 작성 시 AI가 최신 API 문서를 자동 참조.", "requiresKey": false },
-        { "name": "github-mcp", "displayName": "GitHub (MCP)", "source": "@modelcontextprotocol/server-github", "desc": "GitHub API 직접 접근", "features": ["Issue/PR CRUD 및 검색", "리포지토리 파일 읽기/쓰기", "GitHub Actions 관리"], "usage": "GITHUB_PERSONAL_ACCESS_TOKEN 필요.", "requiresKey": true, "keyName": "GITHUB_PERSONAL_ACCESS_TOKEN" },
-        { "name": "postgres", "displayName": "PostgreSQL", "source": "@modelcontextprotocol/server-postgres", "desc": "프로젝트 DB 직접 쿼리", "features": ["테이블 스키마 자동 조회", "SELECT/INSERT/UPDATE 쿼리 실행", "데이터 무결성 확인"], "usage": "DATABASE_URL 필요.", "requiresKey": true, "keyName": "DATABASE_URL" },
-        { "name": "puppeteer", "displayName": "Puppeteer", "source": "@modelcontextprotocol/server-puppeteer", "desc": "헤드리스 브라우저 제어", "features": ["페이지 스크린샷 캡처", "폼 자동 입력 및 클릭", "DOM 요소 추출 및 분석"], "usage": "자동 활성화.", "requiresKey": false },
-        { "name": "sequential-thinking", "displayName": "Sequential Thinking", "source": "@modelcontextprotocol/server-sequential-thinking", "desc": "복잡한 문제 단계별 추론", "features": ["복잡한 아키텍처 설계 지원", "다단계 디버깅 추론", "의사결정 트리 분석"], "usage": "자동 활성화.", "requiresKey": false },
-        { "name": "memory", "displayName": "Memory", "source": "@modelcontextprotocol/server-memory", "desc": "지식 그래프 기반 장기 기억", "features": ["엔티티/관계 기반 지식 저장", "이전 대화 맥락 자동 복원", "프로젝트 히스토리 추적"], "usage": "자동 활성화.", "requiresKey": false },
-        { "name": "brave-search", "displayName": "Brave Search", "source": "@modelcontextprotocol/server-brave-search", "desc": "웹 검색", "features": ["프라이버시 중심 웹 검색", "에러 메시지 검색 및 해결법 제안", "최신 기술 문서 조회"], "usage": "BRAVE_API_KEY 필요.", "requiresKey": true, "keyName": "BRAVE_API_KEY" },
-        { "name": "filesystem", "displayName": "Filesystem", "source": "@modelcontextprotocol/server-filesystem", "desc": "확장 파일 시스템 조작", "features": ["파일/디렉토리 검색 및 탐색", "파일 이동/복사/이름변경", "디렉토리 트리 시각화"], "usage": "자동 활성화.", "requiresKey": false },
-        { "name": "fetch", "displayName": "Fetch", "source": "@modelcontextprotocol/server-fetch", "desc": "외부 HTTP API 호출", "features": ["GET/POST/PUT/DELETE 요청", "웹페이지 내용 추출", "API 응답 분석"], "usage": "자동 활성화.", "requiresKey": false },
-        { "name": "docker", "displayName": "Docker", "source": "@modelcontextprotocol/server-docker", "desc": "Docker 관리", "features": ["Docker 이미지 빌드/풀", "컨테이너 실행/중지/재시작", "컨테이너 로그 조회"], "usage": "자동 활성화.", "requiresKey": false }
+        {
+          "name": "context7",
+          "displayName": "Context7",
+          "source": "@upstash/context7-mcp",
+          "desc": "라이브러리 최신 문서 실시간 조회",
+          "features": [
+            "npm/PyPI 라이브러리 최신 문서 조회",
+            "API 변경사항 자동 반영",
+            "코드 작성 시 최신 사용법 참조"
+          ],
+          "usage": "자동 활성화. 코드 작성 시 AI가 최신 API 문서를 자동 참조.",
+          "requiresKey": false
+        },
+        {
+          "name": "github-mcp",
+          "displayName": "GitHub (MCP)",
+          "source": "@modelcontextprotocol/server-github",
+          "desc": "GitHub API 직접 접근",
+          "features": [
+            "Issue/PR CRUD 및 검색",
+            "리포지토리 파일 읽기/쓰기",
+            "GitHub Actions 관리"
+          ],
+          "usage": "GITHUB_PERSONAL_ACCESS_TOKEN 필요.",
+          "requiresKey": true,
+          "keyName": "GITHUB_PERSONAL_ACCESS_TOKEN"
+        },
+        {
+          "name": "postgres",
+          "displayName": "PostgreSQL",
+          "source": "@modelcontextprotocol/server-postgres",
+          "desc": "프로젝트 DB 직접 쿼리",
+          "features": [
+            "테이블 스키마 자동 조회",
+            "SELECT/INSERT/UPDATE 쿼리 실행",
+            "데이터 무결성 확인"
+          ],
+          "usage": "DATABASE_URL 필요.",
+          "requiresKey": true,
+          "keyName": "DATABASE_URL"
+        },
+        {
+          "name": "puppeteer",
+          "displayName": "Puppeteer",
+          "source": "@modelcontextprotocol/server-puppeteer",
+          "desc": "헤드리스 브라우저 제어",
+          "features": [
+            "페이지 스크린샷 캡처",
+            "폼 자동 입력 및 클릭",
+            "DOM 요소 추출 및 분석"
+          ],
+          "usage": "자동 활성화.",
+          "requiresKey": false
+        },
+        {
+          "name": "sequential-thinking",
+          "displayName": "Sequential Thinking",
+          "source": "@modelcontextprotocol/server-sequential-thinking",
+          "desc": "복잡한 문제 단계별 추론",
+          "features": [
+            "복잡한 아키텍처 설계 지원",
+            "다단계 디버깅 추론",
+            "의사결정 트리 분석"
+          ],
+          "usage": "자동 활성화.",
+          "requiresKey": false
+        },
+        {
+          "name": "memory",
+          "displayName": "Memory",
+          "source": "@modelcontextprotocol/server-memory",
+          "desc": "지식 그래프 기반 장기 기억",
+          "features": [
+            "엔티티/관계 기반 지식 저장",
+            "이전 대화 맥락 자동 복원",
+            "프로젝트 히스토리 추적"
+          ],
+          "usage": "자동 활성화.",
+          "requiresKey": false
+        },
+        {
+          "name": "brave-search",
+          "displayName": "Brave Search",
+          "source": "@modelcontextprotocol/server-brave-search",
+          "desc": "웹 검색",
+          "features": [
+            "프라이버시 중심 웹 검색",
+            "에러 메시지 검색 및 해결법 제안",
+            "최신 기술 문서 조회"
+          ],
+          "usage": "BRAVE_API_KEY 필요.",
+          "requiresKey": true,
+          "keyName": "BRAVE_API_KEY"
+        },
+        {
+          "name": "filesystem",
+          "displayName": "Filesystem",
+          "source": "@modelcontextprotocol/server-filesystem",
+          "desc": "확장 파일 시스템 조작",
+          "features": [
+            "파일/디렉토리 검색 및 탐색",
+            "파일 이동/복사/이름변경",
+            "디렉토리 트리 시각화"
+          ],
+          "usage": "자동 활성화.",
+          "requiresKey": false
+        },
+        {
+          "name": "fetch",
+          "displayName": "Fetch",
+          "source": "@modelcontextprotocol/server-fetch",
+          "desc": "외부 HTTP API 호출",
+          "features": [
+            "GET/POST/PUT/DELETE 요청",
+            "웹페이지 내용 추출",
+            "API 응답 분석"
+          ],
+          "usage": "자동 활성화.",
+          "requiresKey": false
+        },
+        {
+          "name": "docker",
+          "displayName": "Docker",
+          "source": "@modelcontextprotocol/server-docker",
+          "desc": "Docker 관리",
+          "features": [
+            "Docker 이미지 빌드/풀",
+            "컨테이너 실행/중지/재시작",
+            "컨테이너 로그 조회"
+          ],
+          "usage": "자동 활성화.",
+          "requiresKey": false
+        }
+      ]
+    },
+    {
+      "title": "자동 발견 (Auto-discovered)",
+      "desc": "/end 스킬이 발견한 신규 플러그인 — 상세 정보는 수동 보강 필요",
+      "plugins": [
+        {
+          "name": "claude-mem",
+          "displayName": "Claude Memory",
+          "source": "thedotmack/claude-mem (marketplace)",
+          "desc": "Persistent memory compression for Claude Code sessions. SessionStart 훅이 이전 세션 메모리를 자동 주입, Stop 훅이 종료 시 압축 저장. 6 훅 자동 등록 (Setup/SessionStart/UserPromptSubmit/PreToolUse/PostToolUse/Stop).",
+          "features": [
+            "세션 종료 시 자동 압축 저장",
+            "새 세션 시작 시 이전 메모리 자동 주입",
+            "도구 사용 결과 메모리화",
+            "tree-sitter 기반 코드 컨텍스트"
+          ],
+          "usage": "/plugin marketplace add thedotmack/claude-mem → /plugin install claude-mem → /reload-plugins. 이후 자동 작동.",
+          "requiresKey": false
+        }
       ]
     }
   ]

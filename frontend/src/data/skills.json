@@ -8,35 +8,64 @@
           "name": "start",
           "command": "/start",
           "desc": "새 작업 세션 시작 — 프로젝트 컨텍스트 자동 로드",
-          "features": ["git status, 최근 커밋, 브랜치 상태 자동 파악", "CLAUDE.md, docs/ 문서 자동 읽기", "이전 세션 작업 내역 요약 표시"],
+          "features": [
+            "git status, 최근 커밋, 브랜치 상태 자동 파악",
+            "CLAUDE.md, docs/ 문서 자동 읽기",
+            "이전 세션 작업 내역 요약 표시"
+          ],
           "usage": "세션 시작 시 /start 입력. AI가 프로젝트 현재 상태를 파악하고 이전 작업을 이어갈 준비를 합니다."
         },
         {
           "name": "end",
           "command": "/end",
           "desc": "작업 세션 종료 — 프로젝트 문서 자동 업데이트, 커밋, 요약 보고",
-          "features": ["git log 분석으로 작업 내역 자동 분류 (feat/fix/style/docs)", "docs/ 4개 문서 자동 업데이트", "변경사항 자동 커밋 & 푸시", "AI 스킬/플러그인 목록 자동 동기화", "세션 종료 보고서 생성"],
+          "features": [
+            "git log 분석으로 작업 내역 자동 분류 (feat/fix/style/docs)",
+            "docs/ 4개 문서 자동 업데이트",
+            "변경사항 자동 커밋 & 푸시",
+            "AI 스킬/플러그인 목록 자동 동기화",
+            "세션 종료 보고서 생성"
+          ],
           "usage": "작업 완료 후 /end 입력. 문서 업데이트 → 스킬/플러그인 동기화 → 커밋 → 푸시 → 요약 보고까지 자동 수행됩니다."
         },
         {
           "name": "init",
           "command": "/init",
           "desc": "프로젝트 초기 세팅 — 전체 풀스택 프로젝트를 원클릭으로 생성",
-          "features": ["Git 초기화 (main 브랜치)", "FastAPI 백엔드 (JWT 인증, CRUD API, 파일 업로드)", "React + Vite 프론트엔드 (라우팅, 레이아웃, 페이지 16종)", "커뮤니티 게시판 4종 (공지사항, Q&A, 갤러리, 동영상)", "어드민 대시보드 (사용자/게시판 관리, 스킬/플러그인 뷰어, 문서 뷰어)", "Dark Glass Neon 디자인 시스템 (22개 CSS 모듈)", "멀티스테이지 Dockerfile (Orbitron 배포용)", "프로젝트 문서 초기화 (dev-plan.md, work-log.md 등)"],
+          "features": [
+            "Git 초기화 (main 브랜치)",
+            "FastAPI 백엔드 (JWT 인증, CRUD API, 파일 업로드)",
+            "React + Vite 프론트엔드 (라우팅, 레이아웃, 페이지 16종)",
+            "커뮤니티 게시판 4종 (공지사항, Q&A, 갤러리, 동영상)",
+            "어드민 대시보드 (사용자/게시판 관리, 스킬/플러그인 뷰어, 문서 뷰어)",
+            "Dark Glass Neon 디자인 시스템 (22개 CSS 모듈)",
+            "멀티스테이지 Dockerfile (Orbitron 배포용)",
+            "프로젝트 문서 초기화 (dev-plan.md, work-log.md 등)"
+          ],
           "usage": "빈 디렉토리에서 /init 입력. 전체 프로젝트가 자동 생성됩니다."
         },
         {
           "name": "project-start",
           "command": "/project-start",
           "desc": "원스톱 프로젝트 부트스트랩 — /init → MCP 세팅 → /end 까지 자동 실행",
-          "features": ["/init 스킬 자동 호출", "MCP 서버 템플릿 자동 머지 (settings.local.json)", "/end 스킬로 초기 문서 생성 & 커밋"],
+          "features": [
+            "/init 스킬 자동 호출",
+            "MCP 서버 템플릿 자동 머지 (settings.local.json)",
+            "/end 스킬로 초기 문서 생성 & 커밋"
+          ],
           "usage": "완전 새 프로젝트 시작 시 /project-start 입력. 모든 초기 세팅이 한 번에 완료됩니다."
         },
         {
           "name": "ultraplan",
           "command": "/ultraplan",
           "desc": "심층 구현 계획 수립 — 멀티 에이전트 분석, 리스크 평가, 단계별 실행 계획 자동 생성",
-          "features": ["3단계 모드: Simple / Standard / Deep (자동 선택)", "병렬 Explore 에이전트로 코드베이스 심층 분석", "리스크 평가 (P0~P3 등급) + 롤백 계획", "단계별 실행 계획 + 검증 체크리스트", "사용자 승인 후 자동 실행"],
+          "features": [
+            "3단계 모드: Simple / Standard / Deep (자동 선택)",
+            "병렬 Explore 에이전트로 코드베이스 심층 분석",
+            "리스크 평가 (P0~P3 등급) + 롤백 계획",
+            "단계별 실행 계획 + 검증 체크리스트",
+            "사용자 승인 후 자동 실행"
+          ],
           "usage": "/ultraplan <작업 설명> 입력. 예: /ultraplan migrate auth from sessions to JWTs. --deep, --simple 플래그로 모드 지정 가능."
         }
       ]
@@ -45,35 +74,295 @@
       "title": "디자인 & UX",
       "desc": "UI 디자인, 애니메이션, 레이아웃, 접근성 등 프론트엔드 품질 향상 스킬",
       "skills": [
-        { "name": "frontend-design", "command": "/frontend-design", "desc": "프로덕션급 프론트엔드 인터페이스 생성", "features": ["페이지/컴포넌트 신규 생성 시 고품질 디자인 자동 적용", "프로젝트 디자인 시스템 자동 참조", "반응형 레이아웃, 접근성, 다크모드 고려"], "usage": "새 페이지나 컴포넌트를 만들 때 /frontend-design 입력." },
-        { "name": "animate", "command": "/animate", "desc": "애니메이션, 마이크로 인터랙션, 모션 효과 추가", "features": ["hover/focus/active 상태 전환", "스크롤 기반 reveal 효과", "로딩/성공/에러 상태 전환 모션"], "usage": "기존 컴포넌트에 생동감을 더할 때 /animate 입력." },
-        { "name": "arrange", "command": "/arrange", "desc": "레이아웃, 간격, 시각적 리듬 개선", "features": ["그리드 레이아웃 최적화", "간격 일관성 보정", "시각적 계층 구조 강화"], "usage": "레이아웃이 어색할 때 /arrange 입력." },
-        { "name": "adapt", "command": "/adapt", "desc": "반응형 디자인 — 다양한 화면 크기, 디바이스 대응", "features": ["브레이크포인트 설정 및 미디어 쿼리", "유동적 레이아웃 및 터치 타겟 최적화", "모바일/태블릿/데스크톱 대응"], "usage": "반응형 대응이 필요할 때 /adapt 입력." },
-        { "name": "audit", "command": "/audit", "desc": "접근성, 성능, 테마, 반응형 등 기술 품질 감사", "features": ["WCAG 접근성 체크", "성능 지표 분석", "P0~P3 심각도 등급 보고서"], "usage": "배포 전 품질 점검 시 /audit 입력." },
-        { "name": "critique", "command": "/critique", "desc": "UX 관점 디자인 평가", "features": ["정량적 점수 산출", "페르소나 기반 테스트", "실행 가능한 피드백 제공"], "usage": "디자인 리뷰가 필요할 때 /critique 입력." },
-        { "name": "polish", "command": "/polish", "desc": "출시 전 최종 품질 패스", "features": ["서브픽셀 정렬 보정", "토큰 일관성 확인", "마이크로 디테일 수정"], "usage": "배포 직전 마무리 다듬기 시 /polish 입력." },
-        { "name": "bolder", "command": "/bolder", "desc": "밋밋한 디자인에 시각적 임팩트 추가", "features": ["대비 강화", "타이포그래피 임팩트", "컬러 포인트 추가"], "usage": "디자인이 심심할 때 /bolder 입력." },
-        { "name": "quieter", "command": "/quieter", "desc": "과도한 디자인을 차분하게 톤 다운", "features": ["강도 감소", "여백 확대", "색상 절제"], "usage": "디자인이 자극적일 때 /quieter 입력." },
-        { "name": "colorize", "command": "/colorize", "desc": "단조로운 UI에 전략적 컬러 추가", "features": ["색상 팔레트 확장", "의미 있는 컬러 코딩", "그라디언트 적용"], "usage": "화면이 단색일 때 /colorize 입력." },
-        { "name": "typeset", "command": "/typeset", "desc": "타이포그래피 개선", "features": ["폰트 선택 최적화", "텍스트 계층 구조 정리", "줄간격/자간 보정"], "usage": "텍스트 계층이 불분명할 때 /typeset 입력." },
-        { "name": "clarify", "command": "/clarify", "desc": "UX 카피 개선", "features": ["에러 메시지 개선", "버튼/레이블 텍스트 최적화", "안내문 재작성"], "usage": "혼란스러운 텍스트가 있을 때 /clarify 입력." },
-        { "name": "delight", "command": "/delight", "desc": "인터페이스에 즐거움과 개성 추가", "features": ["마이크로 인터랙션", "이스터 에그", "개성 있는 빈 상태 디자인"], "usage": "재미가 부족할 때 /delight 입력." },
-        { "name": "distill", "command": "/distill", "desc": "불필요한 복잡성 제거", "features": ["불필요한 요소 제거", "정보 밀도 최적화", "핵심 기능 강조"], "usage": "화면이 복잡할 때 /distill 입력." },
-        { "name": "extract", "command": "/extract", "desc": "재사용 가능한 컴포넌트, 디자인 토큰 추출", "features": ["반복 패턴 컴포넌트화", "디자인 토큰 추출", "디자인 시스템 보강"], "usage": "반복되는 UI 패턴이 있을 때 /extract 입력." },
-        { "name": "harden", "command": "/harden", "desc": "프로덕션 준비 — 에러 핸들링, i18n, 엣지 케이스", "features": ["에러 상태 UI 추가", "긴 텍스트 오버플로우 처리", "i18n 대응 준비"], "usage": "프로덕션 배포 전 /harden 입력." },
-        { "name": "normalize", "command": "/normalize", "desc": "디자인 시스템 표준에 맞게 UI 재정렬", "features": ["토큰 불일치 수정", "스타일 드리프트 보정", "일관성 복원"], "usage": "스타일이 불일치할 때 /normalize 입력." },
-        { "name": "onboard", "command": "/onboard", "desc": "온보딩 플로우, 빈 상태 디자인", "features": ["단계별 온보딩 가이드", "빈 상태 디자인", "첫 사용자 경험 최적화"], "usage": "신규 사용자 경험 개선 시 /onboard 입력." },
-        { "name": "optimize", "command": "/optimize", "desc": "UI 성능 최적화", "features": ["불필요한 리렌더 제거", "이미지 최적화", "코드 스플리팅 적용"], "usage": "화면이 느릴 때 /optimize 입력." },
-        { "name": "overdrive", "command": "/overdrive", "desc": "기술적으로 야심찬 구현", "features": ["WebGL/셰이더 효과", "스프링 기반 물리 애니메이션", "스크롤 기반 리빌"], "usage": "와우 팩터가 필요할 때 /overdrive 입력." },
-        { "name": "teach-impeccable", "command": "/teach-impeccable", "desc": "프로젝트 디자인 컨텍스트 저장 (1회 실행)", "features": ["프로젝트 디자인 가이드라인 분석", "AI 설정 파일에 영구 저장", "이후 모든 디자인 스킬에 자동 적용"], "usage": "프로젝트 초기에 1번 실행." }
+        {
+          "name": "frontend-design",
+          "command": "/frontend-design",
+          "desc": "프로덕션급 프론트엔드 인터페이스 생성",
+          "features": [
+            "페이지/컴포넌트 신규 생성 시 고품질 디자인 자동 적용",
+            "프로젝트 디자인 시스템 자동 참조",
+            "반응형 레이아웃, 접근성, 다크모드 고려"
+          ],
+          "usage": "새 페이지나 컴포넌트를 만들 때 /frontend-design 입력."
+        },
+        {
+          "name": "animate",
+          "command": "/animate",
+          "desc": "애니메이션, 마이크로 인터랙션, 모션 효과 추가",
+          "features": [
+            "hover/focus/active 상태 전환",
+            "스크롤 기반 reveal 효과",
+            "로딩/성공/에러 상태 전환 모션"
+          ],
+          "usage": "기존 컴포넌트에 생동감을 더할 때 /animate 입력."
+        },
+        {
+          "name": "arrange",
+          "command": "/arrange",
+          "desc": "레이아웃, 간격, 시각적 리듬 개선",
+          "features": [
+            "그리드 레이아웃 최적화",
+            "간격 일관성 보정",
+            "시각적 계층 구조 강화"
+          ],
+          "usage": "레이아웃이 어색할 때 /arrange 입력."
+        },
+        {
+          "name": "adapt",
+          "command": "/adapt",
+          "desc": "반응형 디자인 — 다양한 화면 크기, 디바이스 대응",
+          "features": [
+            "브레이크포인트 설정 및 미디어 쿼리",
+            "유동적 레이아웃 및 터치 타겟 최적화",
+            "모바일/태블릿/데스크톱 대응"
+          ],
+          "usage": "반응형 대응이 필요할 때 /adapt 입력."
+        },
+        {
+          "name": "audit",
+          "command": "/audit",
+          "desc": "접근성, 성능, 테마, 반응형 등 기술 품질 감사",
+          "features": [
+            "WCAG 접근성 체크",
+            "성능 지표 분석",
+            "P0~P3 심각도 등급 보고서"
+          ],
+          "usage": "배포 전 품질 점검 시 /audit 입력."
+        },
+        {
+          "name": "critique",
+          "command": "/critique",
+          "desc": "UX 관점 디자인 평가",
+          "features": [
+            "정량적 점수 산출",
+            "페르소나 기반 테스트",
+            "실행 가능한 피드백 제공"
+          ],
+          "usage": "디자인 리뷰가 필요할 때 /critique 입력."
+        },
+        {
+          "name": "polish",
+          "command": "/polish",
+          "desc": "출시 전 최종 품질 패스",
+          "features": [
+            "서브픽셀 정렬 보정",
+            "토큰 일관성 확인",
+            "마이크로 디테일 수정"
+          ],
+          "usage": "배포 직전 마무리 다듬기 시 /polish 입력."
+        },
+        {
+          "name": "bolder",
+          "command": "/bolder",
+          "desc": "밋밋한 디자인에 시각적 임팩트 추가",
+          "features": [
+            "대비 강화",
+            "타이포그래피 임팩트",
+            "컬러 포인트 추가"
+          ],
+          "usage": "디자인이 심심할 때 /bolder 입력."
+        },
+        {
+          "name": "quieter",
+          "command": "/quieter",
+          "desc": "과도한 디자인을 차분하게 톤 다운",
+          "features": [
+            "강도 감소",
+            "여백 확대",
+            "색상 절제"
+          ],
+          "usage": "디자인이 자극적일 때 /quieter 입력."
+        },
+        {
+          "name": "colorize",
+          "command": "/colorize",
+          "desc": "단조로운 UI에 전략적 컬러 추가",
+          "features": [
+            "색상 팔레트 확장",
+            "의미 있는 컬러 코딩",
+            "그라디언트 적용"
+          ],
+          "usage": "화면이 단색일 때 /colorize 입력."
+        },
+        {
+          "name": "typeset",
+          "command": "/typeset",
+          "desc": "타이포그래피 개선",
+          "features": [
+            "폰트 선택 최적화",
+            "텍스트 계층 구조 정리",
+            "줄간격/자간 보정"
+          ],
+          "usage": "텍스트 계층이 불분명할 때 /typeset 입력."
+        },
+        {
+          "name": "clarify",
+          "command": "/clarify",
+          "desc": "UX 카피 개선",
+          "features": [
+            "에러 메시지 개선",
+            "버튼/레이블 텍스트 최적화",
+            "안내문 재작성"
+          ],
+          "usage": "혼란스러운 텍스트가 있을 때 /clarify 입력."
+        },
+        {
+          "name": "delight",
+          "command": "/delight",
+          "desc": "인터페이스에 즐거움과 개성 추가",
+          "features": [
+            "마이크로 인터랙션",
+            "이스터 에그",
+            "개성 있는 빈 상태 디자인"
+          ],
+          "usage": "재미가 부족할 때 /delight 입력."
+        },
+        {
+          "name": "distill",
+          "command": "/distill",
+          "desc": "불필요한 복잡성 제거",
+          "features": [
+            "불필요한 요소 제거",
+            "정보 밀도 최적화",
+            "핵심 기능 강조"
+          ],
+          "usage": "화면이 복잡할 때 /distill 입력."
+        },
+        {
+          "name": "extract",
+          "command": "/extract",
+          "desc": "재사용 가능한 컴포넌트, 디자인 토큰 추출",
+          "features": [
+            "반복 패턴 컴포넌트화",
+            "디자인 토큰 추출",
+            "디자인 시스템 보강"
+          ],
+          "usage": "반복되는 UI 패턴이 있을 때 /extract 입력."
+        },
+        {
+          "name": "harden",
+          "command": "/harden",
+          "desc": "프로덕션 준비 — 에러 핸들링, i18n, 엣지 케이스",
+          "features": [
+            "에러 상태 UI 추가",
+            "긴 텍스트 오버플로우 처리",
+            "i18n 대응 준비"
+          ],
+          "usage": "프로덕션 배포 전 /harden 입력."
+        },
+        {
+          "name": "normalize",
+          "command": "/normalize",
+          "desc": "디자인 시스템 표준에 맞게 UI 재정렬",
+          "features": [
+            "토큰 불일치 수정",
+            "스타일 드리프트 보정",
+            "일관성 복원"
+          ],
+          "usage": "스타일이 불일치할 때 /normalize 입력."
+        },
+        {
+          "name": "onboard",
+          "command": "/onboard",
+          "desc": "온보딩 플로우, 빈 상태 디자인",
+          "features": [
+            "단계별 온보딩 가이드",
+            "빈 상태 디자인",
+            "첫 사용자 경험 최적화"
+          ],
+          "usage": "신규 사용자 경험 개선 시 /onboard 입력."
+        },
+        {
+          "name": "optimize",
+          "command": "/optimize",
+          "desc": "UI 성능 최적화",
+          "features": [
+            "불필요한 리렌더 제거",
+            "이미지 최적화",
+            "코드 스플리팅 적용"
+          ],
+          "usage": "화면이 느릴 때 /optimize 입력."
+        },
+        {
+          "name": "overdrive",
+          "command": "/overdrive",
+          "desc": "기술적으로 야심찬 구현",
+          "features": [
+            "WebGL/셰이더 효과",
+            "스프링 기반 물리 애니메이션",
+            "스크롤 기반 리빌"
+          ],
+          "usage": "와우 팩터가 필요할 때 /overdrive 입력."
+        },
+        {
+          "name": "teach-impeccable",
+          "command": "/teach-impeccable",
+          "desc": "프로젝트 디자인 컨텍스트 저장 (1회 실행)",
+          "features": [
+            "프로젝트 디자인 가이드라인 분석",
+            "AI 설정 파일에 영구 저장",
+            "이후 모든 디자인 스킬에 자동 적용"
+          ],
+          "usage": "프로젝트 초기에 1번 실행."
+        }
       ]
     },
     {
       "title": "코드 품질 & 워크플로우",
       "desc": "코드 리뷰, 코드 단순화 등 개발 품질 관리 스킬",
       "skills": [
-        { "name": "simplify", "command": "/simplify", "desc": "변경된 코드의 재사용성, 품질, 효율성 검토/개선", "features": ["중복 코드 통합", "복잡한 로직 단순화", "성능 개선 포인트 식별"], "usage": "코드 작성 후 /simplify 입력." },
-        { "name": "code-review", "command": "/code-review", "desc": "PR 코드 리뷰", "features": ["PR diff 자동 분석", "버그, 보안 취약점 식별", "코딩 컨벤션 준수 확인"], "usage": "PR 생성 후 /code-review 입력." }
+        {
+          "name": "simplify",
+          "command": "/simplify",
+          "desc": "변경된 코드의 재사용성, 품질, 효율성 검토/개선",
+          "features": [
+            "중복 코드 통합",
+            "복잡한 로직 단순화",
+            "성능 개선 포인트 식별"
+          ],
+          "usage": "코드 작성 후 /simplify 입력."
+        },
+        {
+          "name": "code-review",
+          "command": "/code-review",
+          "desc": "PR 코드 리뷰",
+          "features": [
+            "PR diff 자동 분석",
+            "버그, 보안 취약점 식별",
+            "코딩 컨벤션 준수 확인"
+          ],
+          "usage": "PR 생성 후 /code-review 입력."
+        }
+      ]
+    },
+    {
+      "title": "AI 자동화 (자동 발견)",
+      "desc": "/end 스킬이 발견한 신규 스킬 — 상세 정보는 수동 보강 필요",
+      "skills": [
+        {
+          "name": "Karpathy 모드",
+          "command": "/karpathy-mode",
+          "desc": "Andrej Karpathy 의 LLM 코딩 함정 관찰 4원칙을 무거운/비자명 작업에 강제 적용. 단순 task 제외. (자동 감지된 스킬 — 상세 기능은 추후 업데이트)",
+          "features": [
+            "Think Before Coding",
+            "Simplicity First",
+            "Surgical Changes",
+            "Goal-Driven Execution"
+          ],
+          "usage": "비자명 task 시 자동 발동 또는 명시 호출 /karpathy-mode"
+        },
+        {
+          "name": "News Watch",
+          "command": "/news-watch",
+          "desc": "TwinverseAI 백엔드의 자동 크롤러가 수집한 Claude Code 신규 스킬·플러그인·모드·설정 변경 후보를 브리핑하고 사용자 승인 후 작업공간에 적용. (자동 감지된 스킬)",
+          "features": [
+            "pending/approved/needs_approval 일괄 처리",
+            "install_skill 자동 설치",
+            "install_plugin 명령 안내",
+            "edit_claude_md 큐잉"
+          ],
+          "usage": "/news-watch 직접 호출. admin/news 의 [적용] 버튼과 연동"
+        }
       ]
     }
   ]
