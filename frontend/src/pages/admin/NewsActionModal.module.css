@@ -120,13 +120,24 @@
   color: var(--text-secondary, #ccc);
 }
 
+.cmdGroup {
+  margin: var(--sp-4, 1rem) 0;
+  padding: var(--sp-3, 0.75rem);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-sm, 5px);
+}
+
+.cmdGroup + .cmdGroup {
+  margin-top: var(--sp-3, 0.75rem);
+}
+
 .cmdLabel {
   font-size: var(--text-xs, 0.75rem);
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-tertiary, #888);
-  margin: var(--sp-4, 1rem) 0 var(--sp-2, 0.5rem);
+  letter-spacing: 0.04em;
+  color: var(--neon-cyan, #00d4ff);
+  margin: 0 0 var(--sp-2, 0.5rem);
 }
 
 .codeBlock {
