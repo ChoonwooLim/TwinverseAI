@@ -197,6 +197,49 @@
   border-top: 1px solid var(--border-subtle, rgba(255,255,255,0.06));
 }
 
+/* ── Per-row Action Buttons ── */
+
+.actionRow {
+  display: flex;
+  gap: var(--sp-2, 0.5rem);
+  flex-wrap: wrap;
+  margin-top: var(--sp-4, 1rem);
+  padding-top: var(--sp-3, 0.75rem);
+  border-top: 1px dashed rgba(255, 255, 255, 0.06);
+}
+
+.actionBtn {
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-sm, 0.875rem);
+  font-weight: 500;
+  padding: 0.45rem 0.95rem;
+  border-radius: var(--radius-sm, 5px);
+  cursor: pointer;
+  transition: all var(--dur-fast, 120ms);
+  border: 1px solid transparent;
+}
+
+.actionBtnPrimary {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(0, 212, 255, 0.15) 100%);
+  color: var(--neon-cyan, #00d4ff);
+  border-color: rgba(0, 212, 255, 0.4);
+}
+
+.actionBtnPrimary:hover {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.25) 0%, rgba(0, 212, 255, 0.25) 100%);
+  box-shadow: 0 0 16px rgba(0, 212, 255, 0.2);
+}
+
+.actionBtnDanger {
+  background: rgba(239, 68, 68, 0.08);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.actionBtnDanger:hover {
+  background: rgba(239, 68, 68, 0.16);
+}
+
 /* ── Markdown Content ── */
 
 .markdown {

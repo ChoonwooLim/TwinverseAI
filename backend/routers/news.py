@@ -138,3 +138,26 @@ def mark_ignored(
     session.add(n)
     session.commit()
     return _serialize_list(n)
+
+
+@router.post("/{news_id}/approve")
+def approve_for_apply(
+    news_id: int,
+    admin: User = Depends(require_admin),
+    session: Session = Depends(get_session),
+):
+    """Queue an item for the next /news-watch run.
+
+    Used by the admin UI when the user clicks "Apply" on a config edit
+    (edit_claude_md / edit_settings) — those can't be done from the browser,
+    so the web side just queues with status='approved' and the news-watch
+    skill picks it up on next invocation.
+    """
+    n = session.exec(select(ClaudeNews).where(ClaudeNews.id == news_id)).first()
+    if not n:
+        raise HTTPException(status_code=404, detail="News not found")
+    n.apply_status = "approved"
+    session.add(n)
+    session.commit()
+    logger.info("news #%d approved (queued) by admin %s", news_id, admin.email)
+    return _serialize_list(n)

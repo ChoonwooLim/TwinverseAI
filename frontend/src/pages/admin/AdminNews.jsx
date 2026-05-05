@@ -3,6 +3,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import api from "../../services/api";
 import styles from "./AdminNews.module.css";
+import NewsActionModal from "./NewsActionModal";
 
 const CATEGORY_LABELS = {
   mode: "모드",
@@ -54,6 +55,7 @@ export default function AdminNews() {
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [actionItem, setActionItem] = useState(null);  // open modal for this row
 
   useEffect(() => {
     const url = statusFilter === "all"
@@ -79,6 +81,23 @@ export default function AdminNews() {
       .get(`/api/news/${id}`)
       .then((r) => setDetail(r.data))
       .catch(() => setDetail(null));
+  };
+
+  const openActionModal = async (item, e) => {
+    e?.stopPropagation();
+    // Need full item incl. apply_action — fetch detail if not already.
+    let full = item;
+    if (!item.content || item.apply_action == null) {
+      try {
+        const r = await api.get(`/api/news/${item.id}`);
+        full = r.data;
+      } catch { /* fall back to list snapshot */ }
+    }
+    setActionItem(full);
+  };
+
+  const onApplied = (updated) => {
+    setNewsList((list) => list.map((it) => (it.id === updated.id ? { ...it, ...updated } : it)));
   };
 
   if (loading) return <div className={styles.page}><p style={{ color: "#888" }}>로딩 중...</p></div>;
@@ -169,11 +188,54 @@ export default function AdminNews() {
                 ) : (
                   <p style={{ color: "#888" }}>로딩 중...</p>
                 )}
+                <div className={styles.actionRow}>
+                  {(item.apply_status === "pending" || item.apply_status === "needs_approval" || item.apply_status === "approved") && (
+                    <button
+                      type="button"
+                      className={`${styles.actionBtn} ${styles.actionBtnPrimary}`}
+                      onClick={(e) => openActionModal(item, e)}
+                    >
+                      적용
+                    </button>
+                  )}
+                  {item.apply_status === "info_only" && (
+                    <button
+                      type="button"
+                      className={`${styles.actionBtn} ${styles.actionBtnPrimary}`}
+                      onClick={(e) => openActionModal(item, e)}
+                    >
+                      인식 표시
+                    </button>
+                  )}
+                  {item.apply_status !== "applied" && item.apply_status !== "ignored" && (
+                    <button
+                      type="button"
+                      className={`${styles.actionBtn} ${styles.actionBtnDanger}`}
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        try {
+                          const r = await api.post(`/api/news/${item.id}/ignore`);
+                          onApplied(r.data);
+                        } catch { /* swallow */ }
+                      }}
+                    >
+                      무시
+                    </button>
+                  )}
+                </div>
               </div>
             )}
           </li>
         ))}
       </ul>
+
+      {actionItem && (
+        <NewsActionModal
+          item={actionItem}
+          onClose={() => setActionItem(null)}
+          onApplied={onApplied}
+        />
+      )}
     </div>
   );
 }
