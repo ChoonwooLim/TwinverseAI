@@ -50,7 +50,10 @@ OPENCLAW_NEWS_AGENT_ID = os.getenv("OPENCLAW_NEWS_AGENT_ID", "main")
 OPENCLAW_CHAT_TIMEOUT = float(os.getenv("NEWS_OPENCLAW_TIMEOUT", "300"))
 
 # Confidence threshold below which we escalate to OpenClaw fallback.
-CONFIDENCE_FLOOR = float(os.getenv("NEWS_LLM_CONFIDENCE_FLOOR", "0.7"))
+# Raised 0.7 → 0.8 (2026-05-05) after observing qwen2.5:7b miscategorizing
+# routine release notes as "feature"/"general" with 0.7-0.79 confidence.
+# Borderline cases now re-evaluated by gpt-5.5.
+CONFIDENCE_FLOOR = float(os.getenv("NEWS_LLM_CONFIDENCE_FLOOR", "0.8"))
 
 # Truncate raw content before sending to LLM (qwen2.5:7b context is ~32k but we
 # trim aggressively to keep latency low and avoid drift on long pages).
@@ -61,7 +64,32 @@ MAX_RAW_CHARS = int(os.getenv("NEWS_LLM_MAX_RAW_CHARS", "8000"))
 
 _PROMPT_TEMPLATE = """You analyze a single news/release-note about Claude Code, the Claude API, or related AI dev tooling.
 
-Decide if it is RELEVANT for a Korean developer who uses Claude Code daily on the TwinverseAI codebase. RELEVANT means: a new skill, plugin, mode, feature, model release, configuration change, or noteworthy SDK update. NOT RELEVANT means: marketing fluff, hardware reviews, unrelated AI products, business news without dev impact.
+ALWAYS RELEVANT (set is_relevant=true) if ANY of:
+- Source URL contains "anthropics/claude-code/releases/" or any Claude Code official release tag
+- A new Claude Code skill, plugin, mode, or MCP server is announced
+- A new Claude/Anthropic model release (e.g. Opus, Sonnet, Haiku version bumps)
+- Any noteworthy SDK / API surface change
+
+NOT RELEVANT (set is_relevant=false, category="general", apply_action={{"type":"info_only"}}) ONLY if the source is clearly ONE of:
+- Code formatting / linting / prettier / whitespace-only commits ("format", "fmt", "lint", "prettier", "code formatting", "포맷팅") — must be EXPLICITLY about formatting, not just "and formatting fixed" inside a real release
+- Typo-only fixes, translation-only changes, README/docs grammar tweaks
+- Internal CI / build / test infrastructure tweaks with no user-facing change
+- Dependency version bumps with no behavior change (e.g., "bump foo from 1.2.3 to 1.2.4")
+- Auto-generated commits from release-please / dependabot / renovate
+- Marketing / fundraising / hiring posts without dev impact
+- Empty or single-line commits whose entire description is one short sentence with no specifics
+
+When in doubt → is_relevant=true. False is only for the categories listed above.
+
+CATEGORY DECISION TREE (apply in order, pick first match):
+1. If title/body explicitly says "Claude Code v<X.Y.Z>" or release-notes-style version dump → "update"
+2. If a new Claude Code skill is published (SKILL.md, single skill repo) → "skill"
+3. If a Claude Code plugin (marketplace, .claude-plugin/plugin.json) → "plugin"
+4. If a new Claude Code MODE is announced (Plan mode, Ultraplan, etc.) → "mode"
+5. If a new MCP server, SDK feature, or external integration → "feature"
+6. Otherwise → "general"
+
+CRITICAL: Routine version releases ALWAYS go to "update", never "feature" or "general", even if release notes say "new feature". The category reflects the SOURCE TYPE, not the content sentiment.
 
 Output STRICT JSON ONLY (no prose, no markdown fence). Schema:
 {{
@@ -87,7 +115,7 @@ Rules:
 - Output ONLY the JSON object. No explanation. No code fences.
 - All Korean text in title_ko/summary_ko/content_md.
 - All identifiers (category, type) in English exactly as listed.
-- confidence is your self-rated certainty about the classification (0..1).
+- confidence is your self-rated certainty (0..1). Be conservative: borderline → lower confidence (≤ 0.7) so a stronger model can re-evaluate.
 
 Source URL: {source_url}
 Original title: {title_raw}
