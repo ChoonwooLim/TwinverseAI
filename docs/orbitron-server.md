@@ -1,7 +1,7 @@
 # Orbitron 서버 사양
 
 > 이 문서는 /end 스킬 호출 시 자동 업데이트됩니다.
-> 마지막 업데이트: 2026-04-07
+> 마지막 업데이트: 2026-05-12
 
 ## 하드웨어
 
@@ -9,8 +9,8 @@
 |------|------|
 | 호스트명 | stevenlim-Z270X-Gaming-5 |
 | CPU | Intel Core i7-7700K @ 4.20GHz (4코어 8스레드) |
-| RAM | 64GB DDR4 (가용 ~51GB) |
-| 스토리지 | NVMe SSD 457GB (사용 370GB / 가용 64GB, 사용률 86%) |
+| RAM | 64GB DDR4 (가용 ~55GB) |
+| 스토리지 | NVMe SSD 457GB (사용 236GB / 가용 198GB, 사용률 55%) |
 | GPU 0 | NVIDIA GeForce GTX 1080 8GB (PCIe 01:00.0) |
 | GPU 1 | NVIDIA GeForce GTX 1080 8GB (PCIe 02:00.0) |
 | 네트워크 | 192.168.219.101/24 (내부) |
@@ -20,8 +20,8 @@
 | 항목 | 버전 |
 |------|------|
 | OS | Ubuntu 24.04.4 LTS (Noble Numbat) |
-| 커널 | 6.17.0-20-generic |
-| NVIDIA Driver | 580.126.09 |
+| 커널 | 6.17.0-23-generic |
+| NVIDIA Driver | 580.142 |
 | CUDA | 13.0 (드라이버 레벨) |
 | Docker | 29.2.1 |
 | nvidia-container-toolkit | 1.19.0 |

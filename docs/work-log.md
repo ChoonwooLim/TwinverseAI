@@ -1540,3 +1540,56 @@ OpenClaw 롤백 후에도 `https://twinverseai.twinverse.org/admin/...` 가 502 
 - **DeskRPG 배포 워크플로우 메모 굳히기** — `npm run build` 누락이 또 발생할 가능성 큼. start.sh 안에 자동 빌드 (`cd $DESKRPG_SOURCE && npm run build`) 를 넣을지 검토. trade-off: 매 재시작마다 30 초 빌드 vs 누락 위험. 메모리 `reference_deskrpg_chat_stuck_recovery.md` 에 명시.
 
 ---
+
+## 2026-05-12 (TVDesk Modern Office "Invalid token" — 만료 JWT 자동 감지 시스템 도입)
+
+### 작업 요약
+
+| 카테고리 | 작업 내용 | 상태 |
+|---------|----------|------|
+| fix | TwinverseDesk launch 페이지 Modern Office 실행이 `Invalid token` 으로 무한 실패하던 문제 — 사용자 `localStorage.token` 이 8 시간 TTL 만료 후에도 UI 가 `admin` 표시 유지하며 PS2 spawn 만 거부되는 거짓 로그인 상태에서 갇혀 있었음. 부트 시 1회 + 60s 주기 토큰 검증 시스템 도입으로 재발 차단 | 완료 |
+| chore | `.claude/settings.json` — `claude-mem@thedotmack` 플러그인 활성화 (5/5 도입분 미커밋 carryover) | 완료 |
+
+### 세부 내용
+
+- **근본 원인 진단 (systematic-debugging 4 phase)**
+  - Phase 1: `Invalid token` 문자열은 `backend/deps.py:17` 의 `get_current_user` 에서만 나옴. PS2 health `/api/ps2/health` 응답은 정상 (`gpu_server: 9119d09a7ab4` — twinverse-ai 의 `twinverse-ps2` 컨테이너 hostname) → 서버 자체는 살아있고 인증만 거부됨.
+  - 다중 컴포넌트 증거 수집: main backend (Orbitron `orbitron-twinverseai-mp11f1hh`) 와 PS2 컨테이너의 `SECRET_KEY` 를 각각 sha256 추출해 비교 → 둘 다 `891f0b9828a5efc6` 로 MATCH. 키 drift 가 아님.
+  - 핵심 검증: 새 admin 토큰을 `/api/auth/login` 으로 발급 → `/api/ps2/spawn` 에 직접 POST → HTTP 200 + `session_id` 정상 반환. 토큰 자체 형식·서명 모두 OK. 즉시 `terminate` 로 테스트 세션 정리.
+  - 결론: 사용자 브라우저의 `localStorage.token` 이 만료 (`auth_service.py:21` `ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 8` = 8 시간). `jwt.decode` 가 `ExpiredSignatureError` (JWTError 하위) 던짐 → None → 401 `Invalid token`.
+
+- **"로그인된 척" 거짓말의 구조적 원인**
+  - `frontend/src/services/api.js` 의 401 인터셉터는 main backend 응답에서 강제 로그아웃 + redirect 처리 (단, `/api/auth/*` 경로는 제외).
+  - 그러나 `frontend/src/services/ps2api.js` 는 2026-04-10 인시던트 패치 이후 **의도적으로** 401 인터셉터에서 wipe 를 트리거하지 않음 — GPU 서버 일시 거부가 메인 사이트 세션을 망가뜨리지 않도록.
+  - 부작용: 메인 백엔드 API 를 호출하지 않는 페이지 (예: DeskLaunch) 에 있는 동안 토큰이 만료되면, TopBar 는 `localStorage.user` 의 캐시된 `admin` 이름을 계속 표시 → 사용자는 "로그인 상태"로 인식 → 클릭하면 PS2 만 401.
+
+- **fix 설계 (옵션 전부 채택)**
+  - **A 즉시 복구** — 사용자 logout/login 으로 토큰 갱신 (구현 0)
+  - **B-1 친절한 401 UI** — `DeskLaunch.jsx` `handleSpawn` 의 catch 블록에서 `err.response?.status === 401` 분기 → `setAuthExpired(true)` + `setSpawnError("세션이 만료되었습니다. 다시 로그인해주세요.")` 로 한글 메시지. Retry 버튼을 `<Link to="/login">다시 로그인</Link>` 으로 교체.
+  - **B-2 백엔드 토큰 검증** — `runAuthCheck()` 가 `/api/auth/me` 호출 → 401 시 wipe (API.js 인터셉터는 `/api/auth/*` 경로를 건너뛰므로 수동 처리 필요).
+  - **B-3 클라이언트 exp 디코드** — JWT base64URL 분해 (서명 검증 없이) → `payload.exp` 가 `now` 이하면 즉시 wipe. 네트워크 라운드트립 없이 만료 감지.
+
+- **`frontend/src/services/authCheck.js` (신규, 50 라인)**
+  - `decodeJwtPayload()`: token 의 두번째 segment 를 base64URL → base64 → atob → JSON. 실패는 null.
+  - `clearAuth(reason)`: localStorage `token`/`user` 제거 + `console.warn` + `window.location.reload()`. `/login` 페이지에 있을 땐 reload 안 함 (루프 방지).
+  - `runAuthCheck()`: token 없으면 early return. exp 만료면 즉시 wipe (B-3). 그 외 `serverCheckInFlight` 가드 + `/api/auth/me` 호출 → 401 만 wipe (B-2).
+
+- **`App.jsx` 부트 훅**
+  - `useEffect(() => { runAuthCheck(); const id = setInterval(runAuthCheck, 60000); return () => clearInterval(id); }, [])` — 마운트 1회 + 60s 주기. 60s 는 사용자 인터랙션 부담 없음.
+
+- **검증**
+  - `npm run build` 통과 (983ms, vite 빌드 정상). 신규 파일 `DeskLaunch-BM9fpy4q.js` 크기 18.54 kB → 6.24 kB gzip, 4-5 추가 줄만큼만 증가.
+  - 새 admin 토큰으로 PS2 spawn 200 확인 → 인증 경로 자체는 정상임을 별도로 입증.
+
+- **Git 활동**
+  - `04755c1` — `fix(auth): JWT 만료 자동 감지 + PS2 401 한글 메시지/재로그인 링크`. push 완료 (`b2cc611..04755c1`). Orbitron 자동 재배포 트리거.
+
+### 다음 세션 참고
+
+- **사용자 즉시 액션** — 현재 브라우저 세션은 새 코드를 받으면 60s 안에 자동 wipe + reload 됨. 그 직후 로그인 화면이 떠야 정상. 안 뜨면 Orbitron 재배포가 끝나지 않은 것일 수 있으니 (`docker ps` 로 `orbitron-twinverseai-*` STATUS 가 `Up < 1 minute` 이면 진행중) 잠시 후 새로고침.
+- **api.js 401 인터셉터의 `/api/auth/*` 제외** — `/api/auth/me` 도 이 제외 규칙에 걸려 자동 wipe 가 안 됨. 그래서 `authCheck.js` 가 수동으로 401 catch 후 wipe. 이 비대칭은 의도된 것이지만 코드를 읽는 사람에게 혼란을 줄 수 있음 — 다음 리팩토링 시 endpoint allowlist (예: `/api/auth/login`, `/api/auth/register` 만 제외) 로 좁힐 만함.
+- **다른 페이지의 401 UX** — `DeskLaunch` 만 한글 메시지 분기를 받았음. AdminOpenClawConsole 등 다른 페이지에서 토큰 만료가 발생하면 영문 raw 에러 또는 silent 무시. 부트 체크가 60s 안에 잡으므로 실제 노출은 거의 없지만, "60s 미만 사이에 토큰이 만료되고 그 사이에 사용자가 액션" 시나리오는 여전히 친절하지 않음.
+- **TwinverseDesk Office 메타버스 (마일스톤 6)** — 여전히 이 세션 외. 다음 세션 우선순위 유지.
+- **`.claude/settings.json` claude-mem 활성화** — 이 커밋에 포함 (5/5 도입분의 미커밋 carryover 정리).
+
+---
