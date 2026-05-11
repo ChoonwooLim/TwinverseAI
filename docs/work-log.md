@@ -1485,3 +1485,58 @@ OpenClaw 롤백 후에도 `https://twinverseai.twinverse.org/admin/...` 가 502 
 - **TwinverseDesk Office 메타버스 (마일스톤 6)** 는 이 세션 외 — 다음 세션 우선순위.
 
 ---
+
+## 2026-05-11 (twinverse-ai 드라이버 fix + DeskRPG 정상모드 채팅 stuck 복구)
+
+### 작업 요약
+
+| 카테고리 | 작업 내용 | 상태 |
+|---------|----------|------|
+| fix | twinverse-ai (192.168.219.117) `nvidia-smi` NVML 580.126.09 vs userspace 580.142 mismatch — GRUB 이 6.8.0-107 에 핀 고정된 것 발견, `grub-reboot` one-shot 으로 6.8.0-111 (580.142 매칭) 부팅 → 드라이버 정상화 | 완료 |
+| fix | DeskRPG (`tvdesk.twinverse.org/game`) 정상모드 Chrome 에서 채팅 stuck, 시크릿 모드만 동작 — 3중 원인 (HttpOnly 쿠키 + WS-only transport + `npm run build` 누락) | 완료 |
+| infra | proxy.js (`~/.deskrpg/proxy.js`) verify-then-inject 로 변경 (jwtVerify 후 invalid 면 strip + 새로 발급) | 완료 |
+| infra | `~/.deskrpg/start.sh` 에 `export JWT_SECRET` 추가 — proxy 와 server 가 같은 secret 으로 동기화 | 완료 |
+| feat | 클라 socket.io 트랜스포트 `["polling", "websocket"]` + `upgrade: true` (폴링 우선, WS 는 upgrade) | 완료 |
+| docs | 메모리 신규 2 건: `reference_twinverse_ai_grub_pinning.md`, `reference_deskrpg_chat_stuck_recovery.md` + `reference_twinverse_ai_server.md` 의 커널·드라이버 섹션 업데이트 | 완료 |
+| chore | `.claude/settings.json` — `superpowers` / `code-review` / `claude-mem` 플러그인 활성화 (지난 세션 미커밋분 정리) | 완료 |
+
+### 세부 내용
+
+- **twinverse-ai NVIDIA 드라이버 mismatch 복구**
+  - 증상: `Failed to initialize NVML: Driver/library version mismatch` (커널 모듈 580.126.09 vs 패키지 580.142)
+  - 1차 시도 (A1 → A2): 모듈 reload 시도 → `nvidia_drm` 이 `Xorg`(tty2 GDM 세션) 에 점유돼 unload 실패 → 재부팅 (`sudo reboot`) → 그러나 부팅 후에도 여전히 580.126.09. 깊이 진단 결과 `/etc/default/grub` 에 `GRUB_DEFAULT="...6.8.0-107-generic"` 명시 핀 고정 + 6.8.0-107 커널의 nvidia 모듈 패키지는 repo 에서 580.142 로 안 갱신됨 (deprecated)
+  - 해결 (B1): `sudo grub-reboot "Advanced options for Ubuntu>Ubuntu, with Linux 6.8.0-111-generic"` + reboot → 6.8.0-111 커널 (580.142 모듈 포함) 부팅 → nvidia-smi 정상, Ollama qwen2.5:14b 자동 복구, openclaw 컨테이너 자동 복구
+  - 현재 모드 (C2): one-shot 적용만 — 다음 재부팅 시 자동으로 6.8.0-107 복귀 → 며칠 안정성 관찰 후 영구 변경 (`/etc/default/grub` 수정 + `update-grub`) 여부 결정 보류
+
+- **DeskRPG 정상모드 채팅 stuck — 깊은 진단**
+  - 증상: `wss://tvdesk.twinverse.org/socket.io/?EIO=4&transport=websocket failed: WebSocket is closed before the connection is established` 무한 reconnect. Ctrl+Shift+N (시크릿) 에서는 정상 동작
+  - 진단 시퀀스: 캐릭터(`Steven`)/채널(`twinverse-AI`) DB 매핑 검증 → JWT 토큰 secret 확인 (admin 토큰 `orbitron-twinverseai-secret-key-2026` 으로 정상 서명, exp 2026-05-17) → 폴링 핸드셰이크는 3 경로 (직접·proxy·tunnel) 모두 200 → curl WS upgrade 도 HTTP/1.1 강제 시 101 정상 → 즉, **transport 레벨에선 문제 없음**, 그러나 브라우저 console 에 React render 루프 + `disconnect` cleanup 무한 호출
+  - 3 중 근본 원인 식별:
+    1. **HttpOnly 쿠키 회복 불가**: deskrpg `token` 쿠키가 HttpOnly 라 JS 가 절대 못 지움. 5/1 자가복구 코드의 `document.cookie = "token=; expires=..."` 가 무력 → stale 토큰이 영구 남음. 5/1 패치가 stuck 시나리오를 "감지는 하지만 복구는 못하는" 상태로 만듦.
+    2. **proxy.js 가 토큰 존재만 체크**: 옛 `hasDeskToken()` 은 `token=...` 패턴 매칭만 — 만료/위조도 그대로 통과. 게다가 proxy 가 fallback secret (`twinverse-deskrpg-jwt-secret-2026-04`) 사용 중이라 verify 도 secret mismatch 위험.
+    3. **클라 WS-only**: `transports: ["websocket"], upgrade: false` — WS 첫 attempt 실패 시 폴백 없음, engine.io 가 즉시 disconnect → React useEffect cleanup → 재 mount → 무한 루프.
+  - 추가 함정 (fix 적용 안 되는 것처럼 보이게 한 원인):
+    - **`npm run build` 누락**: DeskRPG 는 Next.js production mode (`bin/deskrpg.js start`) 로 `.next/` 정적 빌드 결과를 서빙. 소스 (`GamePageClient.tsx`) 수정만으로는 배포 안 됨. 5/1 마지막 빌드 그대로였음. 1차 fix 후 사용자 "안돼" 응답 → .next mtime 확인 → 5/1 18:32 발견 → `npm run build` 실행 → 청크 해시 변경됨.
+    - **immutable chunk 캐시**: `/_next/static/chunks/*` 가 `cache-control: public, max-age=31536000, immutable`. 사용자 Ctrl+Shift+R 만으로는 새 chunk 안 받음 — 브라우저 강력새로고침은 immutable 캐시 무시. DevTools → Application → "Clear site data" 필수.
+    - **socket.io transport 순서**: `["websocket", "polling"]` → `["polling", "websocket"]` 로 reverse. 폴링이 핸드셰이크 먼저 완료 후 WS upgrade 시도. WS 실패해도 폴링으로 지속 → 사용자에 따라 확장 (MetaMask SES lockdown 등) 이 WS 차단해도 동작.
+  - 적용 fix 와 commit:
+    - `ChoonwooLim/deskrpg @ 4f3b6fac` — 클라 socket.io 폴링-우선 (`transports: ["polling", "websocket"]` + `upgrade: true`)
+    - `ChoonwooLim/orbitron-infrastructure @ ce2f61f` — proxy.js verify+inject
+    - `ChoonwooLim/orbitron-infrastructure @ d4fd392` — start.sh sync (`export JWT_SECRET`)
+  - 사용자 검증: "Clear site data" 후 "지금돼" 확인. 정상모드 정상 동작.
+
+### Git 활동
+
+- TwinverseAI repo: 미커밋 `.claude/settings.json` 만 (이번 /end 에서 commit)
+- 외부 repo 커밋 (Orbitron 서버):
+  - `ChoonwooLim/deskrpg`: `29c445e4` → `4f3b6fac` (2 commits: 폴링 추가 + 순서 reverse)
+  - `ChoonwooLim/orbitron-infrastructure`: `d1fd44a` → `ce2f61f` → `d4fd392` (proxy verify + start.sh sync)
+
+### 다음 세션 참고
+
+- **twinverse-ai 영구 GRUB 변경 결정** — C2 모드 (one-shot 6.8.0-111) 적용 중. 며칠 6.8.0-111 안정성 관찰 후 `/etc/default/grub` 영구 변경 여부 결정. 영구 변경 시 `GRUB_DEFAULT="...6.8.0-111-generic"` + `sudo update-grub`. 메모리 `reference_twinverse_ai_grub_pinning.md` 참조.
+- **DeskRPG 자가복구 시스템 한계** — HttpOnly 쿠키 못 지우는 문제는 proxy 측 verify+inject 로 우회. 그러나 클라이언트 측 `auth:rejected` / `connect_error` 핸들러의 `document.cookie = "token=; ..."` 코드는 여전히 무력 (placebo). 다음 세션에서 정리하거나, 서버에 `/api/auth/clear-token` 엔드포인트 추가해 HttpOnly 도 지울 수 있게 할 것.
+- **TwinverseDesk Office 메타버스 (마일스톤 6)** — 여전히 이 세션 외. 다음 세션 우선순위 유지.
+- **DeskRPG 배포 워크플로우 메모 굳히기** — `npm run build` 누락이 또 발생할 가능성 큼. start.sh 안에 자동 빌드 (`cd $DESKRPG_SOURCE && npm run build`) 를 넣을지 검토. trade-off: 매 재시작마다 30 초 빌드 vs 누락 위험. 메모리 `reference_deskrpg_chat_stuck_recovery.md` 에 명시.
+
+---
