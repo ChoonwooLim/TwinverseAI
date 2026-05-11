@@ -81,6 +81,7 @@ export default function DeskLaunch() {
     () => LEVELS.find((l) => !l.disabled) || LEVELS[0]
   );
   const [spawnError, setSpawnError] = useState(null);
+  const [authExpired, setAuthExpired] = useState(false);
   const [health, setHealth] = useState(null); // { available, active_instances, max_instances }
   const [healthError, setHealthError] = useState(null); // PS2 API unreachable — visible banner
   const streamRef = useRef(null);
@@ -189,6 +190,7 @@ export default function DeskLaunch() {
     }
     setStatus("spawning");
     setSpawnError(null);
+    setAuthExpired(false);
     try {
       let res;
       if (selectedLevel.isOffice) {
@@ -203,7 +205,12 @@ export default function DeskLaunch() {
       startPolling(res.data.session_id);
     } catch (err) {
       setStatus("error");
-      setSpawnError(err.response?.data?.detail || "Failed to start session");
+      if (err.response?.status === 401) {
+        setAuthExpired(true);
+        setSpawnError("세션이 만료되었습니다. 다시 로그인해주세요.");
+      } else {
+        setSpawnError(err.response?.data?.detail || "Failed to start session");
+      }
     }
   };
 
@@ -273,10 +280,15 @@ export default function DeskLaunch() {
                 End Session
               </button>
             )}
-            {status === "error" && (
+            {status === "error" && !authExpired && (
               <button onClick={handleSpawn} className={styles.spawnBtn}>
                 Retry
               </button>
+            )}
+            {status === "error" && authExpired && (
+              <Link to="/login" className={styles.spawnBtn}>
+                다시 로그인
+              </Link>
             )}
             {!isLoggedIn && (
               <Link to="/login" className={styles.spawnBtn}>

@@ -1,7 +1,8 @@
-import { lazy } from "react";
+import { lazy, useEffect } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import MainLayout from "./components/layout/MainLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
+import { runAuthCheck } from "./services/authCheck";
 
 // Lazy-loaded pages
 const HomePage = lazy(() => import("./pages/HomePage"));
@@ -29,6 +30,15 @@ const DeskLaunch = lazy(() => import("./pages/twinversedesk/DeskLaunch"));
 const TVDeskRun = lazy(() => import("./pages/twinversedesk/TVDeskRun"));
 
 export default function App() {
+  // Validate token on boot + every 60s. Detects expired/revoked JWTs and clears
+  // localStorage so the UI stops showing a stale "admin" name while downstream
+  // services (PS2 GPU, etc.) reject the user. See 2026-05-12 fix.
+  useEffect(() => {
+    runAuthCheck();
+    const id = setInterval(runAuthCheck, 60000);
+    return () => clearInterval(id);
+  }, []);
+
   return (
     <BrowserRouter>
       <Routes>
