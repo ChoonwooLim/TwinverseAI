@@ -42,3 +42,38 @@ def test_parse_color_tokens_ignores_8_digit_hex_with_alpha():
     md = "#cc785c80 should not match; #cc785c should"
     result = parse_color_tokens(md)
     assert result == ["#cc785c"]
+
+
+def test_parse_font_tokens_extracts_font_family_css():
+    md = """
+- font-family: "Inter", sans-serif
+- font-family: 'Noto Sans KR', sans-serif
+"""
+    result = parse_font_tokens(md)
+    assert "Inter" in result
+    assert "Noto Sans KR" in result
+
+
+def test_parse_font_tokens_extracts_unquoted_family():
+    md = "font-family: Helvetica Neue"
+    result = parse_font_tokens(md)
+    assert "Helvetica Neue" in result
+
+
+def test_parse_font_tokens_dedupes():
+    md = """
+font-family: "Inter", sans-serif
+font-family: 'Inter'
+"""
+    result = parse_font_tokens(md)
+    assert result.count("Inter") == 1
+
+
+def test_parse_font_tokens_returns_empty_when_no_fonts():
+    assert parse_font_tokens("just text") == []
+
+
+def test_parse_font_tokens_limits_results():
+    md = "\n".join(f"font-family: 'Font{i}'" for i in range(10))
+    result = parse_font_tokens(md, limit=3)
+    assert len(result) == 3

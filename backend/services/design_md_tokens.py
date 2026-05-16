@@ -4,6 +4,11 @@ from collections import Counter
 
 _HEX_RE = re.compile(r"#[0-9a-fA-F]{3}\b(?![0-9a-fA-F])|#[0-9a-fA-F]{6}\b(?![0-9a-fA-F])")
 
+_FONT_RE = re.compile(
+    r"font-family\s*:\s*['\"]?([^'\"\n,;]+?)['\"]?(?=\s*[,;\n]|\s*$)",
+    re.MULTILINE | re.IGNORECASE,
+)
+
 
 def parse_color_tokens(md: str, limit: int = 12) -> list[str]:
     """DESIGN.md 본문에서 hex 색상 (#RGB 또는 #RRGGBB) 을 빈도순으로 추출.
@@ -21,13 +26,18 @@ def parse_color_tokens(md: str, limit: int = 12) -> list[str]:
 
 
 def parse_font_tokens(md: str, limit: int = 6) -> list[str]:
-    """DESIGN.md 본문에서 폰트 패밀리 이름을 추출.
+    """DESIGN.md 본문에서 'font-family: <Name>' 패턴의 첫 패밀리 이름 추출.
 
-    매칭 패턴:
-      - font-family: "Inter", sans-serif
-      - font-family: Inter
-      - **Font:** Inter
-    빈도순 + dedup + 최대 limit 개.
+    - 따옴표 유무 모두 지원
+    - 첫 패밀리만 (fallback 패밀리는 제외)
+    - 빈도순 + 등장순 + dedup + 최대 limit 개
     """
-    # placeholder — 다음 task 에서 TDD 로 채워질 예정
-    return []
+    matches = []
+    for raw in _FONT_RE.findall(md):
+        name = raw.strip()
+        if name and name.lower() not in {"sans-serif", "serif", "monospace", "system-ui", "inherit"}:
+            matches.append(name)
+    if not matches:
+        return []
+    counts = Counter(matches)
+    return [name for name, _ in counts.most_common(limit)]
