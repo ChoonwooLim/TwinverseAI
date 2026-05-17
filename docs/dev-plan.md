@@ -55,3 +55,4 @@
 | PS2 Dedicated Server | 멀티플레이어 오피스 전용 서버 모델 + 서비스 | 최상 | 완료 |
 | NPC Chat API | LLM 기반 NPC 대화 API (Anthropic/OpenAI) | 높음 | 완료 |
 | Office 멀티플레이어 UI | DeskLaunch Office 모드 + Multiplayer 뱃지 | 높음 | 완료 |
+| 디자인샘플 브라우저 | voltagent/awesome-design-md (MIT, 71개 DESIGN.md) 어드민 통합 — 일람/디테일/토큰 프리뷰 + 백엔드 24h 자동 sync (`/admin/design-md`) | 중간 | 완료 |

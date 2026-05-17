@@ -1593,3 +1593,47 @@ OpenClaw 롤백 후에도 `https://twinverseai.twinverse.org/admin/...` 가 502 
 - **`.claude/settings.json` claude-mem 활성화** — 이 커밋에 포함 (5/5 도입분의 미커밋 carryover 정리).
 
 ---
+
+## 2026-05-17 (디자인샘플 admin 페이지 — voltagent/awesome-design-md 통합)
+
+### 작업 요약
+
+| 카테고리 | 작업 내용 | 상태 |
+|---------|----------|------|
+| feat | Claude Code 사이드바 하위 '디자인샘플' 메뉴 + `/admin/design-md` (일람) + `/admin/design-md/:slug` (디테일) 신규 — voltagent/awesome-design-md (MIT, 71개 DESIGN.md) 브라우저 | 완료 |
+| feat | 백엔드: DesignMd / DesignMdSyncMeta SQLModel + Alembic 마이그레이션 + GitHub 페치 sync 서비스 (httpx 동시 10) + 4 admin endpoint + lifespan 24h 자동 sync 훅 | 완료 |
+| feat | 토큰 파서 (`services/design_md_tokens.py`): hex 색상 + font-family/fontFamily 빈도순 추출 — pytest 12개 테스트 (codebase 최초 pytest 인프라 도입) | 완료 |
+| feat | 프론트엔드 일람 페이지: 카드 그리드 + 검색 + 카테고리 chip 필터 + sync 배지 + 3s polling | 완료 |
+| feat | 프론트엔드 디테일 페이지: 스플릿 뷰 (좌 ReactMarkdown + 우 getdesign.md iframe 8s 폴백), 마크다운 복사/다운로드, 토큰 프리뷰 (CSS variables 를 `.mdPane` 스코프에만) | 완료 |
+| fix | `datetime.utcnow` → `datetime.now` (코드베이스 일관성, Task 3 리뷰 지적) | 완료 |
+| fix | Sync 견고성: empty tree 가드 (DB wipe 방지), delete-by-tree (transient fetch 실패 시 row churn 방지), concurrent sync 가드 | 완료 |
+| fix | Font regex 가 JSX camelCase `fontFamily:` 도 매칭 → font_tokens 0/71 → 52/71 채워짐 | 완료 |
+| docs | Spec (`docs/superpowers/specs/`) + Plan (`docs/superpowers/plans/`) 작성 — brainstorming + writing-plans 워크플로 | 완료 |
+| docs | Memory: subagent workflow overhead 피드백 저장 (단순 wiring 에 풀 ceremony 적용 금지) | 완료 |
+
+### 세부 내용
+
+- **목표** — 어드민이 voltagent/awesome-design-md (https://github.com/voltagent/awesome-design-md) 의 71개 디자인 시스템 마크다운을 브라우저 안에서 일람·검색·미리보기·복사할 수 있게. 카드 클릭 → 좌 DESIGN.md 마크다운 + 우 getdesign.md iframe + 토큰 프리뷰 토글.
+
+- **백엔드** — `models/design_md.py` 두 테이블 (DesignMd: slug PK, name, category, tagline, design_md text, getdesign_url, github_url, color_tokens JSON, font_tokens JSON, last_synced_at / DesignMdSyncMeta: singleton id=1, last_sync_started, last_sync_finished, last_sync_status[never|running|ok|failed], last_sync_error, samples_count). Alembic 리비전 `2026_05_17_design_md`, down_revision `f1a2b3c4d5e6` (news_apply_tracking 다음). `services/design_md_sync.py` 는 GitHub README + `/git/trees/main?recursive=1` 병렬 페치 → `design-md/<slug>/DESIGN.md` 71개 raw 동시 10 페치 → 빈도순 색상/폰트 토큰 추출 → upsert + 사라진 slug 만 삭제 + sync meta 갱신. `routers/design_md.py` 4 endpoint (GET list/detail/sync-status, POST sync 409 conflict, 모두 `require_admin`). `main.py` lifespan 의 `yield` 직전에 24h 자동 sync 훅.
+
+- **프론트엔드** — `Sidebar.jsx:37-46` 의 Claude Code 그룹 children 에 '디자인샘플' 4번째 추가 (최근정보 ↔ Claw Code 사이). `App.jsx` 의 lazy import 패턴 따라 2 라우트. 일람 페이지 `AdminDesignMd.jsx` — useMemo 로 카테고리/필터 캐싱, 검색 + 카테고리 chip + sync 배지 + [지금 동기화] 버튼 (POST 후 3s polling). 디테일 페이지 `AdminDesignMdDetail.jsx` — 좌 `.mdPane` ReactMarkdown + remark-gfm, 우 `.iframeWrap` sandbox iframe (8s onLoad timeout 후 폴백 카드), 액션 5개 (복사/다운로드/토큰 프리뷰/getdesign.md/GitHub). 토큰 프리뷰 ON 시 `--preview-primary/bg/accent/text` + `fontFamily` 를 `.mdPane` 인라인 스타일로만 inject — 사이드바·탑바 무영향. CSS Modules 패턴 (AdminNews 동일).
+
+- **TDD: 토큰 파서** — `services/design_md_tokens.py` 의 `parse_color_tokens(md, limit=12)` 와 `parse_font_tokens(md, limit=6)` 는 순수 함수. `pytest` + `pytest-asyncio` 신규 도입 (codebase 최초 pytest 인프라). 12 테스트: hex frequency / case norm / 12 limit / empty / 3-digit / 8-digit alpha 제외 + font-family / unquoted family / dedupe / empty / limit / JSX camelCase (fontFamily). 첫 sync 후 font_tokens 가 0/71 (voltagent 가 JSX `fontFamily:` 표기 사용) 인 것을 발견 → regex 를 `font[-]?family` 로 확장 + JSX 테스트 추가 → 52/71 채워짐.
+
+- **Sync 견고성 follow-up** — 첫 라이브 sync 후 code review 가 3개 risk 지적: (a) GitHub tree API 가 빈 결과 반환하면 "delete missing" 로직이 DB 전체 wipe (b) transient fetch 실패 1개로 row 삭제 → 다음 sync 에 재생성 = row churn (c) 동시 sync 시 meta race condition. 모두 작은 코드로 방어: (a) `slugs_from_tree` 비어있으면 RuntimeError, (b) delete 기준을 `seen_slugs` → `set(slugs_from_tree)` 로 변경, (c) 시작 시 `last_sync_status == "running"` 이면 `{"status": "already_running"}` early return.
+
+- **E2E 라이브 검증** — admin token 으로 모든 4 endpoint 200 응답 확인. 브라우저에서 `/admin/design-md` 진입 → 사이드바 메뉴 표시 + 71개 카드 그리드 (Airbnb/Airtable/Apple/BMW/.../Claude) 정상 렌더, 검색 + 카테고리 chip 작동, sync 배지 ✅ 71개. Claude 카드 클릭 → 디테일 페이지 빵부스러기 + 제목 + chip + tagline + 5 액션 + DESIGN.md 마크다운 좌측 + iframe 우측. 토큰 프리뷰 ON → `.mdPane` 인라인에 `--preview-primary: #cc785c; --preview-bg: #faf9f5; --preview-accent: #e6dfd8; font-family: StyreneB` 주입 확인, 사이드바 rgba(255,255,255,0.03) + Inter 그대로 유지 → 스코프 OK.
+
+- **Git 활동** — 15 커밋 (spec/plan 2 + impl 11 + fix 3 — 정확히는 feat 11 / fix 3 / docs 2 / `db8bc6b..5cbde6c`). `claude/busy-fermi-1b31ef` 브랜치 → GitHub PR #1 → main 머지 (admin override, mergeCommit `21a8547`). Orbitron 자동 재배포 트리거됨.
+
+- **워크플로 회고** — `brainstorming → writing-plans → subagent-driven-development` 풀 ceremony 를 11-task plan 전체에 strictly 적용함. 약 35+ subagent 호출 (implementer + spec review + code quality review + fix subagent), 사이드바 1줄 추가도 같은 절차로 5분 소요. 사용자가 작업 속도 저하를 지적 → `feedback_subagent_workflow_overhead.md` 메모리 저장. 다음부터는 mechanical wiring 은 직접 처리, judgment 필요 task 만 subagent.
+
+### 다음 세션 참고
+
+- **운영 사이트 확인 필요** — Orbitron 자동 재배포 (PR #1 머지 트리거) 완료 후 `/admin/design-md` 라이브 동작 확인. 부팅 시 lifespan 훅이 첫 sync 자동 실행 (1-2초 내).
+- **Minor follow-up 후보** — (a) `_get_meta` 를 router 가 private name 으로 import 중, public 명으로 promote 권장 (b) generic font fallback 리스트가 `ui-sans-serif`, `cursive`, `fantasy` 미포함 (현재 5개) → Tailwind-derived DESIGN.md 에서 noise (c) sync race guard 는 best-effort read-then-set.
+- **TwinverseDesk Office 메타버스 (마일스톤 6)** — 여전히 미완료. 다음 세션 메인 우선순위.
+- **메모리 신규** — `feedback_subagent_workflow_overhead.md` 추가됨. 다음 세션에서 multi-step 구현 시 자동 적용.
+
+---
