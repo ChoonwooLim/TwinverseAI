@@ -40,6 +40,7 @@ const SIDEBAR_CONFIG = {
           { label: "AI 스킬", path: "/admin/skills" },
           { label: "플러그인", path: "/admin/plugins" },
           { label: "최근정보", path: "/admin/news" },
+          { label: "디자인샘플", path: "/admin/design-md" },
           { label: "Claw Code 분석", path: "/admin/claw-code" },
           { label: "공식 레포 분석", path: "/admin/claude-code-repo" },
         ],
