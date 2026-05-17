@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { label: "비전", path: "/vision" },
   { label: "회사소개", path: "/about" },
   { label: "서비스", path: "/services" },
+  { label: "디자인", path: "/designs" },
   { label: "커뮤니티", path: "/community/notice" },
   { label: "사업계획서", external: "/business-plan-2026.html", newTab: true },
 ];

@@ -9,6 +9,7 @@ const HomePage = lazy(() => import("./pages/HomePage"));
 const VisionPage = lazy(() => import("./pages/VisionPage"));
 const AboutPage = lazy(() => import("./pages/AboutPage"));
 const ServicesPage = lazy(() => import("./pages/ServicesPage"));
+const DesignGallery = lazy(() => import("./pages/DesignGallery"));
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 const BoardPage = lazy(() => import("./pages/community/BoardPage"));
 const PostPage = lazy(() => import("./pages/community/PostPage"));
@@ -48,6 +49,7 @@ export default function App() {
             <Route path="/vision" element={<VisionPage />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/services" element={<ServicesPage />} />
+            <Route path="/designs" element={<DesignGallery />} />
             <Route path="/login" element={<LoginPage />} />
 
             {/* TwinverseDesk */}
