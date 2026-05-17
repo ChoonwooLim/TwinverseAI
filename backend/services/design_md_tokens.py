@@ -5,7 +5,7 @@ from collections import Counter
 _HEX_RE = re.compile(r"#[0-9a-fA-F]{3}\b(?![0-9a-fA-F])|#[0-9a-fA-F]{6}\b(?![0-9a-fA-F])")
 
 _FONT_RE = re.compile(
-    r"font-family\s*:\s*['\"]?([^'\"\n,;]+?)['\"]?(?=\s*[,;\n]|\s*$)",
+    r"font[-]?family\s*:\s*['\"]?([^'\"\n,;}]+?)['\"]?(?=\s*[,;\n}]|\s*$)",
     re.MULTILINE | re.IGNORECASE,
 )
 

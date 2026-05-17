@@ -77,3 +77,13 @@ def test_parse_font_tokens_limits_results():
     md = "\n".join(f"font-family: 'Font{i}'" for i in range(10))
     result = parse_font_tokens(md, limit=3)
     assert len(result) == 3
+
+
+def test_parse_font_tokens_extracts_jsx_fontfamily_camelcase():
+    md = '''
+    fontFamily: "Copernicus, Tiempos Headline, serif",
+    fontFamily: 'Inter',
+    '''
+    result = parse_font_tokens(md)
+    assert "Copernicus" in result
+    assert "Inter" in result
