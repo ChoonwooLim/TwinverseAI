@@ -90,6 +90,8 @@ async def sync_from_github() -> dict:
     started_at = datetime.now()
     with Session(engine) as session:
         meta = _get_meta(session)
+        if meta.last_sync_status == "running":
+            return {"status": "already_running"}
         meta.last_sync_started = started_at
         meta.last_sync_status = "running"
         meta.last_sync_error = None
@@ -114,6 +116,11 @@ async def sync_from_github() -> dict:
             if m and entry.get("type") == "blob":
                 slugs_from_tree.append(m.group(1))
 
+        # Guard: if GitHub tree API response shape changes and we extract 0 slugs,
+        # do NOT proceed (would wipe entire DB via "delete missing" logic).
+        if not slugs_from_tree:
+            raise RuntimeError("tree API returned 0 DESIGN.md paths — schema may have changed")
+
         md_map = await _fetch_all_design_md(slugs_from_tree)
 
         with Session(engine) as session:
@@ -133,9 +140,12 @@ async def sync_from_github() -> dict:
                 session.add(row)
                 seen_slugs.add(slug)
 
+            # Delete rows that disappeared upstream (per tree, not per successful fetch).
+            # This protects against transient fetch failures causing row churn.
+            tree_slug_set = set(slugs_from_tree)
             existing = session.exec(select(DesignMd)).all()
             for row in existing:
-                if row.slug not in seen_slugs:
+                if row.slug not in tree_slug_set:
                     session.delete(row)
 
             session.commit()
