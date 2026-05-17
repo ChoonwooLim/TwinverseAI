@@ -17,7 +17,7 @@ from slowapi.errors import RateLimitExceeded
 from rate_limit import limiter
 import database
 from database import create_db_and_tables
-from routers import auth, admin, docs, skills, plugins, boards, comments, files, news, ps2_spawner, npc, npc_agent, admin_openclaw, admin_openclaw_console
+from routers import auth, admin, docs, skills, plugins, boards, comments, files, news, ps2_spawner, npc, npc_agent, admin_openclaw, admin_openclaw_console, design_md
 
 
 def _get_uploads_dir() -> Path:
@@ -462,6 +462,26 @@ async def lifespan(app: FastAPI):
         start_scheduler()
     except Exception as e:
         print(f"[news_crawler] scheduler start error (non-fatal): {e}")
+    # Auto-sync design_md if last sync > 24h ago (or never)
+    try:
+        import asyncio as _asyncio
+        from datetime import datetime as _dt
+        from sqlmodel import Session as _Session
+        from models.design_md import DesignMdSyncMeta as _Meta
+        with _Session(database.engine) as _s:
+            _meta = _s.get(_Meta, 1)
+            _needs_sync = (
+                _meta is None
+                or _meta.last_sync_finished is None
+                or (_dt.now() - _meta.last_sync_finished).total_seconds() > 86400
+            )
+            _is_running = _meta is not None and _meta.last_sync_status == "running"
+        if _needs_sync and not _is_running:
+            from services.design_md_sync import sync_from_github as _sync
+            _asyncio.create_task(_sync())
+            print("[startup:design_md_sync] triggered background sync")
+    except Exception as e:
+        print(f"[startup:design_md_sync] ERROR (non-fatal): {e}")
     yield
     # Shutdown
     try:
@@ -506,6 +526,7 @@ app.include_router(npc.router, prefix="/api/npc", tags=["npc"])
 app.include_router(npc_agent.router, prefix="/api/npc", tags=["npc-agent"])
 app.include_router(admin_openclaw.router, prefix="/api/admin/openclaw", tags=["admin-openclaw"])
 app.include_router(admin_openclaw_console.router, prefix="/api/admin/openclaw/console", tags=["admin-openclaw-console"])
+app.include_router(design_md.router, prefix="/api/design-md", tags=["design-md"])
 
 @app.get("/health")
 def health_check():
