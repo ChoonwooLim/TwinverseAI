@@ -17,7 +17,7 @@ class DesignMd(SQLModel, table=True):
     github_url: str                                           # GitHub blob URL
     color_tokens: Optional[list] = Field(default=None, sa_column=Column(JSON))
     font_tokens: Optional[list] = Field(default=None, sa_column=Column(JSON))
-    last_synced_at: datetime = Field(default_factory=datetime.utcnow)
+    last_synced_at: datetime = Field(default_factory=datetime.now)
 
 
 class DesignMdSyncMeta(SQLModel, table=True):
