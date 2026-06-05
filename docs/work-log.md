@@ -1593,3 +1593,35 @@ OpenClaw 롤백 후에도 `https://twinverseai.twinverse.org/admin/...` 가 502 
 - **`.claude/settings.json` claude-mem 활성화** — 이 커밋에 포함 (5/5 도입분의 미커밋 carryover 정리).
 
 ---
+
+## 2026-06-05 (Orbitron 긴급 복구 — DHCP IP 드리프트 + 커널 점프로 GPU 먹통)
+
+> 코드/커밋 변경 없음. 전부 Orbitron 배포 서버(192.168.219.101) 인프라 복구 작업. 심야~6/6 새벽까지.
+
+### 작업 요약
+
+| 카테고리 | 작업 내용 | 상태 |
+|----------|----------|------|
+| infra | Orbitron "서버 다운"처럼 보인 장애의 실제 원인 진단 (장비 정상, IP 이동 + GPU 드라이버 미적재) | 완료 |
+| fix | GPU 복구 — GRUB을 6.17.0-29로 핀 고정 + 서브메뉴 평탄화 + 커널 hold, 재부팅 | 완료 |
+| fix | LAN IP를 NetworkManager 정적 .101로 복구 (자동원복 안전장치 적용) | 완료 |
+| fix | IP 복구로 `orbitron-suit` 크래시루프 해소 | 완료 |
+| infra | `orbitron-twinverse`는 별도 선행 DB 설정 문제로 미해결 (다음 세션) | 보류 |
+
+### 세부 내용
+
+- **증상**: `/start` 서버 체크에서 Orbitron(.101) SSH 타임아웃 + `twinverse.org` 530/502. "심각해 보인다"는 사용자 요청으로 진단 착수.
+- **진단**: ping `.101` → 게이트웨이가 `Destination host unreachable`, ARP에 .101 MAC 없음, twinverse-ai(.117)에서도 도달 불가 → 장비가 L2에 부재. LAN 스캔 결과 Orbitron이 **`.102`로 이동**(DHCP 동적 임대, 재부팅 후 재발급). 장비는 정상이었음.
+- **2차 문제**: 접속 후 `nvidia-smi` 실패. 커널이 **6.17.0-29 → 6.17.0-35로 자동 업그레이드**됐는데, NVIDIA 드라이버가 **runfile 수동 설치(dkms 없음)**라 새 커널용 `nvidia.ko`가 빌드 안 됨. 실제 모듈은 `/lib/modules/6.17.0-29-generic/kernel/nvidia-580/nvidia.ko`에만 존재.
+- **GPU 수정**: `/etc/default/grub` GRUB_DEFAULT를 6.17.0-29 엔트리 id로 핀. 1차 재부팅이 -35로 떴는데(사용자 수동 변경 + `GRUB_TIMEOUT=0`+중첩 서브메뉴에서 GRUB이 핀 무시) → **`GRUB_DISABLE_SUBMENU=y`로 평탄화** + `GRUB_TIMEOUT=2`/`STYLE=menu`. 2차 재부팅 → -29 부팅 성공, `nvidia-smi` 정상(GTX 1080 ×2, 580.159.03). `apt-mark hold linux-{generic,headers-generic,image-generic}-hwe-24.04`로 재점프 차단. 백업 `/etc/default/grub.bak.*`.
+- **IP 수정**: 실제 NIC 관리자가 **NetworkManager**(연결 "유선 연결 1", UUID `40e98dc5-...`)임을 확인(netplan 50-cloud-init은 존재하지 않는 `enp6s0`을 가리킴). 공유기(LG U+ HGW) 비번을 몰라 DHCP 예약 대신 박스 정적 IP 선택. **240초 자동원복 안전장치**(`systemd-run` 타이머 + `/usr/local/sbin/nm-revert.sh`)를 먼저 무장 → `nmcli`로 `enp0s31f6`를 manual `192.168.219.101/24`, gw `.1`, DNS `1.214.68.2/61.41.153.2` 설정 → `.101` 복귀 확인 후 타이머 해제. NM 프로필이라 재부팅에도 유지.
+- **컨테이너 복구**: `orbitron-suit`는 DB 호스트가 `.101:3176` 하드코딩 → IP 복구로 `No route to host` 해소, 정상 기동. `orbitron-twinverse`는 `Connection terminated unexpectedly`(TCP는 닿으나 PostgreSQL이 즉시 끊음)로 **별개 문제** — 전용 DB 컨테이너 부재, 오늘 사건 이전부터 502였음.
+
+### 다음 세션 참고
+
+- **`orbitron-twinverse` 미해결** — TwinverseAI 아닌 별도 랜딩 프로젝트. 고치려면 그 앱의 DB DSN/compose 확인 필요(자격증명 범위라 이번 세션 보류). 사용자 (a)조사 / (b)보류 선택 대기 중이었음.
+- **IP 영구 고정 방식** — 현재 박스 정적 .101. 더 깔끔하게 하려면 LG U+ HGW(`http://192.168.219.1`)에서 MAC `1c:1b:0d:90:02:33` → .101 DHCP 예약 후 박스를 DHCP로 되돌리는 방법도 가능(공유기 비번 필요).
+- **GPU 드라이버 근본 정비** — 현재 -29 핀으로 회피 중. 장기적으로 -35(또는 최신)용 nvidia 모듈을 dkms로 재설치하면 hold 해제 가능. 메모리 `reference_orbitron_grub_nvidia_pinning.md` 참조.
+- **`/start` 스킬 .101 하드코딩** — Orbitron이 DHCP면 또 드리프트 가능. 정적 .101로 고정했으니 당분간 안전하나, 스크립트가 .101 불통 시 .102/서브넷 스캔하도록 보강 여지.
+
+---
