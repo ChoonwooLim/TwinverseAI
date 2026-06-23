@@ -1625,3 +1625,30 @@ OpenClaw 롤백 후에도 `https://twinverseai.twinverse.org/admin/...` 가 502 
 - **`/start` 스킬 .101 하드코딩** — Orbitron이 DHCP면 또 드리프트 가능. 정적 .101로 고정했으니 당분간 안전하나, 스크립트가 .101 불통 시 .102/서브넷 스캔하도록 보강 여지.
 
 ---
+
+## 2026-06-23 (OpenClaw Codex 토큰 복구 + DeskRPG 재발성 socket stuck 영구 fix)
+
+> 코드/커밋 변경 없음. 전부 원격 서버 인프라 작업 — twinverse-ai(.117) OpenClaw 컨테이너 + Orbitron(.101) `~/.deskrpg/`.
+
+### 작업 요약
+
+| 카테고리 | 작업 내용 | 상태 |
+|----------|----------|------|
+| fix | OpenClaw `openai-codex` `refresh_token_reused` 인증 고장 복구 (CLI 플랜 토큰 재로그인 → 무재시작 주입) | 완료 |
+| fix | DeskRPG(tvdesk) 정상모드 socket "연결 끊김" 재발 — HttpOnly 죽은 토큰을 proxy가 Set-Cookie로 삭제하는 영구 fix | 완료 |
+| infra | `~/.deskrpg/start.sh` 빌드-우선 하드닝 + `restart-proxy.sh` 신규 (proxy만 안전 재시작) | 완료 |
+
+### 세부 내용
+
+- **OpenClaw Codex 토큰**: 어드민 콘솔 채팅에서 "OAuth token refresh failed for openai-codex". 라이브 `openclaw models status`로 `code: refresh_token_reused` 확정 — ChatGPT 구독 OAuth의 rotating refresh token을 LAN 컨테이너·Hostinger·로컬 codex CLI가 **같은 계정으로 공유**해 서로 무효화. 로컬 `codex login` 재실행 → 새 토큰 패밀리 → `docker cp`로 LAN 컨테이너 `/data/.codex/auth.json`만 교체(node:node) → CLI-sync가 **재시작 없이** 즉시 반영(`expires in 10d`). 게이트웨이 미재시작 → 백엔드/DeskRPG 토큰 4단계 복구 불필요. NPC 채팅 응답으로 end-to-end 검증. 메모리 `reference_openclaw_codex_token_recovery.md` 신규.
+- **DeskRPG socket stuck (재발성)**: `wss://.../socket.io ... closed before connection is established` + 시크릿창만 정상. 단계적 배제로 — 헤더(HTML no-cache/청크 immutable) 정상, proxy·app JWT_SECRET 일치(`start.sh`가 export로 양쪽 상속), 빌드에 복구 핸들러 포함 확인. **확정 원인**: deskrpg `token`은 7일 만료 JWT인데 브라우저에 `twinverse_token`이 없어(직접 /auth 로그인 경로) 만료 시 proxy가 재발급 불가 + HttpOnly라 클라가 못 지움 + `auth:rejected` emit 직후 disconnect 레이스로 클라가 신호 못 받음 → reconnect 루프 영구 stuck(Network 탭 sid 계속 바뀜이 증거).
+- **영구 fix**: `~/.deskrpg/proxy.js` — 재발급 불가능한 죽은 token 감지 시 `proxy.on("proxyRes")`가 응답에 `Set-Cookie: token=; Max-Age=0; HttpOnly; SameSite=Lax`를 실어 **서버가 HttpOnly 토큰 삭제**(앱이 token을 set한 `/api/auth/*` 응답은 가드로 보존). injectToken을 socket.io뿐 아니라 페이지 네비게이션에도 적용 → 새로고침 한 번이면 미들웨어가 깨끗이 `/auth`로 보냄. 검증: 무효 token+twinverse_token 없음으로 `/game` → `307 /auth` + Set-Cookie 삭제 확인. 백업 `proxy.js.bak.20260623_093751`.
+- **하드닝**: `start.sh`에 `( cd "$DESKRPG_SOURCE" && npm run build ) || exit 1` 빌드-우선 단계 삽입(실패 시 기존 스택 유지) — "build 누락"으로 stale .next 서빙 재발 차단. `restart-proxy.sh` 신규(start.sh에서 시크릿 그대로 읽어 proxy:3100만 재시작). 메모리 `reference_deskrpg_chat_stuck_recovery.md`에 2026-06-23 영구 fix·롤백 절차 추가.
+
+### 다음 세션 참고
+
+- **codex 재발 방지**: 로컬 Windows에서 이 계정으로 `codex` CLI를 쓰거나 다른 곳에서 재로그인하면 토큰 회전으로 LAN 또 깨짐. Hostinger codex 정리(웹 UI)는 위생 작업으로 남음(SSH password라 비대화식 불가). 무인 서버엔 구독 OAuth보다 API 키/`claude-cli` OAuth fallback 권장.
+- **DeskRPG 선택 개선(미적용)**: 앱 `socket-handlers.ts`의 `auth:rejected`를 flush 후 disconnect → 열린 탭도 새로고침 없이 자동 `/auth`. 앱 재빌드 필요라 보류. 현재는 proxy 쿠키삭제 + 새로고침으로 복구되므로 필수 아님.
+- **start.sh 빌드 하드닝**은 다음 전체 재시작(`bash start.sh`) 때 발효. proxy fix는 이미 라이브.
+
+---
