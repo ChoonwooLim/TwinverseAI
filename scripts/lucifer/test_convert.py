@@ -93,6 +93,51 @@ class TestVideoTargets(unittest.TestCase):
         self.assertEqual(converters.MAX_FRAMES, 20)
 
 
+class TestVideoFrameHygiene(unittest.TestCase):
+    """ffmpeg 가 필요하므로 서버에서만 통과한다."""
+
+    def test_stale_frames_from_previous_run_are_cleared(self):
+        import subprocess
+
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            src = root / "clip.mp4"
+            # 단일 연속 testsrc 는 프레임 간 변화가 너무 미세해 scene 점수가
+            # 0.3 문턱을 절대 넘지 않는다 (실측 최댓값 ~0.02) -> ffmpeg 가 프레임을
+            # 하나도 못 뽑아 convert_video 가 위생 검사 이전에 RuntimeError 로
+            # 죽는다. Step 6 스모크 테스트와 같은 방식으로 뚜렷한 장면 전환을
+            # 하나 만들어 실제로 프레임이 뽑히도록 한다.
+            subprocess.run(
+                ["ffmpeg", "-nostdin", "-y",
+                 "-f", "lavfi", "-i", "testsrc=duration=1:size=160x120:rate=5",
+                 "-f", "lavfi", "-i", "color=c=blue:duration=1:size=160x120:rate=5",
+                 "-filter_complex", "[0:v][1:v]concat=n=2:v=1", str(src)],
+                capture_output=True, timeout=120,
+            )
+            self.assertTrue(src.exists(), "테스트 영상 생성 실패")
+
+            dst = root / "_ai" / "clip.mp4.md"
+            frames_dir = dst.parent / "clip.mp4.frames"
+            frames_dir.mkdir(parents=True)
+            # 지난 실행이 남긴 것처럼 높은 번호의 프레임을 심어둔다.
+            stale = frames_dir / "frame_099.jpg"
+            stale.write_bytes(b"stale")
+
+            # Ollama 호출은 느리고 네트워크에 의존하므로 대체한다.
+            original = converters._describe_image
+            converters._describe_image = lambda p: "테스트 설명"
+            try:
+                converters.convert_video(src, dst)
+            finally:
+                converters._describe_image = original
+
+            self.assertFalse(
+                stale.exists(),
+                "이전 실행의 프레임이 남아 새 문서에 섞인다",
+            )
+            self.assertNotIn("frame_099", dst.read_text(encoding="utf-8"))
+
+
 class TestFailureIsolation(unittest.TestCase):
     def test_convert_one_rejects_unknown_suffix(self):
         with tempfile.TemporaryDirectory() as d:

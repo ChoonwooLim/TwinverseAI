@@ -11,7 +11,9 @@
 import base64
 import json
 import os
+import shutil
 import subprocess
+import time
 import urllib.request
 from pathlib import Path
 from typing import Callable
@@ -28,7 +30,10 @@ SCENE_THRESHOLD = 0.3
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
 VISION_MODEL = os.environ.get("LUCIFER_VISION_MODEL", "qwen2.5vl:7b")
 FFMPEG_TIMEOUT_SEC = 600
-OLLAMA_TIMEOUT_SEC = 180
+OLLAMA_TIMEOUT_SEC = 60
+# 영상 한 편이 워처 전체를 붙잡지 못하게 하는 총 예산.
+# 프레임 설명이 이 시간을 넘기면 남은 프레임은 설명 없이 기록만 남긴다.
+VIDEO_DESCRIBE_BUDGET_SEC = 600
 
 
 def convert_document(src: Path, dst: Path) -> Path:
@@ -80,7 +85,11 @@ def convert_video(src: Path, dst: Path) -> Path:
     """장면 전환 프레임을 뽑고 각 프레임을 설명한 마크다운을 만든다."""
     dst.parent.mkdir(parents=True, exist_ok=True)
     frames_dir = dst.parent / f"{src.name}.frames"
-    frames_dir.mkdir(exist_ok=True)
+    # 지난 실행의 프레임을 반드시 비운다. ffmpeg 는 이번에 쓰는 번호만 덮어쓰므로,
+    # 장면 수가 줄어든 재변환에서 옛 frame_00N 이 남아 glob 에 섞이고
+    # 현재 영상에 없는 장면을 설명하는 문서가 조용히 만들어진다.
+    shutil.rmtree(frames_dir, ignore_errors=True)
+    frames_dir.mkdir(parents=True, exist_ok=True)
 
     # 장면 전환 기준으로만 추출하고 개수를 제한한다.
     result = subprocess.run(
@@ -101,11 +110,17 @@ def convert_video(src: Path, dst: Path) -> Path:
         )
 
     lines = [f"# {src.name}", "", f"장면 전환 프레임 {len(frames)}장 (최대 {MAX_FRAMES}장).", ""]
+    deadline = time.monotonic() + VIDEO_DESCRIBE_BUDGET_SEC
     for i, frame in enumerate(frames, start=1):
-        try:
-            desc = _describe_image(frame)
-        except Exception as exc:
-            desc = f"(설명 실패: {type(exc).__name__}: {exc})"
+        if time.monotonic() >= deadline:
+            # 예산 초과. 남은 프레임은 설명 없이 남기고 문서는 그대로 낸다.
+            # 영상 하나가 워처 전체를 몇십 분씩 붙잡는 것을 막는다.
+            desc = f"(설명 생략: 총 {VIDEO_DESCRIBE_BUDGET_SEC}초 예산 초과)"
+        else:
+            try:
+                desc = _describe_image(frame)
+            except Exception as exc:
+                desc = f"(설명 실패: {type(exc).__name__}: {exc})"
         lines.append(f"## 프레임 {i} — `{frame.name}`")
         lines.append("")
         lines.append(desc)
