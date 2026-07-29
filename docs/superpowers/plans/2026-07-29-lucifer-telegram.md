@@ -559,784 +559,91 @@ Expected: 감독님 메시지가 거부되지 않았고, `Invalid allowFrom entr
 
 ---
 
-## Task 5: 세션 → `chat/` 미러링 스크립트
+## Task 5·6: 세션 → `chat/` 미러링 (구현 + 배포) — 완료
 
-**Files:**
-- Create: `scripts/lucifer/session_parse.py`
-- Create: `scripts/lucifer/mirror.py`
-- Create: `scripts/lucifer/test_mirror.py`
+> **설계 변경 (2026-07-29 실측).** 원래 계획은 세션 본문의 `Sender (untrusted metadata)`
+> 블록을 재귀 탐색해 토픽 ID 를 찾는 방식이었다. 실제 파일을 보고 세 가지가 드러나 접근을 바꿨다.
+>
+> 1. **토픽 ID 는 `Sender` 블록에 없다.** 사용자 메시지 앞에는 `(untrusted)` 블록이
+>    **3종** 붙고(`Conversation info` / `Sender` / `Chat history since last reply`),
+>    `topic_id` 는 `Conversation info` 에 있다. 원래 파서는 영영 못 찾았을 것이다.
+> 2. **더 나은 소스가 있다.** `sessions.json` 인덱스가 세션키를
+>    `agent:<id>:telegram:group:<chatId>:topic:<topicId>` 로 두고
+>    `deliveryContext = {"channel":"telegram","to":"telegram:<chatId>","threadId":10}` 를
+>    함께 준다. 본문 파싱보다 훨씬 견고해 라우팅을 이쪽으로 옮겼다.
+> 3. **세션 `.jsonl` 은 인덱스보다 늦게 생긴다.** OpenClaw 는 `sessions.json` 에 먼저
+>    올리고 파일은 나중에 flush 한다 (실측: `main` 은 있고 `myjini` 는 아직 없었다).
+>    **파일 부재는 오류가 아니라 정상 상태**로 다뤄야 한다 — 오류로 처리하면
+>    `_mirror-errors.log` 가 매분 쓰레기로 찬다.
 
-**Interfaces:**
-- Consumes: Task 2 의 `_registry.json`, Task 4 가 만든 실제 텔레그램 세션
-- Produces:
-  - `session_parse.Msg` — `ts: datetime(UTC)`, `agent: str`, `role: str`, `text: str`, `chat_id: str|None`, `topic_id: str|None`
-  - `session_parse.read_new(path, offset, agent, chat_id=None, topic_id=None) -> tuple[list[Msg], int, str|None, str|None]`
-  - `mirror.main() -> int` — Task 6 의 systemd 유닛이 호출한다.
+**구현 파일** (커밋 `852481d`):
 
-- [ ] **Step 1: 호스트에서 세션 파일을 읽을 수 있는지 확인한다**
+| 파일 | 책임 |
+|---|---|
+| `scripts/lucifer/session_index.py` | `sessions.json` 에서 텔레그램 그룹 세션만 추출, 컨테이너→호스트 경로 변환 |
+| `scripts/lucifer/session_parse.py` | `.jsonl` 증분 파싱, `(untrusted)` 블록 3종 제거 |
+| `scripts/lucifer/mirror.py` | 레지스트리 역참조, 시간순 병합, 마크다운 append, 상태·에러 관리 |
+| `scripts/lucifer/test_mirror.py` | 위 3종 단위 테스트 23개 |
+| `scripts/lucifer/lucifer-mirror.{service,timer}` | 1분 주기 systemd 유닛 |
+| `scripts/lucifer/deploy.sh` | 배포 (미러 파일·유닛 추가) |
 
-스크립트는 호스트에서 돌지만 세션 파일은 컨테이너가 `node`(uid 1000) 로 쓴다.
-호스트 `stevenlim` 도 uid 1000 이라 읽혀야 하는데, 상위 디렉터리 통과 권한이 관건이다.
+- [x] **Step 1: 호스트에서 세션 파일 읽기 가능 확인**
 
-```bash
-ssh stevenlim@192.168.219.117 "ls -la /srv/openclaw/data/.openclaw/agents/myjini/sessions/ | tail -3; \
-  head -c 200 \$(ls -t /srv/openclaw/data/.openclaw/agents/myjini/sessions/*.jsonl | head -1)"
-```
+컨테이너 `node` 와 호스트 `stevenlim` 이 둘 다 uid 1000 이라 그대로 읽힌다. 실측 확인됨.
 
-Expected: 파일 목록과 첫 200바이트가 보인다.
-`Permission denied` 가 나오면 유닛을 root 로 돌려야 하므로 Task 6 Step 3 의 `User=` 를
-`root` 로 바꾸고, 출력 파일 소유권을 `stevenlim:stevenlim` 으로 맞추는 `chown` 을 추가한다.
+- [x] **Step 2: 실제 텔레그램 세션의 형식 관찰** — 위 "설계 변경" 3건이 여기서 나왔다.
 
-- [ ] **Step 2: 실제 텔레그램 세션의 메타데이터 형태를 눈으로 확인한다**
-
-Task 4 의 대화가 남긴 최신 세션에서 발신자 메타데이터 블록을 뽑아본다.
-
-```bash
-ssh stevenlim@192.168.219.117 'python3 - <<EOF
-import glob, json, os, re
-f = max(glob.glob("/srv/openclaw/data/.openclaw/agents/myjini/sessions/*.jsonl"), key=os.path.getmtime)
-print("FILE:", f)
-for line in open(f, encoding="utf-8"):
-    r = json.loads(line)
-    if r.get("type") != "message":
-        continue
-    m = r.get("message", {})
-    if m.get("role") != "user":
-        continue
-    for c in m.get("content") or []:
-        t = c.get("text") if isinstance(c, dict) else None
-        if t and "Sender (untrusted metadata)" in t:
-            print(t[:800]); raise SystemExit
-EOF'
-```
-
-Expected: `Sender (untrusted metadata):` 다음의 JSON 블록이 보이고, 그 안에 그룹
-chat id(`-1004482716134`)와 토픽 id 가 어떤 키 이름으로든 들어 있다.
-
-Step 3 의 파서는 키 이름을 하드코딩하지 않고 후보 목록을 재귀 탐색하므로, 여기서 본
-키 이름이 후보에 없을 때만 `TOPIC_KEYS` / `CHAT_KEYS` 에 추가하면 된다.
-
-- [ ] **Step 3: 실패하는 테스트를 쓴다**
-
-Create `scripts/lucifer/test_mirror.py`:
-
-```python
-"""session_parse / mirror 단위 테스트."""
-import json
-import unittest
-from datetime import datetime, timezone
-from pathlib import Path
-from tempfile import TemporaryDirectory
-
-import mirror
-import session_parse as sp
-
-SENDER = (
-    "Sender (untrusted metadata):\n"
-    "```json\n"
-    '{"label": "Lucifers", "id": "telegram:jini",'
-    ' "chat": {"chat_id": "-1004482716134", "message_thread_id": "7"}}\n'
-    "```\n\n"
-)
-
-
-# 픽스처는 반드시 newline="" 로 쓴다. 실제 세션 파일은 Linux 에서 "\n" 으로 쓰이는데,
-# Windows 텍스트 모드는 "\r\n" 으로 바꿔 바이트 오프셋 검증이 1씩 어긋난다.
-
-
-def rec(ts, role, text):
-    return json.dumps(
-        {
-            "type": "message",
-            "id": "x",
-            "parentId": None,
-            "timestamp": ts,
-            "message": {"role": role, "content": [{"type": "text", "text": text}]},
-        },
-        ensure_ascii=False,
-    )
-
-
-class TestSenderMeta(unittest.TestCase):
-    def test_extracts_chat_and_topic(self):
-        meta = sp.extract_sender_meta(SENDER + "지니야 안녕")
-        self.assertEqual(sp.find_chat_id(meta), "-1004482716134")
-        self.assertEqual(sp.find_topic_id(meta), "7")
-
-    def test_returns_none_without_block(self):
-        self.assertIsNone(sp.extract_sender_meta("그냥 본문"))
-
-    def test_strips_block_from_body(self):
-        self.assertEqual(sp.strip_sender_block(SENDER + "지니야 안녕"), "지니야 안녕")
-
-
-class TestReadNew(unittest.TestCase):
-    def test_incremental_read_has_no_duplicates(self):
-        with TemporaryDirectory() as d:
-            p = Path(d) / "s.jsonl"
-            p.write_text(rec("2026-07-29T06:00:00.000Z", "user", SENDER + "지니야 안녕") + "\n",
-                         encoding="utf-8", newline="")
-            first, off, chat, topic = sp.read_new(str(p), 0, "myjini")
-            self.assertEqual(len(first), 1)
-            self.assertEqual(topic, "7")
-
-            with p.open("a", encoding="utf-8", newline="") as fh:
-                fh.write(rec("2026-07-29T06:00:05.000Z", "assistant", "안녕하세요") + "\n")
-            second, off2, chat2, topic2 = sp.read_new(str(p), off, "myjini", chat, topic)
-            self.assertEqual([m.text for m in second], ["안녕하세요"])
-            self.assertEqual(second[0].topic_id, "7", "세션 토픽이 이어져야 한다")
-            self.assertGreater(off2, off)
-
-    def test_partial_trailing_line_is_not_consumed(self):
-        with TemporaryDirectory() as d:
-            p = Path(d) / "s.jsonl"
-            full = rec("2026-07-29T06:00:00.000Z", "user", SENDER + "안녕") + "\n"
-            p.write_text(full + '{"type": "mess', encoding="utf-8", newline="")
-            msgs, off, _, _ = sp.read_new(str(p), 0, "myjini")
-            self.assertEqual(len(msgs), 1)
-            self.assertEqual(off, len(full.encode("utf-8")),
-                             "잘린 마지막 줄은 소비하면 안 된다")
-
-    def test_truncated_file_restarts_from_zero(self):
-        with TemporaryDirectory() as d:
-            p = Path(d) / "s.jsonl"
-            p.write_text(rec("2026-07-29T06:00:00.000Z", "user", SENDER + "안녕") + "\n",
-                         encoding="utf-8", newline="")
-            msgs, off, _, _ = sp.read_new(str(p), 999999, "myjini")
-            self.assertEqual(len(msgs), 1)
-
-
-class TestRender(unittest.TestCase):
-    def test_merges_agents_chronologically(self):
-        def m(hhmm, agent, role, text):
-            return sp.Msg(
-                ts=datetime.fromisoformat(f"2026-07-29T{hhmm}:00+00:00"),
-                agent=agent, role=role, text=text,
-                chat_id="-1004482716134", topic_id="7",
-            )
-
-        msgs = [
-            m("06:02", "main", "assistant", "로이입니다"),
-            m("06:00", "myjini", "user", "지니야 안녕"),
-            m("06:01", "myjini", "assistant", "지니입니다"),
-        ]
-        out = mirror.render(sorted(msgs, key=lambda x: x.ts))
-        self.assertLess(out.index("지니야 안녕"), out.index("지니입니다"))
-        self.assertLess(out.index("지니입니다"), out.index("로이입니다"))
-        self.assertIn("### 15:00 감독님", out, "UTC 06:00 은 KST 15:00 이어야 한다")
-        self.assertIn("지니 🧞", out)
-        self.assertIn("로이 🦊", out)
-
-
-class TestRouting(unittest.TestCase):
-    REG = {
-        "group": {"chatId": "-1004482716134"},
-        "projects": {"TwinverseAI": {"folder": "TwinverseAI", "topicId": "7"}},
-    }
-
-    def test_known_topic_resolves_to_folder(self):
-        self.assertEqual(mirror.resolve_project("7", self.REG), "TwinverseAI")
-
-    def test_unknown_topic_is_skipped(self):
-        self.assertIsNone(mirror.resolve_project("999", self.REG))
-        self.assertIsNone(mirror.resolve_project(None, self.REG))
-
-
-class TestWriteDay(unittest.TestCase):
-    def setUp(self):
-        self._tmp = TemporaryDirectory()
-        self._saved = mirror.LUCIFER
-        mirror.LUCIFER = Path(self._tmp.name)
-
-    def tearDown(self):
-        mirror.LUCIFER = self._saved
-        self._tmp.cleanup()
-
-    def _read(self):
-        return (mirror.LUCIFER / "TwinverseAI" / "chat" / "2026-07-29.md").read_text(
-            encoding="utf-8"
-        )
-
-    def test_append_keeps_previous_content(self):
-        mirror.write_day("TwinverseAI", "2026-07-29", "### 15:00 감독님\n\n첫줄\n", overwrite=False)
-        mirror.write_day("TwinverseAI", "2026-07-29", "### 15:01 지니 🧞\n\n둘째줄\n", overwrite=False)
-        body = self._read()
-        self.assertIn("첫줄", body)
-        self.assertIn("둘째줄", body)
-        self.assertEqual(body.count("# 2026-07-29"), 1, "헤더는 한 번만")
-
-    def test_overwrite_replaces_previous_content(self):
-        mirror.write_day("TwinverseAI", "2026-07-29", "### 15:00 감독님\n\n옛날\n", overwrite=False)
-        mirror.write_day("TwinverseAI", "2026-07-29", "### 15:00 감독님\n\n재생성\n", overwrite=True)
-        body = self._read()
-        self.assertNotIn("옛날", body)
-        self.assertIn("재생성", body)
-
-
-class TestFreshStateRebuild(unittest.TestCase):
-    """상태 파일이 없거나 깨지면 당일 분만 재생성한다.
-
-    이 규칙이 없으면 상태 유실 시 전 기간 이력이 모든 날짜 파일에 중복 append 된다.
-    """
-
-    def _msg(self, iso):
-        return sp.Msg(
-            ts=datetime.fromisoformat(iso), agent="myjini", role="user",
-            text="x", chat_id="-1004482716134", topic_id="7",
-        )
-
-    def test_keeps_only_today(self):
-        now = datetime.fromisoformat("2026-07-29T06:00:00+00:00")  # KST 15:00
-        msgs = [
-            self._msg("2026-07-28T06:00:00+00:00"),
-            self._msg("2026-07-29T00:30:00+00:00"),  # KST 09:30 같은 날
-            self._msg("2026-07-29T05:00:00+00:00"),
-        ]
-        kept = mirror.filter_today(msgs, now)
-        self.assertEqual(len(kept), 2)
-        self.assertTrue(all(mirror.day_key(m) == "2026-07-29" for m in kept))
-
-    def test_missing_state_file_reports_fresh(self):
-        with TemporaryDirectory() as d:
-            saved = mirror.STATE_PATH
-            try:
-                mirror.STATE_PATH = Path(d) / ".mirror-state.json"
-                state, fresh = mirror.load_state()
-                self.assertTrue(fresh)
-                self.assertEqual(state["files"], {})
-            finally:
-                mirror.STATE_PATH = saved
-
-    def test_corrupt_state_file_reports_fresh(self):
-        with TemporaryDirectory() as d:
-            saved = mirror.STATE_PATH
-            try:
-                mirror.STATE_PATH = Path(d) / ".mirror-state.json"
-                mirror.STATE_PATH.write_text("{not json", encoding="utf-8")
-                _, fresh = mirror.load_state()
-                self.assertTrue(fresh)
-            finally:
-                mirror.STATE_PATH = saved
-
-    def test_valid_state_file_is_not_fresh(self):
-        with TemporaryDirectory() as d:
-            saved = mirror.STATE_PATH
-            try:
-                mirror.STATE_PATH = Path(d) / ".mirror-state.json"
-                mirror.STATE_PATH.write_text(
-                    json.dumps({"version": 1, "files": {"/a.jsonl": {"offset": 10}}}),
-                    encoding="utf-8",
-                )
-                state, fresh = mirror.load_state()
-                self.assertFalse(fresh)
-                self.assertEqual(state["files"]["/a.jsonl"]["offset"], 10)
-            finally:
-                mirror.STATE_PATH = saved
-
-
-if __name__ == "__main__":
-    unittest.main()
-```
-
-- [ ] **Step 4: 테스트가 실패하는지 확인한다**
+- [x] **Step 3~7: 테스트 우선 구현**
 
 ```bash
-cd scripts/lucifer && python -m unittest test_mirror -v 2>&1 | tail -5
+cd scripts/lucifer && python -m unittest test_mirror
 ```
 
-Expected: `ModuleNotFoundError: No module named 'mirror'` (또는 `session_parse`)
+Expected: `Ran 23 tests ... OK`
 
-- [ ] **Step 5: `session_parse.py` 를 쓴다**
-
-Create `scripts/lucifer/session_parse.py`:
-
-```python
-"""OpenClaw 세션 .jsonl 증분 파싱 + 텔레그램 메타데이터 추출.
-
-이 모듈만 OpenClaw 의 세션 스키마에 종속된다. 버전이 올라 형식이 바뀌면 여기만 고친다.
-"""
-from __future__ import annotations
-
-import json
-import re
-from dataclasses import dataclass
-from datetime import datetime, timezone
-
-SENDER_BLOCK = re.compile(
-    r"Sender \(untrusted metadata\):\s*```json\s*(\{.*?\})\s*```",
-    re.DOTALL,
-)
-
-# 텔레그램 메타데이터의 키 이름은 버전에 따라 다를 수 있어 후보를 넓게 잡고 재귀 탐색한다.
-TOPIC_KEYS = frozenset(
-    {"message_thread_id", "messageThreadId", "thread_id", "threadId", "topic_id", "topicId"}
-)
-CHAT_KEYS = frozenset({"chat_id", "chatId"})
-
-
-@dataclass(frozen=True)
-class Msg:
-    ts: datetime          # tz-aware UTC
-    agent: str            # "myjini" | "main"
-    role: str             # "user" | "assistant"
-    text: str
-    chat_id: str | None
-    topic_id: str | None
-
-
-def extract_sender_meta(text: str) -> dict | None:
-    """본문 앞의 발신자 메타데이터 JSON 블록을 파싱한다. 없으면 None."""
-    m = SENDER_BLOCK.search(text)
-    if not m:
-        return None
-    try:
-        parsed = json.loads(m.group(1))
-    except json.JSONDecodeError:
-        return None
-    return parsed if isinstance(parsed, dict) else None
-
-
-def strip_sender_block(text: str) -> str:
-    """메타데이터 블록을 걷어낸 사람이 읽을 본문만 남긴다."""
-    return SENDER_BLOCK.sub("", text, count=1).strip()
-
-
-def _scan(node, keys: frozenset[str]) -> str | None:
-    """중첩 dict/list 를 훑어 keys 중 하나에 걸리는 첫 스칼라 값을 문자열로 돌려준다."""
-    stack = [node]
-    while stack:
-        cur = stack.pop()
-        if isinstance(cur, dict):
-            for k, v in cur.items():
-                if k in keys and isinstance(v, (str, int)) and str(v).strip():
-                    return str(v)
-                if isinstance(v, (dict, list)):
-                    stack.append(v)
-        elif isinstance(cur, list):
-            stack.extend(x for x in cur if isinstance(x, (dict, list)))
-    return None
-
-
-def find_topic_id(meta: dict | None) -> str | None:
-    return _scan(meta, TOPIC_KEYS) if meta else None
-
-
-def find_chat_id(meta: dict | None) -> str | None:
-    return _scan(meta, CHAT_KEYS) if meta else None
-
-
-def message_text(rec: dict) -> str:
-    """message.content 의 텍스트 조각을 이어 붙인다."""
-    content = rec.get("message", {}).get("content")
-    if isinstance(content, str):
-        return content.strip()
-    parts = [
-        c["text"]
-        for c in (content or [])
-        if isinstance(c, dict) and c.get("type") == "text" and c.get("text")
-    ]
-    return "\n".join(parts).strip()
-
-
-def _parse_ts(raw: str) -> datetime:
-    return datetime.fromisoformat(raw.replace("Z", "+00:00")).astimezone(timezone.utc)
-
-
-def read_new(
-    path: str,
-    offset: int,
-    agent: str,
-    chat_id: str | None = None,
-    topic_id: str | None = None,
-) -> tuple[list[Msg], int, str | None, str | None]:
-    """offset 이후로 새로 들어온 완결된 줄만 파싱한다.
-
-    반환: (메시지 목록, 새 offset, 갱신된 chat_id, 갱신된 topic_id)
-
-    chat_id/topic_id 는 세션 첫 사용자 메시지에만 들어 있으므로 호출자가 이전 값을
-    넘겨주고 여기서 이어받는다. 마지막 줄이 쓰이는 중이면 소비하지 않는다.
-    """
-    with open(path, "rb") as fh:
-        fh.seek(0, 2)
-        size = fh.tell()
-        start = 0 if offset > size else offset  # 파일이 잘렸거나 교체됨
-        fh.seek(start)
-        raw = fh.read()
-
-    cut = raw.rfind(b"\n")
-    if cut == -1:
-        return [], start, chat_id, topic_id
-    complete = raw[: cut + 1]
-    new_offset = start + len(complete)
-
-    msgs: list[Msg] = []
-    for line in complete.decode("utf-8", errors="replace").splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            rec = json.loads(line)
-        except json.JSONDecodeError:
-            continue  # 깨진 줄 하나가 세션 전체를 막지 않게 한다
-        if rec.get("type") != "message":
-            continue
-        role = rec.get("message", {}).get("role")
-        if role not in ("user", "assistant"):
-            continue
-        text = message_text(rec)
-        if not text:
-            continue
-        if role == "user":
-            meta = extract_sender_meta(text)
-            if meta:
-                chat_id = find_chat_id(meta) or chat_id
-                topic_id = find_topic_id(meta) or topic_id
-                text = strip_sender_block(text)
-            if not text:
-                continue
-        try:
-            ts = _parse_ts(rec["timestamp"])
-        except (KeyError, ValueError):
-            continue
-        msgs.append(
-            Msg(ts=ts, agent=agent, role=role, text=text, chat_id=chat_id, topic_id=topic_id)
-        )
-    return msgs, new_offset, chat_id, topic_id
-```
-
-- [ ] **Step 6: `mirror.py` 를 쓴다**
-
-Create `scripts/lucifer/mirror.py`:
-
-```python
-#!/usr/bin/env python3
-"""OpenClaw 세션을 Lucifer/<프로젝트>/chat/YYYY-MM-DD.md 로 미러링한다.
-
-LLM 에게 로그를 남기라고 지시하지 않는다 — 잊으면 조용히 유실되기 때문이다.
-대신 OpenClaw 가 이미 남기는 세션 파일을 증분으로 읽어 옮긴다.
-"""
-from __future__ import annotations
-
-import glob
-import json
-import sys
-import traceback
-from datetime import datetime, timedelta, timezone
-from pathlib import Path
-
-import session_parse as sp
-
-KST = timezone(timedelta(hours=9))
-
-LUCIFER = Path("/media/stevenlim/TwinverseFolder/Lucifer")
-SESSIONS_ROOT = Path("/srv/openclaw/data/.openclaw/agents")
-STATE_PATH = LUCIFER / ".mirror-state.json"
-ERROR_LOG = LUCIFER / "_common" / "_mirror-errors.log"
-
-AGENT_LABELS = {"myjini": "지니 🧞", "main": "로이 🦊"}
-USER_LABEL = "감독님"
-
-
-def log_error(what: str, exc: BaseException) -> None:
-    """실패를 눈에 보이게 남긴다. 기록 유실을 조용히 넘기지 않는 것이 목적이다."""
-    ERROR_LOG.parent.mkdir(parents=True, exist_ok=True)
-    stamp = datetime.now(KST).isoformat(timespec="seconds")
-    with ERROR_LOG.open("a", encoding="utf-8") as fh:
-        fh.write(f"[{stamp}] {what}: {exc.__class__.__name__}: {exc}\n")
-        fh.write(traceback.format_exc())
-        fh.write("\n")
-
-
-def load_registry() -> dict:
-    return json.loads((LUCIFER / "_registry.json").read_text(encoding="utf-8"))
-
-
-def resolve_project(topic_id: str | None, registry: dict) -> str | None:
-    """토픽 ID 를 등록된 프로젝트 폴더명으로 역참조한다. 미등록이면 None."""
-    if not topic_id:
-        return None
-    for entry in (registry.get("projects") or {}).values():
-        if str(entry.get("topicId") or "") == str(topic_id):
-            return entry.get("folder")
-    return None
-
-
-def load_state() -> tuple[dict, bool]:
-    """(상태, 처음부터인가) 를 돌려준다.
-
-    두 번째 값이 True 면 상태가 없거나 깨진 것이다. 이때 전체 이력을 그대로 append 하면
-    모든 날짜 파일이 중복되므로, 호출자는 **당일 분만 재생성**해야 한다.
-    """
-    try:
-        state = json.loads(STATE_PATH.read_text(encoding="utf-8"))
-        if isinstance(state, dict) and isinstance(state.get("files"), dict):
-            return state, False
-    except (OSError, json.JSONDecodeError):
-        pass
-    return {"version": 1, "files": {}}, True
-
-
-def save_state(state: dict) -> None:
-    tmp = STATE_PATH.with_name(STATE_PATH.name + ".tmp")
-    tmp.write_text(json.dumps(state, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
-    tmp.replace(STATE_PATH)
-
-
-def render(msgs: list[sp.Msg]) -> str:
-    """시간순으로 정렬된 메시지를 마크다운 블록으로 만든다. 시각은 KST."""
-    out: list[str] = []
-    for m in msgs:
-        local = m.ts.astimezone(KST)
-        who = USER_LABEL if m.role == "user" else AGENT_LABELS.get(m.agent, m.agent)
-        out.append(f"### {local:%H:%M} {who}\n\n{m.text}\n")
-    return "\n".join(out)
-
-
-def day_key(m: sp.Msg) -> str:
-    """메시지가 속한 KST 날짜. 파일명이자 버킷 키."""
-    return m.ts.astimezone(KST).strftime("%Y-%m-%d")
-
-
-def filter_today(msgs: list[sp.Msg], now: datetime) -> list[sp.Msg]:
-    today = now.astimezone(KST).strftime("%Y-%m-%d")
-    return [m for m in msgs if day_key(m) == today]
-
-
-def write_day(folder: str, day: str, body: str, *, overwrite: bool) -> None:
-    path = LUCIFER / folder / "chat" / f"{day}.md"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    if overwrite or not path.exists():
-        path.write_text(f"# {day}\n\n", encoding="utf-8")
-    with path.open("a", encoding="utf-8") as fh:
-        fh.write(body + "\n")
-
-
-def session_files() -> list[tuple[str, str]]:
-    """(agent, path) 목록. 체크포인트·reset 사본은 제외한다."""
-    found: list[tuple[str, str]] = []
-    for agent in AGENT_LABELS:
-        pattern = str(SESSIONS_ROOT / agent / "sessions" / "*.jsonl")
-        for path in sorted(glob.glob(pattern)):
-            name = Path(path).name
-            if ".checkpoint." in name or ".reset." in name:
-                continue
-            found.append((agent, path))
-    return found
-
-
-def main() -> int:
-    try:
-        registry = load_registry()
-    except (OSError, json.JSONDecodeError) as exc:
-        log_error("레지스트리 읽기 실패", exc)
-        return 1
-
-    state, fresh = load_state()
-    files = state["files"]
-    collected: list[sp.Msg] = []
-
-    for agent, path in session_files():
-        entry = files.get(path) or {}
-        try:
-            msgs, offset, chat_id, topic_id = sp.read_new(
-                path, int(entry.get("offset") or 0), agent,
-                entry.get("chatId"), entry.get("topicId"),
-            )
-        except OSError as exc:
-            log_error(f"세션 읽기 실패 {path}", exc)
-            continue
-        files[path] = {"offset": offset, "chatId": chat_id, "topicId": topic_id}
-        collected.extend(msgs)
-
-    # 두 에이전트의 새 메시지를 한 번에 모아 시간순으로 병합한다.
-    collected.sort(key=lambda m: m.ts)
-
-    # 상태를 잃었으면 전 기간을 다시 읽은 것이므로 그대로 append 하면 중복된다.
-    # 설계대로 당일 분만 재생성한다.
-    if fresh:
-        collected = filter_today(collected, datetime.now(timezone.utc))
-
-    buckets: dict[tuple[str, str], list[sp.Msg]] = {}
-    for m in collected:
-        folder = resolve_project(m.topic_id, registry)
-        if not folder:
-            continue  # 등록 안 된 토픽·콘솔 세션은 미러링 대상이 아니다
-        buckets.setdefault((folder, day_key(m)), []).append(m)
-
-    written = 0
-    for (folder, day), msgs in sorted(buckets.items()):
-        try:
-            write_day(folder, day, render(msgs), overwrite=fresh)
-            written += len(msgs)
-        except OSError as exc:
-            log_error(f"쓰기 실패 {folder}/chat/{day}.md", exc)
-
-    try:
-        save_state(state)
-    except OSError as exc:
-        log_error("상태 저장 실패", exc)
-        return 1
-
-    print(f"mirrored {written} message(s) into {len(buckets)} file(s)")
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())
-```
-
-- [ ] **Step 7: 테스트가 통과하는지 확인한다**
-
-```bash
-cd scripts/lucifer && python -m unittest test_mirror -v 2>&1 | tail -12
-```
-
-Expected: `OK` — 15개 테스트 전부 통과
-
-- [ ] **Step 8: 커밋**
-
-```bash
-git add scripts/lucifer/session_parse.py scripts/lucifer/mirror.py scripts/lucifer/test_mirror.py
-git commit -m "feat(lucifer): 세션 -> chat 마크다운 미러링"
-```
-
----
-
-## Task 6: 미러링 systemd 타이머 배포
-
-**Files:**
-- Create: `scripts/lucifer/lucifer-mirror.service`
-- Create: `scripts/lucifer/lucifer-mirror.timer`
-- Modify: `scripts/lucifer/deploy.sh`
-
-**Interfaces:**
-- Consumes: Task 5 의 `mirror.py`
-- Produces: 1분 주기로 도는 `lucifer-mirror.timer` — 검증 기준 4번을 만족시킨다.
-
-- [ ] **Step 1: 타이머가 없음을 확인 (실패 검증)**
-
-```bash
-ssh stevenlim@192.168.219.117 "systemctl list-timers --all 2>/dev/null | grep -i lucifer || echo 'NO LUCIFER TIMER'"
-```
-
-Expected: `lucifer-convert.timer` 만 보이고 `lucifer-mirror` 는 없다.
-
-- [ ] **Step 2: 서비스 유닛을 쓴다**
-
-Create `scripts/lucifer/lucifer-mirror.service`:
-
-```ini
-[Unit]
-Description=Lucifer session mirror (OpenClaw sessions -> chat markdown)
-After=network-online.target
-
-[Service]
-Type=oneshot
-User=stevenlim
-Group=stevenlim
-WorkingDirectory=/home/stevenlim/lucifer
-ExecStart=/usr/bin/python3 /home/stevenlim/lucifer/mirror.py
-TimeoutStartSec=120
-```
-
-- [ ] **Step 3: 타이머 유닛을 쓴다**
-
-Create `scripts/lucifer/lucifer-mirror.timer`:
-
-```ini
-[Unit]
-Description=Run Lucifer session mirror every minute
-
-[Timer]
-OnBootSec=2min
-OnUnitActiveSec=1min
-AccuracySec=10s
-Unit=lucifer-mirror.service
-
-[Install]
-WantedBy=timers.target
-```
-
-`OnUnitActiveSec=1min` 을 쓰는 이유: `OnCalendar` 와 달리 앞선 실행이 길어져도 겹치지
-않는다. 미러링이 1분을 넘기면 다음 실행이 그만큼 밀릴 뿐 중복되지 않는다.
-
-- [ ] **Step 4: `deploy.sh` 에 미러 배포를 더한다**
-
-Modify `scripts/lucifer/deploy.sh` — `scp` 줄과 systemd 블록을 다음으로 교체한다.
-
-```bash
-echo "== 스크립트 전송 =="
-ssh "$HOST" "mkdir -p ~/lucifer"
-scp "$DIR"/convert.py "$DIR"/converters.py "$DIR"/test_convert.py \
-    "$DIR"/mirror.py "$DIR"/session_parse.py "$DIR"/test_mirror.py "$HOST":~/lucifer/
-
-echo "== 테스트 =="
-ssh "$HOST" "cd ~/lucifer && python3 -m unittest test_convert test_mirror 2>&1 | tail -3"
-
-echo "== systemd 유닛 설치 =="
-scp "$DIR"/lucifer-convert.service "$DIR"/lucifer-convert.timer \
-    "$DIR"/lucifer-mirror.service "$DIR"/lucifer-mirror.timer "$HOST":/tmp/
-ssh "$HOST" "
-  sudo mv /tmp/lucifer-convert.service /tmp/lucifer-convert.timer \
-          /tmp/lucifer-mirror.service /tmp/lucifer-mirror.timer /etc/systemd/system/
-  sudo systemctl daemon-reload
-  sudo systemctl enable --now lucifer-convert.timer lucifer-mirror.timer
-  systemctl list-timers lucifer-convert.timer lucifer-mirror.timer --no-pager
-"
-```
-
-- [ ] **Step 5: 배포한다**
+- [x] **Step 8: 배포**
 
 ```bash
 bash scripts/lucifer/deploy.sh
 ```
 
-Expected: 테스트 `OK`, 두 타이머가 `list-timers` 에 나온다.
+Expected: 서버 테스트 `OK`, `lucifer-convert.timer` 와 `lucifer-mirror.timer` 둘 다 활성.
+`enable --now` 라 배포 직후 1회 즉시 실행된다 — 이때 이미 밀린 세션을 소비하므로,
+직후 수동 실행이 `mirrored 0` 이어도 실패가 아니다. 출력 파일을 봐야 한다.
 
-- [ ] **Step 6: 수동으로 한 번 돌려 결과를 본다**
-
-```bash
-ssh stevenlim@192.168.219.117 "cd ~/lucifer && python3 mirror.py"
-```
-
-Expected: `mirrored N message(s) into 1 file(s)` — Task 4 에서 주고받은 대화가 잡혀야 한다.
-
-`mirrored 0 message(s) into 0 file(s)` 이면 토픽 매칭이 안 된 것이다. 상태 파일을 지우고
-Task 5 Step 2 로 돌아가 실제 키 이름을 확인한다:
-`ssh ... "rm -f /media/stevenlim/TwinverseFolder/Lucifer/.mirror-state.json"`
-
-- [ ] **Step 7: 결과 파일을 눈으로 확인한다**
+- [x] **Step 9: 결과 확인**
 
 ```bash
-ssh stevenlim@192.168.219.117 "cat /media/stevenlim/TwinverseFolder/Lucifer/TwinverseAI/chat/\$(TZ=Asia/Seoul date +%F).md"
+ssh stevenlim@192.168.219.117 'cat /media/stevenlim/TwinverseFolder/Lucifer/TwinverseAI/chat/$(TZ=Asia/Seoul date +%F).md'
 ```
 
-Expected: `# YYYY-MM-DD` 헤더 아래에 `### HH:MM 감독님` / `### HH:MM 지니 🧞` /
-`### HH:MM 로이 🦊` 블록이 시간순으로 있다.
+실측 결과 (2026-07-29):
 
-- [ ] **Step 8: 증분 동작을 확인한다 (중복 없음)**
+```markdown
+# 2026-07-29
 
-```bash
-ssh stevenlim@192.168.219.117 "cd ~/lucifer && python3 mirror.py && python3 mirror.py"
+### 19:36 감독님
+
+로이야 안녕?
+
+### 19:36 로이 🦊
+
+안녕하세요, 춘우님! 로이입니다 🦊 반가워요.
 ```
 
-Expected: 두 번째 실행이 `mirrored 0 message(s)` — 같은 메시지를 다시 쓰지 않는다.
+UTC 10:36 → KST 19:36 변환, 발화자 표기, `_mirror-errors.log` 비어 있음 모두 확인.
 
-- [ ] **Step 9: 타이머가 실제로 도는지 확인한다**
+### 알려진 공백: 이름을 안 부른 메시지는 미러링되지 않는다
 
-```bash
-ssh stevenlim@192.168.219.117 "sleep 70; systemctl status lucifer-mirror.service --no-pager | tail -8; \
-  echo '=== ERRORS ==='; cat /media/stevenlim/TwinverseFolder/Lucifer/_common/_mirror-errors.log 2>/dev/null | tail -20 || echo '(에러 없음)'"
-```
+`requireMention` 때문에 이름을 부르지 않은 메시지는 **어느 에이전트의 세션에도
+사용자 메시지로 들어가지 않는다.** 따라서 감독님이 그룹에 혼잣말처럼 남긴 내용은
+현재 `chat/` 에 안 쌓인다. 설계의 "Claude Code 가 그동안 오간 내용을 따라잡는다" 는
+목적에서 보면 실제 손실이다.
 
-Expected: 서비스가 최근 `succeeded` 로 끝났고 에러 로그가 비어 있다.
-
-- [ ] **Step 10: 커밋**
-
-```bash
-git add scripts/lucifer/lucifer-mirror.service scripts/lucifer/lucifer-mirror.timer scripts/lucifer/deploy.sh
-git commit -m "feat(lucifer): 세션 미러링 systemd 타이머 배포"
-```
+복구 경로는 있다 — 사용자 메시지의 `Chat history since last reply` 블록에
+`{sender, timestamp_ms, body}` 형태로 그 메시지들이 들어 있다. 다만 같은 메시지가
+직접 사용자 메시지로도, 다른 에이전트의 history 블록으로도 나타나므로 **중복 제거가
+필요**하고, 그 상태를 유지해야 한다. 이번 범위에서는 구현하지 않았고 후속으로 남긴다.
 
 ---
 
