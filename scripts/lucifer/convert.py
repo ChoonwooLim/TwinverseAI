@@ -32,6 +32,8 @@ def target_for(src: Path, data_dir: Path) -> Path | None:
     rule = converters.rule_for(src)
     if rule is None:
         return None
+    if src.name == converters.LINKS_FILENAME:
+        return data_dir / AI_DIR_NAME / "links" / ".done"
     out_suffix, _ = rule
     rel = src.relative_to(data_dir)
     # 원본 확장자를 이름에 남긴다: report.pptx -> _ai/report.pptx.pdf

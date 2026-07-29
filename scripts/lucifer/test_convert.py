@@ -182,5 +182,29 @@ class TestFailureIsolation(unittest.TestCase):
         self.assertEqual(convert.run_once(Path("/nonexistent-lucifer-xyz")), 0)
 
 
+class TestYoutubeLinks(unittest.TestCase):
+    def test_extracts_video_ids(self):
+        text = (
+            "https://www.youtube.com/watch?v=dQw4w9WgXcQ\n"
+            "메모 한 줄\n"
+            "https://youtu.be/abc12345678\n"
+        )
+        self.assertEqual(
+            converters.extract_youtube_ids(text),
+            ["dQw4w9WgXcQ", "abc12345678"],
+        )
+
+    def test_ignores_non_youtube_urls(self):
+        self.assertEqual(converters.extract_youtube_ids("https://example.com/x"), [])
+
+    def test_links_md_is_a_conversion_target(self):
+        with tempfile.TemporaryDirectory() as d:
+            data = Path(d)
+            (data / "links.md").write_text("https://youtu.be/abc12345678\n", encoding="utf-8")
+            pairs = convert.plan_targets(data)
+            self.assertEqual(len(pairs), 1)
+            self.assertEqual(pairs[0][1], data / "_ai" / "links" / ".done")
+
+
 if __name__ == "__main__":
     unittest.main()

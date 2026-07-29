@@ -11,6 +11,7 @@
 import base64
 import json
 import os
+import re
 import shutil
 import subprocess
 import time
@@ -34,6 +35,13 @@ OLLAMA_TIMEOUT_SEC = 60
 # 영상 한 편이 워처 전체를 붙잡지 못하게 하는 총 예산.
 # 프레임 설명이 이 시간을 넘기면 남은 프레임은 설명 없이 기록만 남긴다.
 VIDEO_DESCRIBE_BUDGET_SEC = 600
+
+LINKS_FILENAME = "links.md"
+YTDLP_TIMEOUT_SEC = 300
+
+_YOUTUBE_ID_RE = re.compile(
+    r"(?:youtube\.com/watch\?v=|youtu\.be/)([A-Za-z0-9_-]{11})"
+)
 
 
 def convert_document(src: Path, dst: Path) -> Path:
@@ -130,6 +138,60 @@ def convert_video(src: Path, dst: Path) -> Path:
     return dst
 
 
+def extract_youtube_ids(text: str) -> list[str]:
+    """텍스트에서 유튜브 video id 를 등장 순서대로, 중복 없이 뽑는다."""
+    seen = []
+    for match in _YOUTUBE_ID_RE.finditer(text):
+        vid = match.group(1)
+        if vid not in seen:
+            seen.append(vid)
+    return seen
+
+
+def convert_youtube_links(src: Path, dst: Path) -> Path:
+    """links.md 의 유튜브 URL 마다 자막을 받아 마크다운으로 저장한다.
+
+    dst 는 완료 표식(`_ai/links/.done`)이고, 실제 자막은 그 옆에 <id>.md 로 쌓인다.
+    """
+    dst_dir = dst.parent
+    dst_dir.mkdir(parents=True, exist_ok=True)
+    ids = extract_youtube_ids(src.read_text(encoding="utf-8", errors="replace"))
+    failures = []
+    for vid in ids:
+        out = dst_dir / f"{vid}.md"
+        if out.exists():
+            continue
+        result = subprocess.run(
+            [
+                "yt-dlp",
+                "--skip-download",
+                "--write-auto-sub", "--write-sub",
+                "--sub-lang", "ko,en",
+                "--sub-format", "vtt",
+                "--convert-subs", "srt",
+                "-o", str(dst_dir / f"{vid}.%(ext)s"),
+                f"https://www.youtube.com/watch?v={vid}",
+            ],
+            capture_output=True, text=True, timeout=YTDLP_TIMEOUT_SEC,
+        )
+        subs = sorted(dst_dir.glob(f"{vid}*.srt"))
+        if not subs:
+            failures.append(f"{vid}: 자막 없음 (rc={result.returncode})")
+            continue
+        body = subs[0].read_text(encoding="utf-8", errors="replace")
+        out.write_text(f"# https://youtu.be/{vid}\n\n```\n{body}\n```\n", encoding="utf-8")
+        for leftover in subs:
+            leftover.unlink()
+
+    dst.write_text(
+        f"processed {len(ids)} links\n" + "\n".join(failures) + "\n",
+        encoding="utf-8",
+    )
+    if failures:
+        raise RuntimeError("; ".join(failures))
+    return dst
+
+
 def rule_for(src: Path) -> tuple[str, Callable[[Path, Path], Path]] | None:
     """(목적지에 덧붙일 접미사, 변환 함수). 변환 대상이 아니면 None.
 
@@ -137,6 +199,8 @@ def rule_for(src: Path) -> tuple[str, Callable[[Path, Path], Path]] | None:
     거치므로 "경로는 A 로 잡고 변환은 B 로 하는" 어긋남이 생길 수 없다.
     Task 3·4 는 이 함수에만 분기를 추가한다.
     """
+    if src.name == LINKS_FILENAME:
+        return ("", convert_youtube_links)
     if src.suffix.lower() in DOCUMENT_SUFFIXES:
         return (".pdf", convert_document)
     if src.suffix.lower() in VIDEO_SUFFIXES:
