@@ -362,6 +362,41 @@
             "edit_claude_md 큐잉"
           ],
           "usage": "/news-watch 직접 호출. admin/news 의 [적용] 버튼과 연동"
+        },
+        {
+          "command": "/ppt",
+          "desc": "PowerPoint 슬라이드·사업계획서·제안서 디자인. 브랜드(로고/폰트/컬러/톤) 인테이크를 먼저 받고 스펙 시트를 확정한 뒤 제작합니다.",
+          "features": [
+            "자동 감지된 스킬입니다. 상세 기능은 추후 업데이트됩니다."
+          ]
+        },
+        {
+          "command": "/project-start-web",
+          "desc": "/init 이후 풀스택 웹 프로젝트 초기화. FastAPI + React + Vite + PostgreSQL 스캐폴딩 (Python 3.12+, Node 20+).",
+          "features": [
+            "자동 감지된 스킬입니다. 상세 기능은 추후 업데이트됩니다."
+          ]
+        },
+        {
+          "command": "/project-start-api",
+          "desc": "/init 이후 API 전용 백엔드 초기화. FastAPI + JWT 인증 + PostgreSQL (프론트엔드 없음).",
+          "features": [
+            "자동 감지된 스킬입니다. 상세 기능은 추후 업데이트됩니다."
+          ]
+        },
+        {
+          "command": "/project-start-blank",
+          "desc": "/init 이후 빈 프로젝트 초기화. 코드 스캐폴딩 없이 docs 4종(work-log/bugfix-log/upgrade-log/dev-plan) 구조만 검증.",
+          "features": [
+            "자동 감지된 스킬입니다. 상세 기능은 추후 업데이트됩니다."
+          ]
+        },
+        {
+          "command": "/seedance-universal",
+          "desc": "Higgsfield Seedance 2.0 영상 프롬프트 작성. 변신·POV·액션·광고·숏폼 등 장면 의도를 프롬프트로 구조화합니다.",
+          "features": [
+            "자동 감지된 스킬입니다. 상세 기능은 추후 업데이트됩니다."
+          ]
         }
       ]
     }

@@ -20,6 +20,7 @@
 | 4 | 프로젝트 비전 수립 + AI 방침 문서화 | 완료 | 2026-04-08 |
 | 5 | Pixel Streaming 로컬 테스트 연동 | 완료 | 2026-04-09 |
 | 6 | 3D 오피스 메타버스 (DeskRPG→UE5 재구현) | 진행중 | - |
+| 7 | Lucifer 공동 작업 공간 (감독님·Claude·지니·로이 4인 공유) | 진행중 (2/4) | - |
 
 ## 기능 목록
 
@@ -55,3 +56,7 @@
 | PS2 Dedicated Server | 멀티플레이어 오피스 전용 서버 모델 + 서비스 | 최상 | 완료 |
 | NPC Chat API | LLM 기반 NPC 대화 API (Anthropic/OpenAI) | 높음 | 완료 |
 | Office 멀티플레이어 UI | DeskLaunch Office 모드 + Multiplayer 뱃지 | 높음 | 완료 |
+| Lucifer 공유 폴더 | 4인(감독님·Claude·지니·로이) 상시 접근 공유 공간 + 프로젝트 등록제 | 높음 | 완료 |
+| Lucifer 미디어 변환 | 문서→PDF / 영상→장면설명 / 유튜브→자막, 5분 systemd 타이머 | 높음 | 완료 |
+| Lucifer 텔레그램 연동 | 봇 3종 ↔ OpenClaw 에이전트 바인딩 + 대화 미러링 (계획 3/4) | 높음 | 대기 |
+| Lucifer 전역 스킬 | `/lucifer` 스킬로 타 프로젝트에서도 동일 사용 (계획 4/4) | 중간 | 대기 |

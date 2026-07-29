@@ -1652,3 +1652,76 @@ OpenClaw 롤백 후에도 `https://twinverseai.twinverse.org/admin/...` 가 502 
 - **start.sh 빌드 하드닝**은 다음 전체 재시작(`bash start.sh`) 때 발효. proxy fix는 이미 라이브.
 
 ---
+## 2026-07-29 (claude-max 인증 복구 → Lucifer 공동 작업 공간 구축 + 미디어 변환 파이프라인)
+
+> 시작은 "claude-max가 왜 오류났나" 였고, 인증 복구 → 설정 반영 문제 → Lucifer 설계 →
+> 공유 공간 구축 → 변환 파이프라인 → 텔레그램 준비까지 이어진 긴 세션.
+> 커밋 27건 + 커밋 없는 서버 인프라 작업 다수.
+
+### 작업 요약
+
+| 카테고리 | 작업 내용 | 상태 |
+|----------|----------|------|
+| fix | claude-max OAuth 만료 복구 — setup-token 장기 토큰으로 전환 (refresh 불필요) | 완료 |
+| fix | config watcher EACCES — openclaw.json root 소유로 설정 반영이 막히던 상태 복구 | 완료 |
+| infra | myjini 모델 claude-opus-4-7 → claude-opus-5 전환 | 완료 |
+| docs | Lucifer 공동 작업 공간 설계 (사람 1 + AI 3, 텔레그램 + 공유폴더) | 완료 |
+| infra | Lucifer 공유 폴더 + 컨테이너 /shared 마운트 (계획 1/4) | 완료 |
+| feat | 미디어 변환 파이프라인 — 문서/영상/유튜브 (계획 2/4) | 완료 |
+| infra | 텔레그램 봇 3종 + 슈퍼그룹 + Topics 준비 (계획 3/4 선행작업) | 완료 |
+
+### 세부 내용
+
+**claude-max 인증 복구.** 어드민 콘솔의 claude-max가 응답하지 않던 원인은 `auth-profiles.json`의
+`anthropic:claude-cli` 액세스 토큰이 **2026-04-18에 만료된 뒤 102일간 갱신되지 않은 것**.
+세팅 당일 몇 시간 만에 만료됐고 그 후 refresh가 한 번도 성공한 적 없어, 모든 요청이
+`reason=auth`로 실패하고 `openai-codex`로 조용히 fallback되고 있었다 (= claude-max가 답한 줄
+알았던 응답이 실은 codex). 자동 복구가 안 된 이유는 OpenClaw의 `EXTERNAL_CLI_SYNC_PROVIDERS`에
+minimax·codex만 있고 **claude-cli는 빠져 있어서** — 6/23 codex 복구 때 `docker cp`만으로
+반영됐던 것과 정반대다. `claude setup-token`으로 1년짜리 장기 토큰을 발급해 refresh 자체를
+불필요하게 만들고, credentials.json과 auth-profiles.json 양쪽에 기록. 게이트웨이 재시작 없이
+복구되어 `OPENCLAW_TOKEN` 재동기화·백엔드 재배포 불필요.
+
+**"설정이 반영 안 되는" 상태.** 감독님이 지니 모델을 바꿔도 적용되지 않던 문제. config에는
+정상 저장돼 있었고, 게이트웨이의 config watcher가 `EACCES`로 죽어 파일을 다시 읽지 못한 것이
+원인. 원인은 `openclaw.json`이 root 소유가 된 것 — `docker exec`를 root로 실행하면 config
+재작성 시 소유권이 넘어간다. watcher는 한 번 죽으면 재무장되지 않아 chown 후 재시작까지
+필요했다. 재시작 전후 게이트웨이 토큰 해시 동일 확인(`ddda846ba5f129b4`) → 재배포 불필요.
+이후 핫리로드 정상 복구.
+
+**Lucifer 설계.** Steven·Claude Code·지니·로이 넷이 대화하고 콘텐츠·데이터를 주고받는 공간.
+핵심 비대칭은 Claude Code만 상시가 아니라는 것 — 대화가 텔레그램에만 쌓이면 따라잡을 수 없다.
+해법은 세션 `.jsonl`을 파일로 미러링하는 것이고, LLM에게 "로그 남겨줘"라고 지시하지 않는다
+(잊으면 조용히 유실된다). C:\WORK\ 하위 프로젝트가 20개+라 전역 스킬 + 등록제로 범용화.
+
+**계획 1 (공유 공간).** `Z:\Lucifer\` 트리 + `_registry.json` 생성, 컨테이너에 `/shared` rw
+마운트. uid/gid 1000이 컨테이너 node·호스트 stevenlim·CIFS 강제값 세 곳에서 일치함을 확인.
+지니가 쓴 파일을 감독님이 탐색기에서 열고 로이가 읽는 것까지 종단 검증.
+도중 **`Z:` 자체가 TwinverseFolder 공유**임을 발견 — 앞서 만든 `Z:\TwinverseFolder\`는 중복이라
+스펙·계획서 6곳 정정 후 제거.
+
+**계획 2 (미디어 변환).** `data/`에 넣으면 5분 타이머가 `data/_ai/`에 AI가 읽을 수 있는
+파생물을 만든다. 문서→PDF(LibreOffice), 영상→장면 프레임+한국어 설명(ffmpeg + 로컬
+`qwen2.5vl:7b`), 유튜브 링크→자막(yt-dlp). **외부 API 키 없이 전부 서버 로컬**로 처리.
+서브에이전트 리뷰 루프에서 Critical 4건·Important 8건이 나왔고 전부 계획서 코드의 결함이었다
+(구현자들은 지시대로 정확히 전사). 상세는 bugfix-log 참조.
+
+**텔레그램 준비.** 봇 3종(`@OpenclawJini_bot`, `@Openclaw2Roy_bot`, `@VScodeOpus_bot`) 생성,
+프라이버시 모드 해제, 슈퍼그룹 `Lucifers`(`-1004482716134`) + Topics 활성화까지 완료.
+봇 API 제약 두 가지를 확인: 봇은 자기가 들어온 이후 메시지만 보고, 다른 봇의 메시지는 못 본다.
+
+### 다음 세션 참고
+
+- **계획 3(텔레그램 연결) 구현부터 재개.** 감독님 선행작업은 전부 끝났고 남은 건 SSH 작업뿐:
+  채널 계정 3개 설정, 지니→`myjini`/로이→`main` 바인딩, `requireMention`(이름 부를 때만 응답),
+  `groupAllowFrom`(감독님만), 세션 `.jsonl` → `chat/` 미러링, TwinverseAI 토픽 생성.
+- 필요한 값은 메모리 `reference_lucifer_telegram.md`와 서버 `~/lucifer-secrets/`에 있다.
+- **계획 4(전역 스킬)** 는 선행작업 없이 착수 가능.
+- `qwen2.5vl:7b`의 프레임 설명은 **사실성을 신뢰하기 어렵다** — 스모크 테스트에서 없는 텍스트를
+  지어냈다. 색인 용도로는 쓸 만하지만 판단 근거로는 부적합. 정확도가 필요하면 더 큰 모델
+  (`gemma4:31b` 서버에 있음) 검토.
+- Lucifer 폴더가 git 저장소가 되었고(누군가 초기화) `.gitignore`에 `*.png`·`*-tokens.txt`를
+  추가해 토큰 스크린샷이 커밋되는 사고를 차단해 뒀다.
+
+---
+

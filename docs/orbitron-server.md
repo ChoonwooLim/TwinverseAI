@@ -16,7 +16,7 @@
 | 호스트명 | stevenlim-Z270X-Gaming-5 |
 | CPU | Intel Core i7-7700K @ 4.20GHz (4코어 8스레드) |
 | RAM | 64GB DDR4 (가용 ~55GB) |
-| 스토리지 | NVMe SSD 457GB (사용 236GB / 가용 198GB, 사용률 55%) |
+| 스토리지 | NVMe SSD 457GB (사용 246GB / 가용 189GB, 사용률 57% — 2026-07-29 실측) |
 | GPU 0 | NVIDIA GeForce GTX 1080 8GB (PCIe 01:00.0) |
 | GPU 1 | NVIDIA GeForce GTX 1080 8GB (PCIe 02:00.0) |
 | 네트워크 | 192.168.219.101/24 (내부, NetworkManager 정적 고정 — 구 DHCP 드리프트 차단) |

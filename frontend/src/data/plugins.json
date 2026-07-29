@@ -221,6 +221,50 @@
           ],
           "usage": "/plugin marketplace add thedotmack/claude-mem → /plugin install claude-mem → /reload-plugins. 이후 자동 작동.",
           "requiresKey": false
+        },
+        {
+          "name": "frontend-design",
+          "displayName": "Frontend Design",
+          "source": "claude-plugins-official",
+          "desc": "프론트엔드 UI 구현 품질 스킬 모음 — 레이아웃·타이포그래피·모션·색상·접근성",
+          "features": [
+            "자동 감지된 플러그인입니다. 상세 기능은 추후 업데이트됩니다."
+          ],
+          "usage": "자동 활성화. UI 작업 시 AI가 관련 스킬을 선택합니다.",
+          "requiresKey": false
+        },
+        {
+          "name": "feature-dev",
+          "displayName": "Feature Dev",
+          "source": "claude-plugins-official",
+          "desc": "기능 개발 전용 서브에이전트 3종 — code-architect / code-explorer / code-reviewer",
+          "features": [
+            "자동 감지된 플러그인입니다. 상세 기능은 추후 업데이트됩니다."
+          ],
+          "usage": "자동 활성화. 기능 설계·탐색·리뷰 시 서브에이전트로 위임됩니다.",
+          "requiresKey": false
+        },
+        {
+          "name": "telegram",
+          "displayName": "Telegram",
+          "source": "claude-plugins-official",
+          "desc": "텔레그램 봇 연동 — Lucifer 공동 작업 공간(계획 3/4)에서 사용 예정",
+          "features": [
+            "자동 감지된 플러그인입니다. 상세 기능은 추후 업데이트됩니다."
+          ],
+          "usage": "봇 토큰 필요. Lucifer 텔레그램 연동 작업에서 설정합니다.",
+          "requiresKey": true
+        },
+        {
+          "name": "supabase",
+          "displayName": "Supabase",
+          "source": "claude-plugins-official",
+          "desc": "Supabase 프로젝트·DB·마이그레이션·엣지 함수 관리 MCP",
+          "features": [
+            "자동 감지된 플러그인입니다. 상세 기능은 추후 업데이트됩니다."
+          ],
+          "usage": "claude.ai 커넥터로 인증. 현재 TwinverseAI 는 자체 PostgreSQL 사용.",
+          "requiresKey": true
         }
       ]
     }
