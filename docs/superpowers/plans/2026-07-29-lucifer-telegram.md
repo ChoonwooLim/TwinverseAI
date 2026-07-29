@@ -721,8 +721,10 @@ if (orgPolicy.channelsEnabled !== true …)   skip("policy")     // managed sett
 if (!in --channels list)                    skip("session")    // ← 우리를 막던 것
 ```
 
-해법: **`claude --channels telegram`** 으로 세션을 시작한다 (`--channels <servers...>`,
-`--help` 에 숨겨진 실험 옵션). 시작 시 "Channels (experimental) messages from X inject
+해법: **`claude --channels plugin:telegram@claude-plugins-official`** 으로 세션을 시작한다
+(`--channels <servers...>`, `--help` 에 숨겨진 실험 옵션). 항목은 태그 문법이 강제된다 —
+`plugin:<name>@<marketplace>` (플러그인 채널) 또는 `server:<name>` (수동 MCP 서버).
+`telegram` 처럼 태그 없이 주면 문법 안내와 함께 거부된다 (2026-07-29 실측). 시작 시 "Channels (experimental) messages from X inject
 directly in this session" 안내가 뜨면 성공이고, 인바운드가 `<channel source="telegram">`
 블록으로 대화에 주입된다.
 
