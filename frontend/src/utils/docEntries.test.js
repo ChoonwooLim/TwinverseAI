@@ -140,3 +140,39 @@ describe("parseTableDoc", () => {
     expect(parseTableDoc("| 이름 | 값 |\n|---|---|\n| a | b |\n")).toEqual([]);
   });
 });
+
+// 셀 안에 이스케이프된 파이프(`\|`)가 들어간 경우 — 셸 파이프·논리연산자 등 코드 조각이 실제 로그에 종종 들어간다.
+const ESCAPED_PIPE_SAMPLE = `| 날짜 | 제목 | 비고 |
+|------|------|------|
+| 2026-04-06 | 셸 파이프 테스트 | echo a \\| echo b |
+`;
+
+// "원인" 셀이 비어 있는 행 — 값 없는 컬럼이 fields에서 빠지는지 확인
+const EMPTY_CELL_SAMPLE = `| 날짜 | 버그 설명 | 원인 | 수정 내용 | 관련 파일 |
+|------|----------|------|----------|----------|
+| 2026-04-06 | 특정 케이스만 발생 | | 조건 분기 추가 | frontend/src/App.jsx |
+`;
+
+describe("parseTableDoc — 이스케이프된 파이프", () => {
+  it("셀 안의 \\|는 컬럼 구분자로 쓰이지 않는다 — 뒤 컬럼이 밀리지 않고 3컬럼을 유지한다", () => {
+    const entries = parseTableDoc(ESCAPED_PIPE_SAMPLE);
+    expect(entries).toHaveLength(1);
+    expect(entries[0].title).toBe("셸 파이프 테스트");
+    expect(entries[0].fields).toHaveLength(1);
+  });
+
+  it("fields 값에는 이스케이프가 풀린 실제 파이프 문자가 담긴다", () => {
+    const entries = parseTableDoc(ESCAPED_PIPE_SAMPLE);
+    expect(entries[0].fields).toEqual([{ label: "비고", value: "echo a | echo b" }]);
+  });
+});
+
+describe("parseTableDoc — 빈 셀", () => {
+  it("값이 빈 컬럼은 fields에서 제외되고, 값 있는 컬럼만 남는다", () => {
+    const entries = parseTableDoc(EMPTY_CELL_SAMPLE);
+    expect(entries[0].fields).toEqual([
+      { label: "수정 내용", value: "조건 분기 추가" },
+      { label: "관련 파일", value: "frontend/src/App.jsx" },
+    ]);
+  });
+});

@@ -80,9 +80,18 @@ function isSeparatorRow(line) {
   return /^\s*\|[\s:|-]+\|\s*$/.test(line) && line.includes("-");
 }
 
-/** `| a | b |` → ["a", "b"] */
+/**
+ * `| a | b |` → ["a", "b"]
+ * GFM 표기법상 셀 안의 파이프는 `\|`로 이스케이프된다(코드 조각·셸 파이프 등).
+ * 백슬래시가 앞에 오지 않는 `|`만 구분자로 삼고, 분리 후 `\|`를 실제 `|`로 되돌린다.
+ */
 function splitRow(line) {
-  return line.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((c) => c.trim());
+  return line
+    .trim()
+    .replace(/^\|/, "")
+    .replace(/\|$/, "")
+    .split(/(?<!\\)\|/)
+    .map((c) => c.trim().replace(/\\\|/g, "|"));
 }
 
 /**
@@ -126,6 +135,7 @@ export function parseTableDoc(md) {
         .map((label, idx) =>
           idx === dateCol || idx === titleCol ? null : { label, value: cells[idx] || "" }
         )
+        // 값이 빈 셀은 상세 뷰에 "라벨: (빈칸)"으로 노이즈만 남기므로 의도적으로 제외한다.
         .filter((f) => f && f.value),
     });
   }
