@@ -205,6 +205,56 @@ class TestYoutubeLinks(unittest.TestCase):
             self.assertEqual(len(pairs), 1)
             self.assertEqual(pairs[0][1], data / "_ai" / "links" / ".done")
 
+    def test_prefers_korean_when_both_languages_exist(self):
+        # sorted() 에 맡기면 'en' < 'ko' 라 영어가 항상 이긴다.
+        from unittest import mock
+
+        with tempfile.TemporaryDirectory() as d:
+            data = Path(d)
+            src = data / "links.md"
+            src.write_text("https://youtu.be/abc12345678\n", encoding="utf-8")
+            dst = data / "_ai" / "links" / ".done"
+            dst.parent.mkdir(parents=True)
+
+            class FakeResult:
+                returncode = 0
+
+            def fake_run(cmd, **kwargs):
+                # yt-dlp 가 두 언어를 모두 받아온 상황
+                (dst.parent / "abc12345678.en.srt").write_text("english body", encoding="utf-8")
+                (dst.parent / "abc12345678.ko.srt").write_text("한국어 본문", encoding="utf-8")
+                return FakeResult()
+
+            with mock.patch.object(converters.subprocess, "run", fake_run):
+                converters.convert_youtube_links(src, dst)
+
+            body = (dst.parent / "abc12345678.md").read_text(encoding="utf-8")
+            self.assertIn("자막 언어: ko", body)
+            self.assertIn("한국어 본문", body)
+            self.assertNotIn("english body", body)
+
+    def test_done_marker_is_not_written_when_a_video_fails(self):
+        # 마커를 쓰면 needs_conversion 이 이후 실행을 전부 건너뛰어
+        # 나중에 자동 자막이 생겨도 영원히 재시도되지 않는다.
+        from unittest import mock
+
+        with tempfile.TemporaryDirectory() as d:
+            data = Path(d)
+            src = data / "links.md"
+            src.write_text("https://youtu.be/abc12345678\n", encoding="utf-8")
+            dst = data / "_ai" / "links" / ".done"
+            dst.parent.mkdir(parents=True)
+
+            class FakeResult:
+                returncode = 1
+
+            with mock.patch.object(converters.subprocess, "run", lambda *a, **k: FakeResult()):
+                with self.assertRaises(RuntimeError):
+                    converters.convert_youtube_links(src, dst)
+
+            self.assertFalse(dst.exists(), "실패했는데 완료 표식이 생겼다")
+            self.assertTrue((dst.parent / "abc12345678.failed").exists())
+
 
 if __name__ == "__main__":
     unittest.main()
