@@ -1,0 +1,11 @@
+[Unit]
+Description=Lucifer session mirror (OpenClaw telegram sessions -> chat markdown)
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=stevenlim
+Group=stevenlim
+WorkingDirectory=/home/stevenlim/lucifer
+ExecStart=/usr/bin/python3 /home/stevenlim/lucifer/mirror.py
+TimeoutStartSec=120

@@ -53,9 +53,10 @@
 | `frontend/src/components/docs/DocTimeline.jsx` | **신규.** 좌측 연/월 인덱스 + 우측 카드 목록. 표형 카드의 인라인 확장 포함 |
 | `frontend/src/components/docs/DocTimeline.module.css` | **신규.** 위 스타일 |
 | `frontend/src/components/docs/DocDayDetail.jsx` | **신규.** 특정 날짜의 섹션 본문 렌더 + breadcrumb + 이전/다음 날 이동 |
-| `frontend/src/components/docs/DocDayDetail.module.css` | **신규.** 위 스타일 |
+| `frontend/src/components/docs/DocDayDetail.module.css` | **신규.** 위 레이아웃 스타일. 마크다운 본문 스타일은 아래 prose 모듈에 맡긴다 |
+| `frontend/src/styles/prose.module.css` | **신규(Task 5).** 마크다운 본문 공용 스타일. `AdminDocs.module.css`의 `.content` 자식 규칙을 **옮겨온다** — 복사가 아니라 이동 |
 | `frontend/src/pages/admin/AdminDocs.jsx` | **수정.** content fetch → `parseDoc` → 타임라인/상세/fallback 분기 |
-| `frontend/src/pages/admin/AdminDocs.module.css` | **수정.** `.page` 최대폭 확대 |
+| `frontend/src/pages/admin/AdminDocs.module.css` | **수정.** `.page` 최대폭 확대, summary·스켈레톤 추가, `.content` 자식 규칙은 prose로 이관 |
 | `frontend/src/App.jsx` | **수정.** 기존 `/admin/docs/:docKey` 라우트를 `:date?` 옵셔널 파라미터로 확장 (1줄 교체) |
 | `frontend/package.json` | **수정.** `vitest` devDep + `test` 스크립트 |
 
@@ -686,6 +687,23 @@ function groupLabel(group) {
   return `${group.year}년 ${group.month}월`;
 }
 
+/** 카드 안쪽. 작업일지는 링크로, 표형은 버튼으로 감싸므로 내용만 따로 둔다. */
+function CardInner({ group }) {
+  return (
+    <>
+      <span className={styles.cardDate}>{group.date.slice(5) || "—"}</span>
+      <span className={styles.cardBody}>
+        <span className={styles.cardTitle}>
+          {group.entries[0].title || group.date || "제목 없음"}
+        </span>
+        {group.entries.length > 1 && (
+          <span className={styles.badge}>{group.entries.length}건</span>
+        )}
+      </span>
+    </>
+  );
+}
+
 export default function DocTimeline({ docKey, groups }) {
   const [filter, setFilter] = useState(null);
   const index = useMemo(() => buildIndex(groups), [groups]);
@@ -738,15 +756,7 @@ export default function DocTimeline({ docKey, groups }) {
             <div key={group.date || "unknown"}>
               {showLabel && <h2 className={styles.monthHeading}>{label}</h2>}
               <Link to={`/admin/docs/${docKey}/${group.date}`} className={styles.card}>
-                <span className={styles.cardDate}>{group.date.slice(5) || "—"}</span>
-                <span className={styles.cardBody}>
-                  <span className={styles.cardTitle}>
-                    {group.entries[0].title || group.date || "제목 없음"}
-                  </span>
-                  {group.entries.length > 1 && (
-                    <span className={styles.badge}>{group.entries.length}건</span>
-                  )}
-                </span>
+                <CardInner group={group} />
               </Link>
             </div>
           );
@@ -1119,12 +1129,16 @@ git commit -m "feat(docs): 프로젝트 문서 타임라인 화면 + 연/월 인
 **Files:**
 - Create: `frontend/src/components/docs/DocDayDetail.jsx`
 - Create: `frontend/src/components/docs/DocDayDetail.module.css`
+- Create: `frontend/src/styles/prose.module.css`
 - Modify: `frontend/src/pages/admin/AdminDocs.jsx`
+- Modify: `frontend/src/pages/admin/AdminDocs.module.css`
 - Modify: `frontend/src/App.jsx:73`
 
 **Interfaces:**
 - Consumes: Task 3의 `DayGroup`, Task 4의 `AdminDocs` 구조
-- Produces: `<DocDayDetail docKey={string} groups={DayGroup[]} date={string} />` — `date`에 해당하는 그룹이 없으면 "해당 날짜의 기록이 없습니다." + 타임라인 복귀 링크를 보여준다.
+- Produces:
+  - `<DocDayDetail docKey={string} groups={DayGroup[]} date={string} />` — `date`에 해당하는 그룹이 없으면 "해당 날짜의 기록이 없습니다." + 타임라인 복귀 링크를 보여준다.
+  - `frontend/src/styles/prose.module.css`의 `.prose` 클래스 — 마크다운 본문 공용 스타일. `AdminDocs`의 fallback 렌더와 `DocDayDetail`의 본문이 함께 쓴다.
 
 - [ ] **Step 1: 라우트를 옵셔널 파라미터로 확장**
 
@@ -1145,7 +1159,165 @@ git commit -m "feat(docs): 프로젝트 문서 타임라인 화면 + 연/월 인
 받아둔 136KB content를 다시 fetch하지 않는다. 라우트를 둘로 나누면 이동할 때마다 재요청과
 로딩 깜빡임이 생긴다.
 
-- [ ] **Step 2: DocDayDetail 컴포넌트 작성**
+- [ ] **Step 2: 마크다운 본문 공용 스타일을 prose 모듈로 이동**
+
+상세 화면도 마크다운 본문을 렌더하므로 소비자가 둘이 된다. 복사하지 말고 옮긴다.
+
+`frontend/src/styles/prose.module.css` 생성 — 아래 규칙들은
+`frontend/src/pages/admin/AdminDocs.module.css`의 109-221행(`/* ── Content / Prose ── */`
+주석부터 파일 끝까지)에 있는 것을 **선택자 이름만 `.content` → `.prose`로 바꿔 그대로 옮긴
+것**이다. 값은 하나도 바꾸지 않는다:
+
+```css
+/* ═══════════════════════════════════════════════
+   Prose — 마크다운 본문 공용 스타일
+   AdminDocs fallback 렌더와 DocDayDetail 본문이 함께 쓴다.
+   ═══════════════════════════════════════════════ */
+
+.prose {
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-base, 1rem);
+  line-height: 1.8;
+  color: var(--text-secondary, #ccc);
+}
+
+.prose h1,
+.prose h2,
+.prose h3 {
+  font-family: var(--font-display, 'Noto Sans KR'), sans-serif;
+  font-weight: 700;
+  color: #ffffff;
+  margin-top: var(--sp-8, 2.5rem);
+}
+
+.prose h1 {
+  font-size: clamp(1.5rem, 2.5vw, 2rem);
+  padding-bottom: var(--sp-4, 1rem);
+  border-bottom: 1px solid var(--border-default, rgba(255,255,255,0.1));
+}
+
+.prose h2 {
+  font-size: var(--text-xl, 1.25rem);
+}
+
+.prose h3 {
+  font-size: var(--text-lg, 1.125rem);
+}
+
+.prose code {
+  font-size: 0.88em;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 0.15em 0.4em;
+  border-radius: var(--radius-sm, 5px);
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  color: var(--neon-cyan, #00d4ff);
+}
+
+.prose pre {
+  background: rgba(0, 0, 0, 0.4);
+  color: #e0e0e0;
+  padding: var(--sp-5, 1.25rem);
+  border-radius: var(--radius-md, 10px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  overflow-x: auto;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: var(--text-xs, 0.75rem);
+  line-height: 1.7;
+}
+
+.prose pre code {
+  background: none;
+  padding: 0;
+  color: inherit;
+}
+
+.prose a {
+  color: var(--neon-indigo, #667eea);
+  text-underline-offset: 3px;
+}
+
+.prose blockquote {
+  margin: var(--sp-6, 1.75rem) 0;
+  padding-left: var(--sp-5, 1.25rem);
+  border-left: 3px solid var(--neon-indigo, #667eea);
+  color: var(--text-secondary, #ccc);
+  font-style: italic;
+}
+
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: var(--sp-4, 1rem) 0;
+  font-size: var(--text-sm, 0.875rem);
+}
+
+.prose th {
+  text-align: left;
+  font-weight: 700;
+  color: #ffffff;
+  padding: var(--sp-2, 0.5rem) var(--sp-3, 0.75rem);
+  background: rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  white-space: nowrap;
+}
+
+.prose td {
+  padding: var(--sp-2, 0.5rem) var(--sp-3, 0.75rem);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  color: var(--text-secondary, #ccc);
+  vertical-align: top;
+}
+
+.prose tr:hover td {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.prose hr {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin: var(--sp-8, 2.5rem) 0;
+}
+
+.prose ul, .prose ol {
+  padding-left: var(--sp-6, 1.5rem);
+}
+
+.prose li {
+  margin-bottom: var(--sp-1, 0.25rem);
+}
+```
+
+그런 다음 `frontend/src/pages/admin/AdminDocs.module.css`에서 **`/* ── Content / Prose ── */`
+주석부터 파일 끝까지를 통째로 삭제**한다. 남은 파일의 마지막 규칙은 Task 4에서 추가한
+`@media (prefers-reduced-motion: reduce)` 블록이어야 한다.
+
+- [ ] **Step 3: AdminDocs의 fallback 렌더를 prose로 교체**
+
+`frontend/src/pages/admin/AdminDocs.jsx`에서 두 곳을 고친다.
+
+(1) import에 한 줄 추가 — `styles` import 위:
+
+```jsx
+import prose from "../../styles/prose.module.css";
+```
+
+(2) fallback 렌더의 클래스를 바꾼다:
+
+```jsx
+        <div className={styles.content}>
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+        </div>
+```
+
+을 아래로 교체:
+
+```jsx
+        <div className={prose.prose}>
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+        </div>
+```
+
+- [ ] **Step 4: DocDayDetail 컴포넌트 작성**
 
 `frontend/src/components/docs/DocDayDetail.jsx` 생성:
 
@@ -1153,6 +1325,7 @@ git commit -m "feat(docs): 프로젝트 문서 타임라인 화면 + 연/월 인
 import { Link } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import prose from "../../styles/prose.module.css";
 import styles from "./DocDayDetail.module.css";
 
 export default function DocDayDetail({ docKey, groups, date }) {
@@ -1202,7 +1375,7 @@ export default function DocDayDetail({ docKey, groups, date }) {
             {group.date}
             {entry.title && <span className={styles.entrySub}>{entry.title}</span>}
           </h2>
-          <div className={styles.body}>
+          <div className={prose.prose}>
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{entry.body}</ReactMarkdown>
           </div>
         </article>
@@ -1212,7 +1385,7 @@ export default function DocDayDetail({ docKey, groups, date }) {
 }
 ```
 
-- [ ] **Step 3: 스타일 작성**
+- [ ] **Step 5: 스타일 작성**
 
 `frontend/src/components/docs/DocDayDetail.module.css` 생성:
 
@@ -1307,85 +1480,8 @@ export default function DocDayDetail({ docKey, groups, date }) {
   color: var(--text-tertiary, #888);
 }
 
-.body {
-  font-family: var(--font-body, 'Inter'), sans-serif;
-  font-size: var(--text-base, 1rem);
-  line-height: 1.8;
-  color: var(--text-secondary, #ccc);
-}
-
-.body h3 {
-  font-family: var(--font-display, 'Noto Sans KR'), sans-serif;
-  font-size: var(--text-lg, 1.125rem);
-  font-weight: 700;
-  color: #ffffff;
-  margin-top: var(--sp-7, 2rem);
-}
-
-.body code {
-  font-size: 0.88em;
-  background: rgba(255, 255, 255, 0.1);
-  padding: 0.15em 0.4em;
-  border-radius: var(--radius-sm, 5px);
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  color: var(--neon-cyan, #00d4ff);
-}
-
-.body pre {
-  background: rgba(0, 0, 0, 0.4);
-  color: #e0e0e0;
-  padding: var(--sp-5, 1.25rem);
-  border-radius: var(--radius-md, 10px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  overflow-x: auto;
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  font-size: var(--text-xs, 0.75rem);
-  line-height: 1.7;
-}
-
-.body pre code {
-  background: none;
-  padding: 0;
-  color: inherit;
-}
-
-.body a {
-  color: var(--neon-indigo, #667eea);
-  text-underline-offset: 3px;
-}
-
-.body table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: var(--sp-4, 1rem) 0;
-  font-size: var(--text-sm, 0.875rem);
-}
-
-.body th {
-  text-align: left;
-  font-weight: 700;
-  color: #ffffff;
-  padding: var(--sp-2, 0.5rem) var(--sp-3, 0.75rem);
-  background: rgba(255, 255, 255, 0.08);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
-  white-space: nowrap;
-}
-
-.body td {
-  padding: var(--sp-2, 0.5rem) var(--sp-3, 0.75rem);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  color: var(--text-secondary, #ccc);
-  vertical-align: top;
-}
-
-.body ul,
-.body ol {
-  padding-left: var(--sp-6, 1.5rem);
-}
-
-.body li {
-  margin-bottom: var(--sp-1, 0.25rem);
-}
+/* 마크다운 본문 자체는 styles/prose.module.css의 .prose가 맡는다.
+   여기에는 상세 화면 고유의 레이아웃만 둔다. */
 
 .notFound {
   font-size: var(--text-sm, 0.875rem);
@@ -1402,11 +1498,11 @@ export default function DocDayDetail({ docKey, groups, date }) {
 }
 ```
 
-- [ ] **Step 4: AdminDocs에 상세 분기 연결**
+- [ ] **Step 6: AdminDocs에 상세 분기 연결**
 
-`frontend/src/pages/admin/AdminDocs.jsx`에서 세 곳을 고친다.
+`frontend/src/pages/admin/AdminDocs.jsx`에서 네 곳을 고친다.
 
-(1) import 두 줄 추가 — `DocTimeline` import 아래:
+(1) import 한 줄 추가 — `DocTimeline` import 아래:
 
 ```jsx
 import DocDayDetail from "../../components/docs/DocDayDetail";
@@ -1450,15 +1546,16 @@ import DocDayDetail from "../../components/docs/DocDayDetail";
         {groups && !date && <p className={styles.summary}>{summarize(groups)}</p>}
 ```
 
-- [ ] **Step 5: 빌드와 린트 확인**
+- [ ] **Step 7: 빌드와 린트 확인**
 
 Run: `cd frontend && npm run lint && npm run build`
 Expected: 둘 다 에러 없이 종료
 
-- [ ] **Step 6: 브라우저 수동 확인**
+- [ ] **Step 8: 브라우저 수동 확인**
 
 Run: `cd frontend && npm run dev`
 
+- `/admin/docs/dev-plan`(날짜 없는 문서)이 **prose 이관 전과 똑같이** 보인다 — 코드블록·표·인용문 스타일이 그대로여야 한다
 - `/admin/docs/work-log`에서 `04-29` 카드 클릭 → 그 날 본문이 렌더되고 URL이 `/admin/docs/work-log/2026-04-29`로 바뀐다
 - 그 상태로 **새로고침(F5)** → 같은 화면이 유지된다 (딥링크 확인)
 - 상단 breadcrumb에 `목록 › 2026년 4월 › 2026-04-29`
@@ -1467,11 +1564,11 @@ Run: `cd frontend && npm run dev`
 - `05-01` 상세 → 세션 3개가 구분선으로 나뉘어 이어서 보인다
 - `/admin/docs/work-log/2026-01-01` 직접 입력 → "해당 날짜의 기록이 없습니다." + 목록 링크
 
-- [ ] **Step 7: 커밋**
+- [ ] **Step 9: 커밋**
 
 ```bash
-git add frontend/src/components/docs/ frontend/src/pages/admin/AdminDocs.jsx frontend/src/App.jsx
-git commit -m "feat(docs): 작업일지 날짜 상세 화면 + 딥링크 라우트"
+git add frontend/src/components/docs/ frontend/src/styles/prose.module.css frontend/src/pages/admin/AdminDocs.jsx frontend/src/pages/admin/AdminDocs.module.css frontend/src/App.jsx
+git commit -m "feat(docs): 작업일지 날짜 상세 화면 + 딥링크 라우트 + 공용 prose 스타일"
 ```
 
 ---
@@ -1516,15 +1613,7 @@ git commit -m "feat(docs): 작업일지 날짜 상세 화면 + 딥링크 라우�
                     aria-expanded={openDate === group.date}
                     onClick={() => setOpenDate(openDate === group.date ? null : group.date)}
                   >
-                    <span className={styles.cardDate}>{group.date.slice(5) || "—"}</span>
-                    <span className={styles.cardBody}>
-                      <span className={styles.cardTitle}>
-                        {group.entries[0].title || group.date || "제목 없음"}
-                      </span>
-                      {group.entries.length > 1 && (
-                        <span className={styles.badge}>{group.entries.length}건</span>
-                      )}
-                    </span>
+                    <CardInner group={group} />
                   </button>
                   {openDate === group.date && (
                     <div className={styles.detail}>
@@ -1549,15 +1638,7 @@ git commit -m "feat(docs): 작업일지 날짜 상세 화면 + 딥링크 라우�
                 </>
               ) : (
                 <Link to={`/admin/docs/${docKey}/${group.date}`} className={styles.card}>
-                  <span className={styles.cardDate}>{group.date.slice(5) || "—"}</span>
-                  <span className={styles.cardBody}>
-                    <span className={styles.cardTitle}>
-                      {group.entries[0].title || group.date || "제목 없음"}
-                    </span>
-                    {group.entries.length > 1 && (
-                      <span className={styles.badge}>{group.entries.length}건</span>
-                    )}
-                  </span>
+                  <CardInner group={group} />
                 </Link>
               )}
 ```
@@ -1689,9 +1770,28 @@ git commit -m "feat(docs): 버그수정/업그레이드 로그 카드 인라인 
 
 ---
 
+## 실행 결과 (2026-07-29)
+
+6개 태스크 전부 완료 + 최종 전체 리뷰 후 수정 웨이브 1회. 브랜치
+`feat/doc-viewer-date-navigation`, 커밋 `b1203fa`..`929d524`.
+
+리뷰가 잡아 고친 실질 결함: 괄호 미종결 헤딩의 섹션 유실 · 셀 안 파이프의 컬럼 밀림 ·
+정렬 테스트 무력화 · 제목 없는 카드의 날짜 중복 · 표형 문서의 빈 상세 페이지 ·
+sticky 인덱스 높이 미제한 · 목록↔상세 왕복 시 필터 소실 · 표 중간 빈 줄의 절단 ·
+자동 판별로 인한 비대상 문서 본문 삭제 위험.
+
+설계 대비 바뀐 결정 3건은 설계 문서 끝 "구현 중 바뀐 결정 3건" 참조.
+
+**테스트 수는 아래 원래 목표치(22)가 아니라 40이다.** 수정 라운드마다 회귀 테스트가
+붙었다. 원래 숫자는 계획 작성 시점의 예상치로 남겨둔다.
+
+**브라우저 확인은 미완**이다 — 어드민 인증이 걸린 SPA라 자동화 검증 대상이 아니었다.
+26항목 체크리스트가 `.superpowers/sdd/2026-07-29-doc-viewer-date-navigation/fix-wave-report.md`
+의 "NOT VERIFIED" 절에 있다.
+
 ## 완료 조건
 
-- [ ] `cd frontend && npm test` → 22 tests PASS
+- [x] `cd frontend && npm test` → **40 tests PASS** (계획 시점 목표 22)
 - [ ] `cd frontend && npm run lint && npm run build` → 에러 없음
 - [ ] `/admin/docs/work-log` → 타임라인 24일, `04-08`이 `04-07`보다 위, `05-01`에 `3건` 배지
 - [ ] `/admin/docs/work-log/2026-04-29` → 딥링크 새로고침 유지, 이전/다음 날 이동 동작
