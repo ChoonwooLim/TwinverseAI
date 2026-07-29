@@ -63,4 +63,19 @@ describe("parseSectionDoc", () => {
   it("날짜 섹션이 없는 문서에는 빈 배열을 준다", () => {
     expect(parseSectionDoc("# 개발계획\n\n내용만 있고 날짜 섹션은 없다.")).toEqual([]);
   });
+
+  it("괄호가 닫히지 않아도 섹션 경계로 인식하고 본문을 손실 없이 보존한다", () => {
+    const md = `## 2026-04-04 (unterminated
+
+### 세부 내용
+
+- 괄호가 닫히지 않아도 다음 섹션 전까지 손실 없이 보존되어야 한다
+`;
+    const entries = parseSectionDoc(md);
+    expect(entries).toHaveLength(1);
+    expect(entries[0].date).toBe("2026-04-04");
+    expect(entries[0].body).toBe(
+      "### 세부 내용\n\n- 괄호가 닫히지 않아도 다음 섹션 전까지 손실 없이 보존되어야 한다"
+    );
+  });
 });

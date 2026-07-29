@@ -12,7 +12,10 @@
  */
 
 const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
-const SECTION_HEADING = /^##\s+(\d{4}-\d{2}-\d{2})(?:\s*\((.*)\))?\s*$/;
+// 날짜 뒤에 무엇이 오든(괄호가 닫히지 않아도) 항상 섹션 경계로 인식한다.
+// 제목 추출(괄호 안 문구 vs 전체 문구)은 별도로 처리한다.
+const SECTION_HEADING = /^##\s+(\d{4}-\d{2}-\d{2})\s*(.*)$/;
+const PAREN_TITLE = /^\((.*)\)$/;
 
 /** 본문 끝의 빈 줄과 `---` 구분선을 걷어낸다. */
 function stripTrailingRule(text) {
@@ -54,7 +57,10 @@ export function parseSectionDoc(md) {
     const heading = SECTION_HEADING.exec(line);
     if (heading) {
       flush();
-      current = { date: heading[1], title: (heading[2] || "").trim(), lines: [] };
+      const rest = (heading[2] || "").trim();
+      const paren = PAREN_TITLE.exec(rest);
+      const title = paren ? paren[1].trim() : rest;
+      current = { date: heading[1], title, lines: [] };
     } else if (current) {
       current.lines.push(line);
     }
