@@ -1127,7 +1127,7 @@ ls -l "$D/_ai/"
 '
 ```
 
-Expected: `_e2e.pdf` 가 생성됨
+Expected: `_e2e.txt.pdf` 가 생성됨 (원본 확장자를 이름에 남기는 규칙)
 
 - [ ] **Step 6: 감독님 Windows 에서 확인**
 
@@ -1135,14 +1135,14 @@ Expected: `_e2e.pdf` 가 생성됨
 ls -l /z/Lucifer/TwinverseAI/data/_ai/
 ```
 
-Expected: `_e2e.pdf` 가 보임
+Expected: `_e2e.txt.pdf` 가 보임
 
 정리:
 
 ```bash
 ssh stevenlim@192.168.219.117 '
 D=/media/stevenlim/TwinverseFolder/Lucifer/TwinverseAI/data
-rm -f "$D/_e2e.txt" "$D/_ai/_e2e.pdf"
+rm -f "$D/_e2e.txt" "$D/_ai/_e2e.txt.pdf"
 '
 ```
 
@@ -1160,7 +1160,7 @@ git commit -m "feat(lucifer): systemd 타이머 배포 스크립트
 ## 완료 조건
 
 1. `soffice` 와 `yt-dlp` 가 서버에 설치돼 있다
-2. `python3 -m unittest test_convert` 가 11개 테스트 전부 통과한다
+2. `python3 -m unittest test_convert` 가 19개 테스트 전부 통과한다
 3. `lucifer-convert.timer` 가 `active (waiting)` 이고 5분 주기로 예약돼 있다
 4. `data/` 에 `.txt`/`.pptx` 를 넣으면 몇 분 내 `data/_ai/` 에 `.pdf` 가 생긴다
 5. 영상을 넣으면 `_ai/` 에 프레임 폴더와 한국어 설명 마크다운이 생긴다
