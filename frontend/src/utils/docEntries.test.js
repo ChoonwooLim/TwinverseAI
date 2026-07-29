@@ -1,5 +1,6 @@
+import { readFileSync } from "node:fs";
 import { describe, it, expect } from "vitest";
-import { parseSectionDoc, parseTableDoc } from "./docEntries";
+import { parseSectionDoc, parseTableDoc, parseDoc, groupByDate, buildIndex } from "./docEntries";
 
 // docs/work-log.md 발췌 — 중복 날짜(04-15 2회)와 제목 없는 섹션(04-04)을 함께 담았다.
 const WORK_LOG_SAMPLE = `# 작업일지
@@ -174,5 +175,81 @@ describe("parseTableDoc — 빈 셀", () => {
       { label: "수정 내용", value: "조건 분기 추가" },
       { label: "관련 파일", value: "frontend/src/App.jsx" },
     ]);
+  });
+});
+
+describe("parseDoc", () => {
+  it("섹션형 문서를 알아본다", () => {
+    expect(parseDoc(WORK_LOG_SAMPLE)).toHaveLength(3);
+  });
+
+  it("표형 문서를 알아본다", () => {
+    expect(parseDoc(BUGFIX_SAMPLE)).toHaveLength(2);
+  });
+
+  it("날짜가 없는 문서에는 null을 준다 — 호출부가 기존 렌더로 fallback하도록", () => {
+    expect(parseDoc("# 개발계획\n\n## 1단계\n\n내용")).toBeNull();
+    expect(parseDoc("")).toBeNull();
+    expect(parseDoc(null)).toBeNull();
+  });
+});
+
+describe("groupByDate", () => {
+  it("같은 날짜 엔트리를 한 그룹으로 묶는다", () => {
+    const groups = groupByDate(parseSectionDoc(WORK_LOG_SAMPLE));
+    expect(groups).toHaveLength(2);
+    const apr15 = groups.find((g) => g.date === "2026-04-15");
+    expect(apr15.entries).toHaveLength(2);
+  });
+
+  it("날짜 내림차순으로 정렬한다 — 원본 순서가 뒤집혀 있어도", () => {
+    const md = `## 2026-04-08\n\n뒤에 온 날\n\n## 2026-04-07\n\n앞에 온 날\n`;
+    const groups = groupByDate(parseSectionDoc(md));
+    expect(groups.map((g) => g.date)).toEqual(["2026-04-08", "2026-04-07"]);
+  });
+
+  it("날짜 미상 엔트리는 버리지 않고 맨 뒤 그룹으로 모은다", () => {
+    const md = `| 날짜 | 변경 내용 |
+|------|----------|
+| 2026-04-04 | 있는 날짜 |
+| 미상 | 없는 날짜 |
+`;
+    const groups = groupByDate(parseTableDoc(md));
+    expect(groups).toHaveLength(2);
+    expect(groups[1].year).toBeNull();
+    expect(groups[1].entries[0].title).toBe("없는 날짜");
+  });
+});
+
+describe("buildIndex", () => {
+  it("연·월별 날 그룹 수를 내림차순으로 센다", () => {
+    const md = `## 2026-05-03\n\na\n\n## 2026-04-15\n\nb\n\n## 2026-04-15\n\nc\n\n## 2026-04-04\n\nd\n`;
+    const index = buildIndex(groupByDate(parseSectionDoc(md)));
+    expect(index).toEqual([
+      { year: 2026, count: 3, months: [{ month: 5, count: 1 }, { month: 4, count: 2 }] },
+    ]);
+  });
+
+  it("날짜 미상 그룹은 인덱스에서 뺀다", () => {
+    const groups = [{ date: "", year: null, month: null, entries: [{}] }];
+    expect(buildIndex(groups)).toEqual([]);
+  });
+});
+
+describe("실제 docs/work-log.md 불변식", () => {
+  // 파일이 계속 자라므로 개수 대신 항상 참인 성질만 검증한다.
+  const md = readFileSync(new URL("../../../docs/work-log.md", import.meta.url), "utf8");
+
+  it("엔트리가 하나 이상 나오고 모든 날짜가 ISO 형식이다", () => {
+    const entries = parseDoc(md);
+    expect(entries.length).toBeGreaterThan(0);
+    for (const e of entries) {
+      expect(e.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    }
+  });
+
+  it("그룹이 날짜 내림차순이다", () => {
+    const dates = groupByDate(parseDoc(md)).map((g) => g.date);
+    expect(dates).toEqual([...dates].sort().reverse());
   });
 });

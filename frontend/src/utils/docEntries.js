@@ -142,3 +142,89 @@ export function parseTableDoc(md) {
 
   return entries;
 }
+
+/**
+ * 문서 형태를 자동 판별해 엔트리를 뽑는다.
+ * 날짜 엔트리가 하나도 없으면 null — 호출부는 기존 통짜 렌더로 fallback한다.
+ * @param {string} md
+ * @returns {DocEntry[]|null}
+ */
+export function parseDoc(md) {
+  if (!md) return null;
+  const sections = parseSectionDoc(md);
+  if (sections.length) return sections;
+  const rows = parseTableDoc(md);
+  if (rows.length) return rows;
+  return null;
+}
+
+/**
+ * @typedef {Object} DayGroup
+ * @property {string} date
+ * @property {number|null} year
+ * @property {number|null} month
+ * @property {DocEntry[]} entries
+ */
+
+/**
+ * 같은 날짜 엔트리를 하나의 날 그룹으로 묶고 날짜 내림차순으로 정렬한다.
+ * 날짜가 없는 엔트리는 버리지 않고 맨 뒤 "미상" 그룹으로 모은다.
+ * @param {DocEntry[]} entries
+ * @returns {DayGroup[]}
+ */
+export function groupByDate(entries) {
+  const byKey = new Map();
+
+  for (const entry of entries) {
+    const key = entry.year === null ? " unknown" : entry.date;
+    if (!byKey.has(key)) {
+      byKey.set(
+        key,
+        entry.year === null
+          ? { date: "", year: null, month: null, entries: [] }
+          : { date: entry.date, year: entry.year, month: entry.month, entries: [] }
+      );
+    }
+    byKey.get(key).entries.push(entry);
+  }
+
+  return [...byKey.values()].sort((a, b) => {
+    if (a.year === null) return 1;
+    if (b.year === null) return -1;
+    return b.date.localeCompare(a.date);
+  });
+}
+
+/**
+ * @typedef {Object} YearIndex
+ * @property {number} year
+ * @property {number} count   그 해의 날 그룹 수
+ * @property {{month: number, count: number}[]} months
+ */
+
+/**
+ * 좌측 연/월 인덱스용 집계. 날짜 미상 그룹은 제외한다.
+ * @param {DayGroup[]} groups
+ * @returns {YearIndex[]}
+ */
+export function buildIndex(groups) {
+  const byYear = new Map();
+
+  for (const group of groups) {
+    if (group.year === null) continue;
+    if (!byYear.has(group.year)) byYear.set(group.year, { count: 0, months: new Map() });
+    const year = byYear.get(group.year);
+    year.count += 1;
+    year.months.set(group.month, (year.months.get(group.month) || 0) + 1);
+  }
+
+  return [...byYear.entries()]
+    .sort((a, b) => b[0] - a[0])
+    .map(([year, data]) => ({
+      year,
+      count: data.count,
+      months: [...data.months.entries()]
+        .sort((a, b) => b[0] - a[0])
+        .map(([month, count]) => ({ month, count })),
+    }));
+}
