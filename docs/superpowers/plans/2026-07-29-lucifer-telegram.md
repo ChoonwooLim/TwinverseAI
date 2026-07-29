@@ -35,6 +35,7 @@
 | Lucifer (Windows) | `Z:\Lucifer\` |
 | 그룹 chat_id | `-1004482716134` (supergroup, Topics ON) |
 | 토큰 파일 | `~/lucifer-secrets/bot-tokens.env` (`JINI_TOKEN`/`ROY_TOKEN`/`CLAUDE_TOKEN`) |
+| 감독님 user_id | `1958446460` (Task 1 실측, username `춘우`) |
 
 | 역할 | 봇 username | OpenClaw account | 에이전트 | 표기 |
 |---|---|---|---|---|
@@ -106,7 +107,7 @@ channels.telegram.groups.<chatId>.topics.<topicId>.{enabled, requireMention, all
 > 등록하면 OpenClaw 가 long polling 을 시작하고, 그 뒤에 `getUpdates` 를 호출하면
 > `409 Conflict` 가 나거나 게이트웨이의 업데이트를 가로채 메시지를 유실시킨다.
 
-- [ ] **Step 1: 봇 3종이 살아 있고 그룹에 있는지 확인**
+- [x] **Step 1: 봇 3종이 살아 있고 그룹에 있는지 확인**
 
 ```bash
 ssh stevenlim@192.168.219.117 "python3 ~/lucifer-secrets/tg_check.py"
@@ -115,12 +116,12 @@ ssh stevenlim@192.168.219.117 "python3 ~/lucifer-secrets/tg_check.py"
 Expected: 세 봇의 username 이 `@OpenclawJini_bot` / `@Openclaw2Roy_bot` / `@VScodeOpus_bot`
 로 나오고 프라이버시 모드가 전부 해제(`can_read_all_group_messages: true`)로 표시된다.
 
-- [ ] **Step 2: 감독님이 그룹에 아무 메시지나 한 줄 보내게 한다**
+- [x] **Step 2: 감독님이 그룹에 아무 메시지나 한 줄 보내게 한다**
 
 봇은 **자기가 들어온 이후** 메시지만 본다. `getUpdates` 가 비어 있으면 이 단계가 빠진 것이다.
 감독님께 "텔레그램 `Lucifers` 그룹에 아무 메시지나 한 줄 보내주세요" 라고 요청한다.
 
-- [ ] **Step 3: user ID 를 조회한다 (토큰은 출력하지 않는다)**
+- [x] **Step 3: user ID 를 조회한다 (토큰은 출력하지 않는다)**
 
 ```bash
 ssh stevenlim@192.168.219.117 'set -a; . ~/lucifer-secrets/bot-tokens.env; set +a; \
@@ -149,10 +150,10 @@ Expected: `HUMAN SENDERS: {"<숫자ID>": "<감독님 계정명>"}` 이 나오고
 `HUMAN SENDERS: {}` 가 나오면 Step 2 가 안 된 것이다. `getUpdates` 는 24시간만 보관하므로
 감독님께 다시 한 줄 보내달라고 요청하고 재실행한다.
 
-- [ ] **Step 4: 확인한 값을 계획서에 못박는다**
+- [x] **Step 4: 확인한 값을 계획서에 못박는다**
 
 이 문서의 "경로·식별자 대응표" 바로 아래에 다음 줄을 추가하고 커밋한다.
-(`<STEVEN_USER_ID>` 는 Step 3 에서 얻은 숫자로 치환)
+(실측값: `1958446460`)
 
 ```markdown
 | 감독님 user_id | `<STEVEN_USER_ID>` (Task 1 실측) |
