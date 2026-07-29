@@ -18,18 +18,27 @@
 
 /* ── 좌측 연/월 인덱스 ── */
 
+/* 연이 쌓이면 버튼 수가 뷰포트 높이를 넘는다. 높이를 묶고 자체 스크롤을 주지 않으면
+   sticky로 고정된 채 화면 아래 달들이 영영 클릭 불가가 된다. */
 .index {
   position: sticky;
   top: var(--sp-6, 1.75rem);
+  max-height: calc(100vh - var(--sp-6, 1.75rem) * 2);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
   gap: var(--sp-1, 0.25rem);
   font-family: var(--font-body, 'Inter'), sans-serif;
 }
 
+/* 좁은 화면에서는 sticky를 풀고 가로로 감기는 한 덩어리가 된다 — 높이 제한과
+   자체 스크롤을 함께 풀어야 감긴 줄이 잘리지 않는다. */
 @media (max-width: 760px) {
   .index {
     position: static;
+    max-height: none;
+    overflow-y: visible;
     flex-direction: row;
     flex-wrap: wrap;
   }
@@ -175,23 +184,6 @@
 .empty {
   font-size: var(--text-sm, 0.875rem);
   color: var(--text-tertiary, #888);
-}
-
-/* ── 날짜 미상 카드 (비클릭) ──
-   .card와 동일한 시각 처리를 쓰되, 이동할 곳이 없으므로 hover로
-   클릭 가능성을 암시하지 않는다. */
-
-.cardStatic {
-  cursor: default;
-}
-
-.cardStatic:hover {
-  border-color: var(--border-subtle, rgba(255, 255, 255, 0.06));
-  background: none;
-}
-
-.cardStatic:hover .cardTitle {
-  color: var(--text-secondary, #ccc);
 }
 
 /* ── 표형 인라인 확장 ── */
