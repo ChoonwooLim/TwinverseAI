@@ -35,9 +35,12 @@ function CardInner({ group }) {
 
 export default function DocTimeline({ docKey, groups }) {
   const [filter, setFilter] = useState(null);
+  const [openDate, setOpenDate] = useState(null);
   const index = useMemo(() => buildIndex(groups), [groups]);
 
   const visible = groups.filter((g) => matchesFilter(g, filter));
+  // 표형 문서(fields 보유)는 페이지 이동 없이 그 자리에서 펼친다.
+  const isTableDoc = groups.some((g) => Array.isArray(g.entries[0].fields));
 
   return (
     <div className={styles.timeline}>
@@ -47,9 +50,10 @@ export default function DocTimeline({ docKey, groups }) {
             <button
               type="button"
               className={`${styles.yearBtn} ${filter?.year === year.year && !filter?.month ? styles.active : ""}`}
-              onClick={() =>
-                setFilter(filter?.year === year.year && !filter?.month ? null : { year: year.year })
-              }
+              onClick={() => {
+                setFilter(filter?.year === year.year && !filter?.month ? null : { year: year.year });
+                setOpenDate(null);
+              }}
             >
               <span>{year.year}</span>
               <span className={styles.count}>{year.count}</span>
@@ -59,13 +63,14 @@ export default function DocTimeline({ docKey, groups }) {
                 key={m.month}
                 type="button"
                 className={`${styles.monthBtn} ${filter?.year === year.year && filter?.month === m.month ? styles.active : ""}`}
-                onClick={() =>
+                onClick={() => {
                   setFilter(
                     filter?.year === year.year && filter?.month === m.month
                       ? null
                       : { year: year.year, month: m.month }
-                  )
-                }
+                  );
+                  setOpenDate(null);
+                }}
               >
                 <span>{String(m.month).padStart(2, "0")}월</span>
                 <span className={styles.count}>{m.count}</span>
@@ -81,20 +86,61 @@ export default function DocTimeline({ docKey, groups }) {
           // 월이 바뀌는 첫 카드 위에만 헤더를 찍는다.
           const label = groupLabel(group);
           const showLabel = i === 0 || groupLabel(visible[i - 1]) !== label;
+          const heading = showLabel && <h2 className={styles.monthHeading}>{label}</h2>;
+
+          // 표형 문서(fields 보유)는 날짜 유무와 무관하게 그 자리에서 펼친다 —
+          // 날짜 미상이라도 fields는 펼치지 않으면 영영 볼 수 없다.
+          if (isTableDoc) {
+            return (
+              <div key={group.date || "unknown"}>
+                {heading}
+                <button
+                  type="button"
+                  className={styles.card}
+                  aria-expanded={openDate === group.date}
+                  onClick={() => setOpenDate(openDate === group.date ? null : group.date)}
+                >
+                  <CardInner group={group} />
+                </button>
+                {openDate === group.date && (
+                  <div className={styles.detail}>
+                    {group.entries.map((entry, j) => (
+                      <dl key={j} className={styles.fields}>
+                        {group.entries.length > 1 && (
+                          <div className={styles.fieldRow}>
+                            <dt className={styles.fieldLabel}>항목</dt>
+                            <dd className={styles.fieldValue}>{entry.title}</dd>
+                          </div>
+                        )}
+                        {entry.fields.map((f) => (
+                          <div key={f.label} className={styles.fieldRow}>
+                            <dt className={styles.fieldLabel}>{f.label}</dt>
+                            <dd className={styles.fieldValue}>{f.value}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          }
+
           // 날짜 미상 그룹은 이동할 곳이 없다 — 링크가 아닌 정적 카드로 렌더한다.
           if (group.year === null) {
             return (
               <div key={group.date || "unknown"}>
-                {showLabel && <h2 className={styles.monthHeading}>{label}</h2>}
+                {heading}
                 <div className={`${styles.card} ${styles.cardStatic}`}>
                   <CardInner group={group} />
                 </div>
               </div>
             );
           }
+
           return (
             <div key={group.date || "unknown"}>
-              {showLabel && <h2 className={styles.monthHeading}>{label}</h2>}
+              {heading}
               <Link to={`/admin/docs/${docKey}/${group.date}`} className={styles.card}>
                 <CardInner group={group} />
               </Link>
