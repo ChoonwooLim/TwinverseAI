@@ -764,6 +764,56 @@ class TestYoutubeLinks(unittest.TestCase):
             pairs = convert.plan_targets(data)
             self.assertEqual(len(pairs), 1)
             self.assertEqual(pairs[0][1], data / "_ai" / "links" / ".done")
+
+    def test_prefers_korean_when_both_languages_exist(self):
+        # sorted() 에 맡기면 'en' < 'ko' 라 영어가 항상 이긴다.
+        from unittest import mock
+
+        with tempfile.TemporaryDirectory() as d:
+            data = Path(d)
+            src = data / "links.md"
+            src.write_text("https://youtu.be/abc12345678\n", encoding="utf-8")
+            dst = data / "_ai" / "links" / ".done"
+            dst.parent.mkdir(parents=True)
+
+            class FakeResult:
+                returncode = 0
+
+            def fake_run(cmd, **kwargs):
+                # yt-dlp 가 두 언어를 모두 받아온 상황
+                (dst.parent / "abc12345678.en.srt").write_text("english body", encoding="utf-8")
+                (dst.parent / "abc12345678.ko.srt").write_text("한국어 본문", encoding="utf-8")
+                return FakeResult()
+
+            with mock.patch.object(converters.subprocess, "run", fake_run):
+                converters.convert_youtube_links(src, dst)
+
+            body = (dst.parent / "abc12345678.md").read_text(encoding="utf-8")
+            self.assertIn("자막 언어: ko", body)
+            self.assertIn("한국어 본문", body)
+            self.assertNotIn("english body", body)
+
+    def test_done_marker_is_not_written_when_a_video_fails(self):
+        # 마커를 쓰면 needs_conversion 이 이후 실행을 전부 건너뛰어
+        # 나중에 자동 자막이 생겨도 영원히 재시도되지 않는다.
+        from unittest import mock
+
+        with tempfile.TemporaryDirectory() as d:
+            data = Path(d)
+            src = data / "links.md"
+            src.write_text("https://youtu.be/abc12345678\n", encoding="utf-8")
+            dst = data / "_ai" / "links" / ".done"
+            dst.parent.mkdir(parents=True)
+
+            class FakeResult:
+                returncode = 1
+
+            with mock.patch.object(converters.subprocess, "run", lambda *a, **k: FakeResult()):
+                with self.assertRaises(RuntimeError):
+                    converters.convert_youtube_links(src, dst)
+
+            self.assertFalse(dst.exists(), "실패했는데 완료 표식이 생겼다")
+            self.assertTrue((dst.parent / "abc12345678.failed").exists())
 ```
 
 - [ ] **Step 2: 테스트 실패 확인**
@@ -781,6 +831,10 @@ import re
 
 LINKS_FILENAME = "links.md"
 YTDLP_TIMEOUT_SEC = 300
+# 자막 선호 순서. 앞에 있는 언어를 먼저 고른다.
+SUB_LANGS = ["ko", "en"]
+# 자막을 못 받은 영상을 5분마다 다시 두드리지 않기 위한 재시도 간격.
+FAILED_RETRY_SEC = 24 * 3600
 
 _YOUTUBE_ID_RE = re.compile(
     r"(?:youtube\.com/watch\?v=|youtu\.be/)([A-Za-z0-9_-]{11})"
@@ -810,12 +864,20 @@ def convert_youtube_links(src: Path, dst: Path) -> Path:
         out = dst_dir / f"{vid}.md"
         if out.exists():
             continue
+        # 자막이 아예 없는 영상은 흔하다. 5분마다 다시 두드리지 않도록
+        # 실패를 기록해 두고 하루가 지나야 재시도한다.
+        failed_marker = dst_dir / f"{vid}.failed"
+        if failed_marker.exists():
+            age = time.time() - failed_marker.stat().st_mtime
+            if age < FAILED_RETRY_SEC:
+                continue
+
         result = subprocess.run(
             [
                 "yt-dlp",
                 "--skip-download",
                 "--write-auto-sub", "--write-sub",
-                "--sub-lang", "ko,en",
+                "--sub-lang", ",".join(SUB_LANGS),
                 "--sub-format", "vtt",
                 "--convert-subs", "srt",
                 "-o", str(dst_dir / f"{vid}.%(ext)s"),
@@ -823,25 +885,52 @@ def convert_youtube_links(src: Path, dst: Path) -> Path:
             ],
             capture_output=True, text=True, timeout=YTDLP_TIMEOUT_SEC,
         )
-        subs = sorted(dst_dir.glob(f"{vid}*.srt"))
-        if not subs:
-            failures.append(f"{vid}: 자막 없음 (rc={result.returncode})")
-            continue
-        body = subs[0].read_text(encoding="utf-8", errors="replace")
-        out.write_text(f"# https://youtu.be/{vid}\n\n```\n{body}\n```\n", encoding="utf-8")
-        for leftover in subs:
-            leftover.unlink()
 
-    dst.write_text(
-        f"processed {len(ids)} links\n" + "\n".join(failures) + "\n",
-        encoding="utf-8",
-    )
+        # 선호 순서대로 고른다. sorted() 에 맡기면 사전순이라 'en' 이 'ko' 를
+        # 항상 이겨서, ko 를 우선 요청해놓고 en 을 쓰는 일이 벌어진다.
+        chosen, chosen_lang = None, None
+        for lang in SUB_LANGS:
+            cand = dst_dir / f"{vid}.{lang}.srt"
+            if cand.exists():
+                chosen, chosen_lang = cand, lang
+                break
+        if chosen is None:
+            other = sorted(dst_dir.glob(f"{vid}*.srt"))
+            if other:
+                chosen, chosen_lang = other[0], "unknown"
+
+        # yt-dlp 가 남긴 중간 산출물(.vtt/.srt)을 모두 치운다.
+        def _cleanup() -> None:
+            for leftover in list(dst_dir.glob(f"{vid}*.srt")) + list(dst_dir.glob(f"{vid}*.vtt")):
+                leftover.unlink(missing_ok=True)
+
+        if chosen is None:
+            failed_marker.write_text(
+                f"자막 없음 (rc={result.returncode})\n", encoding="utf-8"
+            )
+            failures.append(f"{vid}: 자막 없음 (rc={result.returncode})")
+            _cleanup()
+            continue
+
+        body = chosen.read_text(encoding="utf-8", errors="replace")
+        out.write_text(
+            f"# https://youtu.be/{vid}\n\n자막 언어: {chosen_lang}\n\n```\n{body}\n```\n",
+            encoding="utf-8",
+        )
+        _cleanup()
+        failed_marker.unlink(missing_ok=True)
+
     if failures:
+        # 완료 표식을 쓰지 않는다. dst 를 쓰면 needs_conversion 이 이후 실행을
+        # 전부 건너뛰어, 나중에 자동 자막이 생겨도 영원히 재시도되지 않는다.
+        # 형제 변환기(문서·영상)도 성공할 때만 목적지를 쓴다.
         raise RuntimeError("; ".join(failures))
+
+    dst.write_text(f"processed {len(ids)} links\n", encoding="utf-8")
     return dst
 ```
 
-자막이 없는 영상이 흔하므로 실패를 모아서 마지막에 한 번만 예외로 던진다. 성공한 것은 이미 저장돼 있다.
+자막이 없는 영상이 흔하므로 실패를 모아서 마지막에 한 번만 예외로 던진다. 성공한 것은 이미 저장돼 있고, 다음 실행에서 `out.exists()` 로 건너뛴다.
 
 - [ ] **Step 4: `rule_for` 에 유튜브 분기 추가 + `target_for` 예외 처리**
 
@@ -868,7 +957,7 @@ scp scripts/lucifer/*.py stevenlim@192.168.219.117:~/lucifer/
 ssh stevenlim@192.168.219.117 "cd ~/lucifer && python3 -m unittest test_convert -v 2>&1 | tail -8"
 ```
 
-Expected: `Ran 16 tests`, `OK`
+Expected: `Ran 18 tests`, `OK`
 
 - [ ] **Step 6: 커밋**
 
