@@ -1,6 +1,14 @@
 import { readFileSync } from "node:fs";
 import { describe, it, expect } from "vitest";
-import { parseSectionDoc, parseTableDoc, parseDoc, groupByDate, buildIndex } from "./docEntries";
+import {
+  parseSectionDoc,
+  parseTableDoc,
+  parseDoc,
+  groupByDate,
+  buildIndex,
+  deriveSummary,
+} from "./docEntries";
+import { isTimelineDoc, TIMELINE_DOC_KEYS } from "../components/docs/timelineDocs";
 
 // docs/work-log.md 발췌 — 중복 날짜(04-15 2회)와 제목 없는 섹션(04-04)을 함께 담았다.
 const WORK_LOG_SAMPLE = `# 작업일지
@@ -78,6 +86,68 @@ describe("parseSectionDoc", () => {
     expect(entries[0].body).toBe(
       "### 세부 내용\n\n- 괄호가 닫히지 않아도 다음 섹션 전까지 손실 없이 보존되어야 한다"
     );
+  });
+});
+
+describe("deriveSummary", () => {
+  it("### 작업 요약 표의 첫 행에서 `내용` 컬럼을 뽑는다", () => {
+    const body = `### 작업 요약
+
+| 카테고리 | 작업 내용 | 상태 |
+|----------|----------|------|
+| feat | 프로젝트 초기 구조 생성 | 완료 |
+| infra | GitHub 리포지토리 생성 | 완료 |`;
+    // 첫 컬럼(카테고리 = "feat")이 아니라 작업 내용을 가져와야 한다.
+    expect(deriveSummary(body)).toBe("프로젝트 초기 구조 생성");
+  });
+
+  it("표 대신 목록을 쓴 섹션에서는 첫 항목을 뽑는다", () => {
+    const body = `### 작업 요약
+
+- 공유 드라이브 가이드 작성
+- Pixel Streaming 설계 스펙 작성`;
+    expect(deriveSummary(body)).toBe("공유 드라이브 가이드 작성");
+  });
+
+  it("표도 목록도 없으면 빈 문자열이다 — 날짜를 제목 자리에 다시 쓰지 않는다", () => {
+    expect(deriveSummary("### 세부 내용\n\n산문만 있는 섹션입니다.")).toBe("");
+    expect(deriveSummary("")).toBe("");
+  });
+
+  it("마크다운 강조·백틱·링크 표기를 걷어내고 평문만 남긴다", () => {
+    const body = `| 카테고리 | 작업 내용 | 상태 |
+|----------|----------|------|
+| infra | **UE5 cook 원인 규명** (\`DefaultGame.ini\`) | 진행중 |`;
+    expect(deriveSummary(body)).toBe("UE5 cook 원인 규명 (DefaultGame.ini)");
+  });
+
+  it("`내용` 컬럼이 없으면 두 번째 컬럼을 쓴다", () => {
+    const body = `| 구분 | 항목 |
+|------|------|
+| fix | 로그인 리다이렉트 교정 |`;
+    expect(deriveSummary(body)).toBe("로그인 리다이렉트 교정");
+  });
+});
+
+describe("parseSectionDoc — 제목 없는 섹션의 summary", () => {
+  it("괄호 제목이 없는 섹션은 본문에서 요약을 만들어 summary에 담는다", () => {
+    const entries = parseSectionDoc(WORK_LOG_SAMPLE);
+    // 04-04: 작업 요약 표, 두 번째 04-15: 목록
+    expect(entries[0].title).toBe("");
+    expect(entries[0].summary).toBe("프로젝트 초기 구조 생성");
+    expect(entries[1].summary).toBe("공유 드라이브 가이드 작성");
+  });
+
+  it("괄호 제목이 있으면 summary를 만들지 않는다 — 제목이 항상 우선이다", () => {
+    const entries = parseSectionDoc(WORK_LOG_SAMPLE);
+    expect(entries[2].title).not.toBe("");
+    expect(entries[2].summary).toBe("");
+  });
+
+  it("summary는 어떤 경우에도 날짜가 되지 않는다", () => {
+    for (const e of parseSectionDoc(WORK_LOG_SAMPLE)) {
+      expect(e.summary).not.toBe(e.date);
+    }
   });
 });
 
@@ -168,6 +238,37 @@ describe("parseTableDoc — 이스케이프된 파이프", () => {
   });
 });
 
+describe("parseTableDoc — 표 중간에 낀 줄", () => {
+  it("행 사이 빈 줄은 표를 끊지 않는다 — 아래 행이 사라지면 안 된다", () => {
+    const md = `| 날짜 | 변경 내용 |
+|------|----------|
+| 2026-04-04 | 첫 행 |
+
+| 2026-04-05 | 빈 줄 아래 행 |
+| 2026-04-06 | 마지막 행 |
+`;
+    const entries = parseTableDoc(md);
+    expect(entries.map((e) => e.date)).toEqual(["2026-04-04", "2026-04-05", "2026-04-06"]);
+  });
+
+  it("빈 줄이 아닌 산문 줄에서는 표가 끝난다 — 그 아래 본문을 행으로 오인하지 않는다", () => {
+    const md = `| 날짜 | 변경 내용 |
+|------|----------|
+| 2026-04-04 | 첫 행 |
+
+| 2026-04-05 | 둘째 행 |
+
+여기부터는 표가 아니라 본문이다.
+
+| 날짜 | 변경 내용 |
+|------|----------|
+| 2026-04-09 | 두 번째 표는 읽지 않는다 |
+`;
+    const entries = parseTableDoc(md);
+    expect(entries.map((e) => e.date)).toEqual(["2026-04-04", "2026-04-05"]);
+  });
+});
+
 describe("parseTableDoc — 빈 셀", () => {
   it("값이 빈 컬럼은 fields에서 제외되고, 값 있는 컬럼만 남는다", () => {
     const entries = parseTableDoc(EMPTY_CELL_SAMPLE);
@@ -191,6 +292,26 @@ describe("parseDoc", () => {
     expect(parseDoc("# 개발계획\n\n## 1단계\n\n내용")).toBeNull();
     expect(parseDoc("")).toBeNull();
     expect(parseDoc(null)).toBeNull();
+  });
+});
+
+describe("타임라인 적용 문서 목록", () => {
+  it("로그 3종만 타임라인으로 렌더한다", () => {
+    expect(isTimelineDoc("work-log")).toBe(true);
+    expect(isTimelineDoc("bugfix-log")).toBe(true);
+    expect(isTimelineDoc("upgrade-log")).toBe(true);
+  });
+
+  it("그 외 문서는 날짜가 든 표를 갖고 있어도 타임라인 대상이 아니다", () => {
+    // dev-plan.md 는 /end 가 편집하는 마일스톤 표를 갖고 있다. 자동 판별이었다면
+    // 컬럼 이름 하나로 타임라인에 걸려들어 나머지 본문이 통째로 사라진다.
+    expect(isTimelineDoc("dev-plan")).toBe(false);
+    expect(isTimelineDoc("pixel-streaming-server")).toBe(false);
+    expect(isTimelineDoc(undefined)).toBe(false);
+  });
+
+  it("목록에 키를 한 줄 더하는 것만으로 문서를 추가할 수 있다", () => {
+    expect(TIMELINE_DOC_KEYS).toEqual(["work-log", "bugfix-log", "upgrade-log"]);
   });
 });
 

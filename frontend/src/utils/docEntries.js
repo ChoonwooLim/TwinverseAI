@@ -7,6 +7,7 @@
  * @property {number|null} year
  * @property {number|null} month
  * @property {string} title
+ * @property {string} summary  제목이 없는 섹션형 엔트리의 본문 유래 요약. 그 외에는 ""
  * @property {string} body   섹션형 본문 마크다운. 표형은 ""
  * @property {{label: string, value: string}[]|null} fields  표형 상세. 섹션형은 null
  */
@@ -26,48 +27,6 @@ function stripTrailingRule(text) {
     else break;
   }
   return lines.join("\n").trim();
-}
-
-/**
- * `## YYYY-MM-DD (제목)` 섹션 문서를 엔트리로 분해한다. (작업일지)
- * @param {string} md
- * @returns {DocEntry[]}
- */
-export function parseSectionDoc(md) {
-  if (!md) return [];
-
-  const entries = [];
-  let current = null;
-
-  const flush = () => {
-    if (!current) return;
-    const [, year, month] = ISO_DATE.exec(current.date);
-    entries.push({
-      date: current.date,
-      year: Number(year),
-      month: Number(month),
-      title: current.title,
-      body: stripTrailingRule(current.lines.join("\n")),
-      fields: null,
-    });
-    current = null;
-  };
-
-  for (const line of md.split(/\r?\n/)) {
-    const heading = SECTION_HEADING.exec(line);
-    if (heading) {
-      flush();
-      const rest = (heading[2] || "").trim();
-      const paren = PAREN_TITLE.exec(rest);
-      const title = paren ? paren[1].trim() : rest;
-      current = { date: heading[1], title, lines: [] };
-    } else if (current) {
-      current.lines.push(line);
-    }
-  }
-  flush();
-
-  return entries;
 }
 
 /** `| a | b |` 형태 줄인가 */
@@ -92,6 +51,120 @@ function splitRow(line) {
     .replace(/\|$/, "")
     .split(/(?<!\\)\|/)
     .map((c) => c.trim().replace(/\\\|/g, "|"));
+}
+
+/** `- 항목` / `* 항목` / `1. 항목` 목록 줄에서 항목 본문만 뽑는다. */
+const BULLET_ITEM = /^\s*(?:[-*+]|\d+[.)])\s+(\S.*)$/;
+
+/** 카드 한 줄에 들어갈 요약의 최대 길이. 넘치면 말줄임한다. */
+const SUMMARY_MAX = 60;
+
+/**
+ * 마크다운 표기를 걷어내 한 줄 평문으로 만든다.
+ * 카드 제목은 마크다운으로 렌더하지 않으므로 `**`·백틱이 그대로 보이면 안 된다.
+ * `_`는 식별자(`COOKIE_SECURE` 등)에 흔해 강조로 보지 않고 남겨둔다.
+ */
+function toPlainText(text) {
+  return text
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, "")     // 이미지는 통째로 제거
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")  // 링크는 라벨만 남긴다
+    .replace(/[`*]+/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * 제목이 없는 섹션(`## YYYY-MM-DD` 단독)의 카드 라벨로 쓸 요약을 본문에서 뽑는다.
+ *
+ * 작업일지 섹션은 대개 `### 작업 요약` 표로 시작하고 그 행에 작업 내용이 들어 있다.
+ * 표 대신 목록으로 적는 섹션도 있어 둘 다 받는다 — 본문에서 먼저 나오는 쪽의 첫 항목이
+ * 그 날의 첫 작업이다. 표에서는 `내용`이 든 컬럼(작업 내용·변경 내용)을 쓰고, 없으면
+ * 두 번째 컬럼을 쓴다(첫 컬럼은 대개 `카테고리` 같은 분류값이라 요약이 되지 못한다).
+ *
+ * 둘 다 없으면 "" — 카드에 날짜를 제목 자리에 한 번 더 찍는 일은 하지 않는다.
+ *
+ * @param {string} body 섹션 본문 마크다운
+ * @returns {string} 평문 요약. 없으면 ""
+ */
+export function deriveSummary(body) {
+  if (!body) return "";
+  const lines = body.split(/\r?\n/);
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i];
+
+    // 표 머리(헤더 + 구분줄 + 데이터 행 하나 이상)를 만나면 첫 데이터 행에서 뽑는다.
+    if (
+      isTableRow(line) &&
+      i + 2 < lines.length &&
+      isSeparatorRow(lines[i + 1]) &&
+      isTableRow(lines[i + 2])
+    ) {
+      const headers = splitRow(line);
+      const cells = splitRow(lines[i + 2]);
+      let col = headers.findIndex((h) => h.includes("내용"));
+      if (col === -1) col = headers.length > 1 ? 1 : 0;
+      const value = toPlainText(cells[col] || "");
+      if (value) return clampSummary(value);
+    }
+
+    const bullet = BULLET_ITEM.exec(line);
+    if (bullet) {
+      const value = toPlainText(bullet[1]);
+      if (value) return clampSummary(value);
+    }
+  }
+
+  return "";
+}
+
+function clampSummary(text) {
+  return text.length > SUMMARY_MAX ? `${text.slice(0, SUMMARY_MAX).trimEnd()}…` : text;
+}
+
+/**
+ * `## YYYY-MM-DD (제목)` 섹션 문서를 엔트리로 분해한다. (작업일지)
+ * @param {string} md
+ * @returns {DocEntry[]}
+ */
+export function parseSectionDoc(md) {
+  if (!md) return [];
+
+  const entries = [];
+  let current = null;
+
+  const flush = () => {
+    if (!current) return;
+    const [, year, month] = ISO_DATE.exec(current.date);
+    const body = stripTrailingRule(current.lines.join("\n"));
+    entries.push({
+      date: current.date,
+      year: Number(year),
+      month: Number(month),
+      title: current.title,
+      // 제목이 없는 섹션만 본문에서 요약을 뽑는다. 제목이 있으면 그쪽이 항상 낫다.
+      summary: current.title ? "" : deriveSummary(body),
+      body,
+      fields: null,
+    });
+    current = null;
+  };
+
+  for (const line of md.split(/\r?\n/)) {
+    const heading = SECTION_HEADING.exec(line);
+    if (heading) {
+      flush();
+      const rest = (heading[2] || "").trim();
+      const paren = PAREN_TITLE.exec(rest);
+      const title = paren ? paren[1].trim() : rest;
+      current = { date: heading[1], title, lines: [] };
+    } else if (current) {
+      current.lines.push(line);
+    }
+  }
+  flush();
+
+  return entries;
 }
 
 /**
@@ -120,7 +193,15 @@ export function parseTableDoc(md) {
 
   const entries = [];
   for (let i = headerIdx + 2; i < lines.length; i += 1) {
-    if (!isTableRow(lines[i])) break; // 표 끝
+    // 표 중간의 빈 줄은 표를 끝내지 않는다. 자동 기록기가 행 사이에 빈 줄을 하나 남기는
+    // 것만으로 그 아래 전 행이 조용히 사라지던 문제를 막는다.
+    // 한계(수용): 표 중간의 산문 한 줄은 여전히 표의 끝으로 본다. 표 아래 이어지는 본문과
+    // 표 안의 오타를 구분할 방법이 없어, 뒤쪽 산문을 행으로 오인해 쓰레기 엔트리를 만드는
+    // 것보다 여기서 멈추는 편이 안전하다.
+    if (!isTableRow(lines[i])) {
+      if (lines[i].trim() === "") continue;
+      break; // 표 끝
+    }
     const cells = splitRow(lines[i]);
     const rawDate = cells[dateCol] || "";
     const iso = ISO_DATE.exec(rawDate);
@@ -130,6 +211,8 @@ export function parseTableDoc(md) {
       year: iso ? Number(iso[1]) : null,
       month: iso ? Number(iso[2]) : null,
       title: titleCol >= 0 ? cells[titleCol] || "" : "",
+      // 표형은 날짜 다음 컬럼이 늘 제목이라 본문 유래 요약이 필요 없다. 형태만 맞춘다.
+      summary: "",
       body: "",
       fields: headers
         .map((label, idx) =>
@@ -193,6 +276,17 @@ export function groupByDate(entries) {
     if (b.year === null) return -1;
     return b.date.localeCompare(a.date);
   });
+}
+
+/**
+ * 표형 문서인가 — 표형 엔트리만 `fields` 배열을 갖는다(섹션형은 항상 null).
+ * 표형은 엔트리 본문(`body`)이 비어 있어 하루 상세 페이지를 만들 재료가 없다.
+ * 화면 분기가 두 군데(AdminDocs·DocTimeline)라 판별을 여기 한 곳에 둔다.
+ * @param {DayGroup[]} groups
+ * @returns {boolean}
+ */
+export function isTableDoc(groups) {
+  return groups.some((g) => g.entries.some((e) => Array.isArray(e.fields)));
 }
 
 /**
