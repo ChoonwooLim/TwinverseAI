@@ -1,0 +1,11 @@
+[Unit]
+Description=Lucifer 미디어 변환 (data/ -> data/_ai/)
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=stevenlim
+WorkingDirectory=/home/stevenlim/lucifer
+ExecStart=/usr/bin/python3 /home/stevenlim/lucifer/convert.py
+# 공유 폴더가 안 붙어 있으면 조용히 아무것도 안 하고 끝난다 (convert.py 가 처리)
+TimeoutStartSec=1800

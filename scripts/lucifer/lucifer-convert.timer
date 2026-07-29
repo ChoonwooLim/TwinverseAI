@@ -1,0 +1,10 @@
+[Unit]
+Description=Lucifer 미디어 변환 5분 주기
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target
