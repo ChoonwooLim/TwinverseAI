@@ -138,7 +138,7 @@ Expected: `smoke.pdf` 가 생성되고 크기가 0 보다 큼
 **Interfaces:**
 - Consumes: Task 1 의 `soffice`
 - Produces:
-  - `converters.convert_document(src: Path, dst_dir: Path) -> Path` — PDF 경로 반환, 실패 시 예외
+  - `converters.convert_document(src: Path, dst: Path) -> Path` — PDF 경로 반환, 실패 시 예외
   - `convert.plan_targets(data_dir: Path) -> list[tuple[Path, Path]]` — (원본, 목표) 쌍 목록
   - `convert.needs_conversion(src: Path, dst: Path) -> bool`
   - Task 3·4 가 `converters` 에 함수를 추가한다.
@@ -185,7 +185,18 @@ class TestPlanTargets(unittest.TestCase):
             self.assertEqual(len(pairs), 1)
             got_src, got_dst = pairs[0]
             self.assertEqual(got_src, src)
-            self.assertEqual(got_dst, data / "_ai" / "기획" / "deck.pdf")
+            # 원본 확장자를 이름에 남긴다 (deck.pdf 가 아니라 deck.pptx.pdf)
+            self.assertEqual(got_dst, data / "_ai" / "기획" / "deck.pptx.pdf")
+
+    def test_same_stem_different_suffix_do_not_collide(self):
+        # report.docx 와 report.pptx 가 같은 목적지로 가면 두 번째가
+        # "이미 최신" 으로 조용히 건너뛰어진다. 목적지가 달라야 한다.
+        with tempfile.TemporaryDirectory() as d:
+            data = Path(d)
+            (data / "report.docx").write_bytes(b"x")
+            (data / "report.pptx").write_bytes(b"x")
+            targets = {dst for _, dst in convert.plan_targets(data)}
+            self.assertEqual(len(targets), 2)
 
     def test_ignores_files_already_under_ai(self):
         # _ai/ 안의 pptx 를 쓴다. pdf 로 하면 "변환 대상 아님" 때문에
@@ -204,15 +215,60 @@ class TestPlanTargets(unittest.TestCase):
 
 
 class TestConvertDocument(unittest.TestCase):
-    def test_converts_txt_to_pdf(self):
+    def test_converts_txt_to_requested_path(self):
+        # soffice 는 <stem>.pdf 로 만들지만, 우리가 요청한 이름으로 와야 한다.
         with tempfile.TemporaryDirectory() as d:
             src = Path(d) / "hello.txt"
             src.write_text("Lucifer\n", encoding="utf-8")
-            out_dir = Path(d) / "_ai"
-            result = converters.convert_document(src, out_dir)
-            self.assertTrue(result.exists())
-            self.assertGreater(result.stat().st_size, 0)
-            self.assertEqual(result.suffix, ".pdf")
+            dst = Path(d) / "_ai" / "hello.txt.pdf"
+            result = converters.convert_document(src, dst)
+            self.assertEqual(result, dst)
+            self.assertTrue(dst.exists())
+            self.assertGreater(dst.stat().st_size, 0)
+            # 원본은 그대로 남아야 한다
+            self.assertTrue(src.exists())
+
+
+class TestFailureIsolation(unittest.TestCase):
+    def test_convert_one_rejects_unknown_suffix(self):
+        with tempfile.TemporaryDirectory() as d:
+            src = Path(d) / "mystery.xyz"
+            src.write_bytes(b"x")
+            with self.assertRaises(RuntimeError):
+                convert.convert_one(src, Path(d) / "_ai" / "mystery.xyz.pdf")
+
+    def test_one_failing_file_does_not_stop_the_others(self):
+        """한 파일이 터져도 나머지는 계속 변환돼야 한다."""
+        original = converters.convert_document
+        attempted = []
+
+        def flaky(src: Path, dst: Path) -> Path:
+            attempted.append(src.name)
+            if src.name == "bad.txt":
+                raise RuntimeError("의도된 실패")
+            return original(src, dst)
+
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            data = root / "Proj" / "data"
+            data.mkdir(parents=True)
+            (root / "_common").mkdir()
+            for name in ("aaa.txt", "bad.txt", "zzz.txt"):
+                (data / name).write_text("x\n", encoding="utf-8")
+
+            converters.convert_document = flaky
+            convert.ERROR_LOG = root / "_common" / "_convert-errors.log"
+            try:
+                converted = convert.run_once(root)
+            finally:
+                converters.convert_document = original
+
+        # bad.txt 가 터졌지만 앞뒤 파일은 모두 시도·성공했어야 한다
+        self.assertEqual(attempted, ["aaa.txt", "bad.txt", "zzz.txt"])
+        self.assertEqual(converted, 2)
+
+    def test_missing_root_returns_zero_without_raising(self):
+        self.assertEqual(convert.run_once(Path("/nonexistent-lucifer-xyz")), 0)
 
 
 if __name__ == "__main__":
@@ -234,9 +290,15 @@ Expected: `ModuleNotFoundError: No module named 'convert'` (아직 배포 전이
 
 모든 함수는 원본을 읽기만 하고, 실패하면 예외를 던진다.
 호출자(convert.py)가 예외를 잡아 에러 로그에 남긴다.
+
+변환 함수의 계약: convert_x(src: Path, dst: Path) -> Path
+  - dst 는 만들어야 할 정확한 목적지 경로다 (디렉토리가 아니다).
+  - 부모 디렉토리는 함수가 만든다.
+  - 성공 시 dst 를 돌려준다.
 """
 import subprocess
 from pathlib import Path
+from typing import Callable
 
 # 문서 -> PDF 변환 대상 확장자
 DOCUMENT_SUFFIXES = {".pptx", ".ppt", ".docx", ".doc", ".xlsx", ".xls", ".odt", ".odp", ".ods", ".txt", ".rtf"}
@@ -244,27 +306,44 @@ DOCUMENT_SUFFIXES = {".pptx", ".ppt", ".docx", ".doc", ".xlsx", ".xls", ".odt", 
 SOFFICE_TIMEOUT_SEC = 180
 
 
-def convert_document(src: Path, dst_dir: Path) -> Path:
-    """LibreOffice 헤드리스로 PDF 를 만든다. 만들어진 PDF 경로를 돌려준다."""
-    dst_dir.mkdir(parents=True, exist_ok=True)
+def convert_document(src: Path, dst: Path) -> Path:
+    """LibreOffice 헤드리스로 PDF 를 만든다.
+
+    soffice 는 출력 이름을 스스로 정하므로(<stem>.pdf) 만든 뒤 dst 로 옮긴다.
+    """
+    dst.parent.mkdir(parents=True, exist_ok=True)
     result = subprocess.run(
         [
             "soffice", "--headless", "--norestore",
             "--convert-to", "pdf",
-            "--outdir", str(dst_dir),
+            "--outdir", str(dst.parent),
             str(src),
         ],
         capture_output=True,
         text=True,
         timeout=SOFFICE_TIMEOUT_SEC,
     )
-    produced = dst_dir / (src.stem + ".pdf")
+    produced = dst.parent / (src.stem + ".pdf")
     if not produced.exists():
         raise RuntimeError(
             f"soffice 가 PDF 를 만들지 못함 (rc={result.returncode}): "
             f"{result.stderr.strip() or result.stdout.strip()}"
         )
-    return produced
+    if produced != dst:
+        produced.replace(dst)
+    return dst
+
+
+def rule_for(src: Path) -> tuple[str, Callable[[Path, Path], Path]] | None:
+    """(목적지에 덧붙일 접미사, 변환 함수). 변환 대상이 아니면 None.
+
+    라우팅을 이 함수 한 곳에만 둔다. target_for 와 convert_one 이 모두 여기를
+    거치므로 "경로는 A 로 잡고 변환은 B 로 하는" 어긋남이 생길 수 없다.
+    Task 3·4 는 이 함수에만 분기를 추가한다.
+    """
+    if src.suffix.lower() in DOCUMENT_SUFFIXES:
+        return (".pdf", convert_document)
+    return None
 ```
 
 - [ ] **Step 4: `convert.py` 작성**
@@ -277,7 +356,6 @@ data/ 아래 파일을 훑어 data/_ai/ 에 AI 가 읽을 수 있는 파생물�
 원본은 절대 건드리지 않는다. 실패는 _common/_convert-errors.log 에 남긴다.
 """
 import sys
-import traceback
 from datetime import datetime
 from pathlib import Path
 
@@ -289,18 +367,28 @@ ERROR_LOG = LUCIFER / "_common" / "_convert-errors.log"
 
 
 def needs_conversion(src: Path, dst: Path) -> bool:
-    """목표물이 없거나 원본보다 오래됐으면 변환이 필요하다."""
+    """목표물이 없거나 원본이 더 새로우면 변환한다.
+
+    >= 를 쓰는 이유: CIFS 는 타임스탬프를 초 단위로 자를 수 있다. 같은 초 안에
+    편집이 일어나면 > 비교로는 변경을 놓쳐 stale 파생물이 남는다. 같을 때 다시
+    변환하면 CPU 를 조금 더 쓸 뿐이고, 정확성은 지켜진다.
+    """
     if not dst.exists():
         return True
-    return src.stat().st_mtime > dst.stat().st_mtime
+    return src.stat().st_mtime >= dst.stat().st_mtime
 
 
 def target_for(src: Path, data_dir: Path) -> Path | None:
     """원본에 대응하는 _ai/ 목표 경로. 변환 대상이 아니면 None."""
+    rule = converters.rule_for(src)
+    if rule is None:
+        return None
+    out_suffix, _ = rule
     rel = src.relative_to(data_dir)
-    if src.suffix.lower() in converters.DOCUMENT_SUFFIXES:
-        return data_dir / AI_DIR_NAME / rel.with_suffix(".pdf")
-    return None
+    # 원본 확장자를 이름에 남긴다: report.pptx -> _ai/report.pptx.pdf
+    # 확장자를 갈아끼우면 report.docx 와 report.pptx 가 같은 report.pdf 로
+    # 충돌하고, 두 번째 파일이 "이미 최신" 으로 조용히 건너뛰어진다.
+    return data_dir / AI_DIR_NAME / rel.with_name(rel.name + out_suffix)
 
 
 def plan_targets(data_dir: Path) -> list[tuple[Path, Path]]:
@@ -327,32 +415,48 @@ def log_error(src: Path, exc: BaseException) -> None:
 
 
 def convert_one(src: Path, dst: Path) -> None:
-    """단일 파일 변환. 형식에 따라 converters 의 함수로 위임."""
-    if src.suffix.lower() in converters.DOCUMENT_SUFFIXES:
-        converters.convert_document(src, dst.parent)
-        return
-    raise RuntimeError(f"변환 규칙 없음: {src.suffix}")
+    """단일 파일 변환. rule_for 가 고른 함수로 위임한다."""
+    rule = converters.rule_for(src)
+    if rule is None:
+        raise RuntimeError(f"변환 규칙 없음: {src.name}")
+    _, convert_fn = rule
+    convert_fn(src, dst)
 
 
-def run_once() -> int:
-    """등록된 모든 프로젝트의 data/ 를 한 번 훑는다. 변환한 개수를 돌려준다."""
-    if not LUCIFER.is_dir():
-        print(f"공유 폴더에 접근할 수 없음: {LUCIFER}", file=sys.stderr)
+def run_once(root: Path = LUCIFER) -> int:
+    """root 아래 모든 프로젝트의 data/ 를 한 번 훑는다. 변환한 개수를 돌려준다.
+
+    사람과 AI 가 동시에 쓰는 공유 폴더라, 순회 도중 파일이 사라지거나 디렉토리
+    목록이 실패할 수 있다. 그 실패가 남은 파일 전체를 멈추면 안 되므로 프로젝트
+    단위와 파일 단위 양쪽에서 예외를 가둔다.
+
+    root 를 인자로 받는 이유는 테스트에서 임시 디렉토리를 가리키기 위해서다.
+    """
+    if not root.is_dir():
+        print(f"공유 폴더에 접근할 수 없음: {root}", file=sys.stderr)
         return 0
     converted = 0
-    for project_dir in sorted(LUCIFER.iterdir()):
+    for project_dir in sorted(root.iterdir()):
         if not project_dir.is_dir() or project_dir.name.startswith("_"):
             continue
         data_dir = project_dir / "data"
         if not data_dir.is_dir():
             continue
-        for src, dst in plan_targets(data_dir):
-            if not needs_conversion(src, dst):
-                continue
+        try:
+            pairs = plan_targets(data_dir)
+        except OSError as exc:  # 목록 실패가 다른 프로젝트까지 막으면 안 된다
+            log_error(data_dir, exc)
+            print(f"목록 실패: {data_dir} ({exc})", file=sys.stderr)
+            continue
+        for src, dst in pairs:
             try:
+                # needs_conversion 도 stat() 을 부른다. 파일이 방금 사라졌다면
+                # 여기서 던지므로 try 안에 있어야 한다.
+                if not needs_conversion(src, dst):
+                    continue
                 convert_one(src, dst)
                 converted += 1
-                print(f"변환: {src.name} -> {dst.relative_to(LUCIFER)}")
+                print(f"변환: {src.name} -> {dst.relative_to(root)}")
             except Exception as exc:  # 한 파일 실패가 전체를 멈추면 안 된다
                 log_error(src, exc)
                 print(f"실패: {src.name} ({exc})", file=sys.stderr)
@@ -360,7 +464,7 @@ def run_once() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(0 if run_once() >= 0 else 1)
+    run_once()
 ```
 
 - [ ] **Step 5: 테스트가 통과하는지 확인**
@@ -369,7 +473,7 @@ if __name__ == "__main__":
 cd scripts/lucifer && python3 -m unittest test_convert -v 2>&1 | tail -8
 ```
 
-Expected: `OK` — 단 `TestConvertDocument` 는 `soffice` 가 있는 서버에서만 통과한다. 로컬 Windows 에는 없으므로 서버에서 돌린다:
+Expected: `OK` (10개) — 단 `TestConvertDocument` 는 `soffice` 가 있는 서버에서만 통과한다. 로컬 Windows 에는 없으므로 서버에서 돌린다:
 
 ```bash
 ssh stevenlim@192.168.219.117 "mkdir -p ~/lucifer"
@@ -377,7 +481,7 @@ scp scripts/lucifer/*.py stevenlim@192.168.219.117:~/lucifer/
 ssh stevenlim@192.168.219.117 "cd ~/lucifer && python3 -m unittest test_convert -v 2>&1 | tail -8"
 ```
 
-Expected: `Ran 6 tests`, `OK`
+Expected: `Ran 10 tests`, `OK`
 
 - [ ] **Step 6: 커밋**
 
@@ -400,7 +504,7 @@ data/ 를 훑어 _ai/ 에 파생물을 만드는 디스패처와 LibreOffice
 
 **Interfaces:**
 - Consumes: Task 2 의 `converters.DOCUMENT_SUFFIXES`, `convert.convert_one`
-- Produces: `converters.convert_video(src: Path, dst_dir: Path) -> Path` — 설명 마크다운 경로 반환
+- Produces: `converters.convert_video(src: Path, dst: Path) -> Path` — 설명 마크다운 경로 반환
 
 - [ ] **Step 1: 실패하는 테스트 추가**
 
@@ -415,7 +519,7 @@ class TestVideoTargets(unittest.TestCase):
             src.write_bytes(b"x")
             pairs = convert.plan_targets(data)
             self.assertEqual(len(pairs), 1)
-            self.assertEqual(pairs[0][1], data / "_ai" / "demo.md")
+            self.assertEqual(pairs[0][1], data / "_ai" / "demo.mp4.md")
 
     def test_frame_cap_is_twenty(self):
         self.assertEqual(converters.MAX_FRAMES, 20)
@@ -464,10 +568,10 @@ def _describe_image(path: Path) -> str:
         return json.loads(resp.read()).get("response", "").strip()
 
 
-def convert_video(src: Path, dst_dir: Path) -> Path:
+def convert_video(src: Path, dst: Path) -> Path:
     """장면 전환 프레임을 뽑고 각 프레임을 설명한 마크다운을 만든다."""
-    dst_dir.mkdir(parents=True, exist_ok=True)
-    frames_dir = dst_dir / f"{src.stem}.frames"
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    frames_dir = dst.parent / f"{src.name}.frames"
     frames_dir.mkdir(exist_ok=True)
 
     # 장면 전환 기준으로만 추출하고 개수를 제한한다.
@@ -499,27 +603,20 @@ def convert_video(src: Path, dst_dir: Path) -> Path:
         lines.append(desc)
         lines.append("")
 
-    out = dst_dir / f"{src.stem}.md"
-    out.write_text("\n".join(lines), encoding="utf-8")
-    return out
+    dst.write_text("\n".join(lines), encoding="utf-8")
+    return dst
 ```
 
-- [ ] **Step 4: `convert.py` 의 디스패치에 영상 추가**
+- [ ] **Step 4: `rule_for` 에 영상 분기 추가**
 
-`target_for` 에 분기를 추가한다:
+`convert.py` 는 **건드리지 않는다.** 라우팅은 `converters.rule_for` 한 곳에만 있으므로 여기에 두 줄만 넣으면 `target_for` 와 `convert_one` 이 동시에 따라온다.
 
 ```python
-    if src.suffix.lower() in converters.VIDEO_SUFFIXES:
-        return data_dir / AI_DIR_NAME / rel.with_suffix(".md")
+    if src.suffix.lower() in VIDEO_SUFFIXES:
+        return (".md", convert_video)
 ```
 
-`convert_one` 에 분기를 추가한다:
-
-```python
-    if src.suffix.lower() in converters.VIDEO_SUFFIXES:
-        converters.convert_video(src, dst.parent)
-        return
-```
+`DOCUMENT_SUFFIXES` 분기 **뒤**, `return None` **앞**에 넣는다. 결과 경로는 `demo.mp4` → `_ai/demo.mp4.md` 가 된다.
 
 - [ ] **Step 5: 테스트 통과 확인**
 
@@ -528,7 +625,7 @@ scp scripts/lucifer/*.py stevenlim@192.168.219.117:~/lucifer/
 ssh stevenlim@192.168.219.117 "cd ~/lucifer && python3 -m unittest test_convert -v 2>&1 | tail -8"
 ```
 
-Expected: `Ran 8 tests`, `OK`
+Expected: `Ran 12 tests`, `OK`
 
 - [ ] **Step 6: 실제 영상으로 종단 확인**
 
@@ -579,7 +676,7 @@ ffmpeg 장면 전환 검출로 최대 20장만 추출하고 Ollama qwen2.5vl 로
 
 **Interfaces:**
 - Consumes: Task 1 의 `yt-dlp`, Task 2 의 디스패처
-- Produces: `converters.convert_youtube_links(src: Path, dst_dir: Path) -> Path`
+- Produces: `converters.convert_youtube_links(src: Path, dst: Path) -> Path`
 
 링크는 파일이 아니므로 규칙이 필요하다: `data/` 안의 **`links.md`** 파일에 유튜브 URL 을 한 줄에 하나씩 적으면, 각 영상의 자막을 받아 `_ai/links/<video_id>.md` 로 저장한다.
 
@@ -641,8 +738,12 @@ def extract_youtube_ids(text: str) -> list[str]:
     return seen
 
 
-def convert_youtube_links(src: Path, dst_dir: Path) -> Path:
-    """links.md 의 유튜브 URL 마다 자막을 받아 마크다운으로 저장한다."""
+def convert_youtube_links(src: Path, dst: Path) -> Path:
+    """links.md 의 유튜브 URL 마다 자막을 받아 마크다운으로 저장한다.
+
+    dst 는 완료 표식(`_ai/links/.done`)이고, 실제 자막은 그 옆에 <id>.md 로 쌓인다.
+    """
+    dst_dir = dst.parent
     dst_dir.mkdir(parents=True, exist_ok=True)
     ids = extract_youtube_ids(src.read_text(encoding="utf-8", errors="replace"))
     failures = []
@@ -672,34 +773,34 @@ def convert_youtube_links(src: Path, dst_dir: Path) -> Path:
         for leftover in subs:
             leftover.unlink()
 
-    marker = dst_dir / ".done"
-    marker.write_text(
+    dst.write_text(
         f"processed {len(ids)} links\n" + "\n".join(failures) + "\n",
         encoding="utf-8",
     )
     if failures:
         raise RuntimeError("; ".join(failures))
-    return marker
+    return dst
 ```
 
 자막이 없는 영상이 흔하므로 실패를 모아서 마지막에 한 번만 예외로 던진다. 성공한 것은 이미 저장돼 있다.
 
-- [ ] **Step 4: `convert.py` 디스패치에 추가**
+- [ ] **Step 4: `rule_for` 에 유튜브 분기 추가 + `target_for` 예외 처리**
 
-`target_for` 에 분기를 추가한다. 이름으로 판별하므로 확장자 분기보다 **먼저** 둔다 — 지금은 `.md` 가 어느 확장자 집합에도 없어 순서가 결과를 바꾸지 않지만, 나중에 `.md` 를 변환 대상에 넣으면 순서가 곧 버그가 된다:
+`rule_for` 에 분기를 추가한다. 이름으로 판별하므로 확장자 분기보다 **먼저** 둔다 — 지금은 `.md` 가 어느 확장자 집합에도 없어 순서가 결과를 바꾸지 않지만, 나중에 `.md` 를 변환 대상에 넣으면 순서가 곧 버그가 된다:
+
+```python
+    if src.name == LINKS_FILENAME:
+        return ("", convert_youtube_links)
+```
+
+`links.md` 만은 목적지가 `_ai/<이름>` 규칙을 따르지 않고 `_ai/links/.done` 이므로, `convert.py` 의 `target_for` 에 예외 한 줄이 필요하다. `rule is None` 검사 **바로 뒤**에 넣는다:
 
 ```python
     if src.name == converters.LINKS_FILENAME:
         return data_dir / AI_DIR_NAME / "links" / ".done"
 ```
 
-`convert_one` 에 분기를 추가한다:
-
-```python
-    if src.name == converters.LINKS_FILENAME:
-        converters.convert_youtube_links(src, dst.parent)
-        return
-```
+`convert_one` 은 그대로 둔다 — `rule_for` 가 함수를 돌려주므로 자동으로 연결된다.
 
 - [ ] **Step 5: 테스트 통과 확인**
 
@@ -708,7 +809,7 @@ scp scripts/lucifer/*.py stevenlim@192.168.219.117:~/lucifer/
 ssh stevenlim@192.168.219.117 "cd ~/lucifer && python3 -m unittest test_convert -v 2>&1 | tail -8"
 ```
 
-Expected: `Ran 11 tests`, `OK`
+Expected: `Ran 15 tests`, `OK`
 
 - [ ] **Step 6: 커밋**
 
