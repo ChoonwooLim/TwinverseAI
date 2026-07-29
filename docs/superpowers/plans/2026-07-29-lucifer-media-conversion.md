@@ -814,6 +814,43 @@ class TestYoutubeLinks(unittest.TestCase):
 
             self.assertFalse(dst.exists(), "실패했는데 완료 표식이 생겼다")
             self.assertTrue((dst.parent / "abc12345678.failed").exists())
+
+    def test_backoff_skip_does_not_look_like_completion(self):
+        """두 번째 실행에서 백오프로 건너뛰어도 완료 표식이 생기면 안 된다.
+
+        failures 만 보고 판단하면 두 번째 실행에서 목록이 비어 .done 이 써지고,
+        needs_conversion 이 이후를 전부 막아 24시간 재시도가 영원히 안 온다.
+        """
+        from unittest import mock
+
+        with tempfile.TemporaryDirectory() as d:
+            data = Path(d)
+            src = data / "links.md"
+            src.write_text("https://youtu.be/abc12345678\n", encoding="utf-8")
+            dst = data / "_ai" / "links" / ".done"
+            dst.parent.mkdir(parents=True)
+
+            class FakeResult:
+                returncode = 1
+
+            calls = []
+
+            def fake_run(*a, **k):
+                calls.append(1)
+                return FakeResult()
+
+            with mock.patch.object(converters.subprocess, "run", fake_run):
+                # 1회차: 실제 시도 -> 실패 -> 예외
+                with self.assertRaises(RuntimeError):
+                    converters.convert_youtube_links(src, dst)
+                # 2회차: 백오프 구간이라 yt-dlp 를 부르지 않고 조용히 통과
+                converters.convert_youtube_links(src, dst)
+
+            self.assertEqual(len(calls), 1, "백오프 중인데 yt-dlp 를 다시 불렀다")
+            self.assertFalse(
+                dst.exists(),
+                "자막을 못 받았는데 완료 표식이 생겼다 (이후 재시도가 영원히 막힌다)",
+            )
 ```
 
 - [ ] **Step 2: 테스트 실패 확인**
@@ -920,11 +957,22 @@ def convert_youtube_links(src: Path, dst: Path) -> Path:
         _cleanup()
         failed_marker.unlink(missing_ok=True)
 
+    # 완료 판정은 "이번 실행에 예외가 없었나" 가 아니라 "모든 id 가 실제로
+    # 자막을 갖췄나" 로 한다. 백오프로 건너뛴 id 는 failures 에 담기지 않으므로,
+    # failures 만 보면 두 번째 실행에서 빈 목록이 되어 .done 이 써지고
+    # needs_conversion 이 이후를 전부 막는다 — 고치려던 바로 그 상태로 되돌아간다.
+    pending = [vid for vid in ids if not (dst_dir / f"{vid}.md").exists()]
+
     if failures:
-        # 완료 표식을 쓰지 않는다. dst 를 쓰면 needs_conversion 이 이후 실행을
-        # 전부 건너뛰어, 나중에 자동 자막이 생겨도 영원히 재시도되지 않는다.
-        # 형제 변환기(문서·영상)도 성공할 때만 목적지를 쓴다.
+        # 이번 실행에서 실제로 시도했다가 실패한 것. 에러 로그에 남긴다.
+        # (백오프 덕분에 id 당 하루 한 번만 기록되고 매 5분 스팸이 되지 않는다.)
         raise RuntimeError("; ".join(failures))
+
+    if pending:
+        # 백오프 대기 중이라 아직 못 받은 것이 남았다. 완료 표식을 쓰지 않아
+        # 다음 실행에서 다시 들어오고, 그때도 백오프면 yt-dlp 호출 없이 즉시 빠진다.
+        # 조용히 넘어가되 완료로 위장하지는 않는다.
+        return dst
 
     dst.write_text(f"processed {len(ids)} links\n", encoding="utf-8")
     return dst
@@ -957,7 +1005,7 @@ scp scripts/lucifer/*.py stevenlim@192.168.219.117:~/lucifer/
 ssh stevenlim@192.168.219.117 "cd ~/lucifer && python3 -m unittest test_convert -v 2>&1 | tail -8"
 ```
 
-Expected: `Ran 18 tests`, `OK`
+Expected: `Ran 19 tests`, `OK`
 
 - [ ] **Step 6: 커밋**
 
