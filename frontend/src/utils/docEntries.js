@@ -69,3 +69,66 @@ export function parseSectionDoc(md) {
 
   return entries;
 }
+
+/** `| a | b |` 형태 줄인가 */
+function isTableRow(line) {
+  return line.trim().startsWith("|");
+}
+
+/** `|---|---|` 형태 구분줄인가 */
+function isSeparatorRow(line) {
+  return /^\s*\|[\s:|-]+\|\s*$/.test(line) && line.includes("-");
+}
+
+/** `| a | b |` → ["a", "b"] */
+function splitRow(line) {
+  return line.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((c) => c.trim());
+}
+
+/**
+ * 마크다운 표 문서를 엔트리로 분해한다. (버그수정·업그레이드 로그)
+ * 첫 번째 표만 읽는다. `날짜` 컬럼 다음 컬럼이 제목, 나머지는 fields.
+ * @param {string} md
+ * @returns {DocEntry[]}
+ */
+export function parseTableDoc(md) {
+  if (!md) return [];
+  const lines = md.split(/\r?\n/);
+
+  let headerIdx = -1;
+  for (let i = 0; i < lines.length - 1; i += 1) {
+    if (isTableRow(lines[i]) && isSeparatorRow(lines[i + 1])) {
+      headerIdx = i;
+      break;
+    }
+  }
+  if (headerIdx === -1) return [];
+
+  const headers = splitRow(lines[headerIdx]);
+  const dateCol = headers.findIndex((h) => h.includes("날짜"));
+  if (dateCol === -1) return [];
+  const titleCol = dateCol + 1 < headers.length ? dateCol + 1 : -1;
+
+  const entries = [];
+  for (let i = headerIdx + 2; i < lines.length; i += 1) {
+    if (!isTableRow(lines[i])) break; // 표 끝
+    const cells = splitRow(lines[i]);
+    const rawDate = cells[dateCol] || "";
+    const iso = ISO_DATE.exec(rawDate);
+
+    entries.push({
+      date: rawDate,
+      year: iso ? Number(iso[1]) : null,
+      month: iso ? Number(iso[2]) : null,
+      title: titleCol >= 0 ? cells[titleCol] || "" : "",
+      body: "",
+      fields: headers
+        .map((label, idx) =>
+          idx === dateCol || idx === titleCol ? null : { label, value: cells[idx] || "" }
+        )
+        .filter((f) => f && f.value),
+    });
+  }
+
+  return entries;
+}
