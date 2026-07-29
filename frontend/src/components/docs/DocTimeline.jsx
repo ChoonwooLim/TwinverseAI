@@ -81,6 +81,17 @@ export default function DocTimeline({ docKey, groups }) {
           // 월이 바뀌는 첫 카드 위에만 헤더를 찍는다.
           const label = groupLabel(group);
           const showLabel = i === 0 || groupLabel(visible[i - 1]) !== label;
+          // 날짜 미상 그룹은 이동할 곳이 없다 — 링크가 아닌 정적 카드로 렌더한다.
+          if (group.year === null) {
+            return (
+              <div key={group.date || "unknown"}>
+                {showLabel && <h2 className={styles.monthHeading}>{label}</h2>}
+                <div className={`${styles.card} ${styles.cardStatic}`}>
+                  <CardInner group={group} />
+                </div>
+              </div>
+            );
+          }
           return (
             <div key={group.date || "unknown"}>
               {showLabel && <h2 className={styles.monthHeading}>{label}</h2>}

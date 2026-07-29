@@ -1,0 +1,106 @@
+/* ═══════════════════════════════════════════════
+   DocDayDetail — Dark Glass Neon
+   ═══════════════════════════════════════════════ */
+
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--sp-3, 0.75rem);
+  padding-bottom: var(--sp-4, 1rem);
+  margin-bottom: var(--sp-6, 1.75rem);
+  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-xs, 0.75rem);
+}
+
+.crumbs {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2, 0.5rem);
+  color: var(--text-tertiary, #888);
+}
+
+.crumbLink {
+  color: var(--text-tertiary, #888);
+  text-decoration: none;
+  transition: color var(--dur-fast, 120ms);
+}
+
+.crumbLink:hover {
+  color: var(--neon-cyan, #00d4ff);
+}
+
+.sep {
+  color: var(--text-tertiary, #888);
+  opacity: 0.5;
+}
+
+.current {
+  color: var(--text-secondary, #ccc);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.nav {
+  display: inline-flex;
+  gap: var(--sp-2, 0.5rem);
+}
+
+.navLink {
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
+  border-radius: var(--radius-sm, 5px);
+  color: var(--text-tertiary, #888);
+  text-decoration: none;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  transition: color var(--dur-fast, 120ms), border-color var(--dur-fast, 120ms);
+}
+
+.navLink:hover {
+  color: var(--neon-cyan, #00d4ff);
+  border-color: rgba(0, 212, 255, 0.35);
+}
+
+.entry + .entry {
+  margin-top: var(--sp-8, 2.5rem);
+  padding-top: var(--sp-6, 1.75rem);
+  border-top: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
+}
+
+.entryTitle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-3, 0.75rem);
+  font-family: var(--font-display, 'Noto Sans KR'), sans-serif;
+  font-size: var(--text-xl, 1.25rem);
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 var(--sp-4, 1rem);
+}
+
+.entrySub {
+  font-size: var(--text-sm, 0.875rem);
+  font-weight: 600;
+  color: var(--text-tertiary, #888);
+}
+
+/* 마크다운 본문 자체는 styles/prose.module.css의 .prose가 맡는다.
+   여기에는 상세 화면 고유의 레이아웃만 둔다. */
+
+.notFound {
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--text-tertiary, #888);
+  margin-bottom: var(--sp-4, 1rem);
+}
+
+.backLink {
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: 700;
+  color: var(--neon-indigo, #667eea);
+  text-decoration: none;
+}

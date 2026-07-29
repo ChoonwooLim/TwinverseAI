@@ -172,3 +172,20 @@
   font-size: var(--text-sm, 0.875rem);
   color: var(--text-tertiary, #888);
 }
+
+/* ── 날짜 미상 카드 (비클릭) ──
+   .card와 동일한 시각 처리를 쓰되, 이동할 곳이 없으므로 hover로
+   클릭 가능성을 암시하지 않는다. */
+
+.cardStatic {
+  cursor: default;
+}
+
+.cardStatic:hover {
+  border-color: var(--border-subtle, rgba(255, 255, 255, 0.06));
+  background: none;
+}
+
+.cardStatic:hover .cardTitle {
+  color: var(--text-secondary, #ccc);
+}

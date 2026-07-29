@@ -5,6 +5,8 @@ import remarkGfm from "remark-gfm";
 import api from "../../services/api";
 import { parseDoc, groupByDate } from "../../utils/docEntries";
 import DocTimeline from "../../components/docs/DocTimeline";
+import DocDayDetail from "../../components/docs/DocDayDetail";
+import prose from "../../styles/prose.module.css";
 import styles from "./AdminDocs.module.css";
 
 const DOC_TITLES = {
@@ -30,7 +32,7 @@ function summarize(groups) {
 }
 
 export default function AdminDocs() {
-  const { docKey } = useParams();
+  const { docKey, date } = useParams();
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -62,7 +64,7 @@ export default function AdminDocs() {
       <div className={styles.docHeader}>
         <span className={styles.overline}>Project Documentation</span>
         <h1 className={styles.title}>{DOC_TITLES[docKey] || docKey}</h1>
-        {groups && <p className={styles.summary}>{summarize(groups)}</p>}
+        {groups && !date && <p className={styles.summary}>{summarize(groups)}</p>}
       </div>
       {loading ? (
         <div className={styles.skeleton} aria-label="로딩 중">
@@ -71,9 +73,13 @@ export default function AdminDocs() {
           ))}
         </div>
       ) : groups ? (
-        <DocTimeline docKey={docKey} groups={groups} />
+        date ? (
+          <DocDayDetail docKey={docKey} groups={groups} date={date} />
+        ) : (
+          <DocTimeline docKey={docKey} groups={groups} />
+        )
       ) : (
-        <div className={styles.content}>
+        <div className={prose.prose}>
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
         </div>
       )}
