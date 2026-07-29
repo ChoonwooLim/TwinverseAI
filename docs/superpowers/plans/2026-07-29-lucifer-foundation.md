@@ -53,7 +53,7 @@
 - Consumes: 없음 (첫 태스크)
 - Produces: `_registry.json` 스키마 — 계획 3이 `projects.<name>.topicId`를 채우고, 계획 4의 `/lucifer add`가 항목을 추가한다.
 
-- [ ] **Step 1: 아직 없음을 확인 (실패 검증)**
+- [x] **Step 1: 아직 없음을 확인 (실패 검증)**
 
 ```bash
 ssh stevenlim@192.168.219.117 "ls -d /media/stevenlim/TwinverseFolder/Lucifer 2>&1"
@@ -61,7 +61,7 @@ ssh stevenlim@192.168.219.117 "ls -d /media/stevenlim/TwinverseFolder/Lucifer 2>
 
 Expected: `ls: cannot access ...: No such file or directory`
 
-- [ ] **Step 2: 디렉토리 생성**
+- [x] **Step 2: 디렉토리 생성**
 
 ```bash
 ssh stevenlim@192.168.219.117 "
@@ -73,7 +73,7 @@ find \$R -type d | sort
 
 Expected: 7개 디렉토리가 나열됨
 
-- [ ] **Step 3: `_registry.json` 작성**
+- [x] **Step 3: `_registry.json` 작성**
 
 로컬에서 파일을 만들어 scp 한다 (SSH 따옴표 중첩으로 JSON이 깨지는 것을 피한다).
 
@@ -103,7 +103,7 @@ Expected: 7개 디렉토리가 나열됨
 scp _registry.json stevenlim@192.168.219.117:/media/stevenlim/TwinverseFolder/Lucifer/_registry.json
 ```
 
-- [ ] **Step 4: JSON 유효성과 소유권 검증**
+- [x] **Step 4: JSON 유효성과 소유권 검증**
 
 ```bash
 ssh stevenlim@192.168.219.117 "
@@ -114,7 +114,7 @@ ls -l /media/stevenlim/TwinverseFolder/Lucifer/_registry.json
 
 Expected: `projects: ['TwinverseAI']` 그리고 소유자가 `stevenlim stevenlim`
 
-- [ ] **Step 5: Windows 쪽에서 보이는지 확인**
+- [x] **Step 5: Windows 쪽에서 보이는지 확인**
 
 ```bash
 ls -R /z/Lucifer/ | head -20
@@ -122,7 +122,7 @@ ls -R /z/Lucifer/ | head -20
 
 Expected: 같은 트리가 보임. 안 보이면 CIFS 캐시 문제이므로 `ls /z/TwinverseFolder/` 를 먼저 실행해 갱신한다.
 
-- [ ] **Step 6: 커밋**
+- [x] **Step 6: 커밋**
 
 공유 드라이브는 git 대상이 아니므로 커밋할 것이 없다. 대신 진행 상황을 계획 문서에 체크만 하고 다음 태스크로 넘어간다.
 
@@ -137,7 +137,7 @@ Expected: 같은 트리가 보임. 안 보이면 CIFS 캐시 문제이므로 `ls
 - Consumes: Task 1의 `Lucifer/` 디렉토리
 - Produces: 컨테이너 내부 경로 `/shared` — 계획 2(변환 워처)와 계획 3(미러링)이 이 경로에 의존한다.
 
-- [ ] **Step 1: 현재 상태를 기록 (재생성 후 비교용)**
+- [x] **Step 1: 현재 상태를 기록 (재생성 후 비교용)**
 
 ```bash
 ssh stevenlim@192.168.219.117 "
@@ -152,7 +152,7 @@ docker exec -u node openclaw openclaw agents list 2>&1 | grep -c '^- '
 
 이 출력을 메모해 둔다. Step 6에서 그대로 대조한다.
 
-- [ ] **Step 2: `/shared` 가 아직 없음을 확인 (실패 검증)**
+- [x] **Step 2: `/shared` 가 아직 없음을 확인 (실패 검증)**
 
 ```bash
 ssh stevenlim@192.168.219.117 "docker exec -u node openclaw ls -d /shared 2>&1"
@@ -160,7 +160,7 @@ ssh stevenlim@192.168.219.117 "docker exec -u node openclaw ls -d /shared 2>&1"
 
 Expected: `ls: /shared: No such file or directory`
 
-- [ ] **Step 3: 컨테이너 재생성**
+- [x] **Step 3: 컨테이너 재생성**
 
 토큰은 기존 컨테이너에서 읽어 셸 변수로만 넘긴다. 출력하지 않는다.
 
@@ -190,7 +190,7 @@ echo "recreated"
 
 `bind-propagation=rslave`를 쓰는 이유: 공유 드라이브가 `x-systemd.automount` CIFS 마운트이므로, 호스트에서 나중에 (재)마운트되어도 컨테이너 안에 반영되게 하기 위함이다.
 
-- [ ] **Step 4: 기동 대기**
+- [x] **Step 4: 기동 대기**
 
 ```bash
 ssh stevenlim@192.168.219.117 '
@@ -206,7 +206,7 @@ done
 
 Expected: `gateway up after ...`
 
-- [ ] **Step 5: `/shared` 읽기·쓰기 검증**
+- [x] **Step 5: `/shared` 읽기·쓰기 검증**
 
 ```bash
 ssh stevenlim@192.168.219.117 "
@@ -218,7 +218,7 @@ docker exec -u node openclaw rm -f /shared/_common/.container-write-test
 
 Expected: `Lucifer/` 트리가 보이고 `WRITE_OK`, 호스트에서도 같은 파일이 보임
 
-- [ ] **Step 6: 재생성 전후 대조 (회귀 검증)**
+- [x] **Step 6: 재생성 전후 대조 (회귀 검증)**
 
 ```bash
 ssh stevenlim@192.168.219.117 "
@@ -251,7 +251,7 @@ Expected:
 - Consumes: Task 2의 `/shared` 마운트
 - Produces: 없음
 
-- [ ] **Step 1: 지니에게 `/shared` 쓰기를 시킨다**
+- [x] **Step 1: 지니에게 `/shared` 쓰기를 시킨다**
 
 ```bash
 ssh stevenlim@192.168.219.117 "
@@ -263,7 +263,7 @@ timeout 200 docker exec -u node openclaw openclaw agent --agent myjini \
 
 Expected: `status: ok`
 
-- [ ] **Step 2: 감독님 Windows 에서 보이는지 확인**
+- [x] **Step 2: 감독님 Windows 에서 보이는지 확인**
 
 ```bash
 cat "/z/Lucifer/TwinverseAI/memo/hello-from-jini.md"
@@ -273,7 +273,7 @@ Expected: 지니가 쓴 한국어 자기소개가 보임
 
 이것이 이 계획의 핵심 성공 신호다. **AI가 쓴 파일을 감독님이 탐색기에서 바로 열 수 있다.**
 
-- [ ] **Step 3: 로이도 같은 경로를 읽는지 확인**
+- [x] **Step 3: 로이도 같은 경로를 읽는지 확인**
 
 ```bash
 ssh stevenlim@192.168.219.117 "
@@ -285,7 +285,7 @@ timeout 200 docker exec -u node openclaw openclaw agent --agent main \
 
 Expected: 로이가 지니의 글을 요약해서 답함 → 두 에이전트가 같은 파일 공간을 공유함이 증명됨
 
-- [ ] **Step 4: 파일 소유권 확인**
+- [x] **Step 4: 파일 소유권 확인**
 
 ```bash
 ssh stevenlim@192.168.219.117 "ls -l /media/stevenlim/TwinverseFolder/Lucifer/TwinverseAI/memo/"
@@ -305,7 +305,7 @@ Expected: 소유자 `stevenlim stevenlim` (CIFS가 uid 1000으로 강제하므�
 - Consumes: Task 1의 `handoff/` 디렉토리
 - Produces: 갱신된 메모리 규칙 — 이후 모든 세션의 핸드오프 문서가 새 경로로 간다.
 
-- [ ] **Step 1: 기존 핸드오프 문서 이동**
+- [x] **Step 1: 기존 핸드오프 문서 이동**
 
 ```bash
 mv "/z/TwinverseFolder/TODO-claude-max-recovery-20260729.txt" \
@@ -315,7 +315,7 @@ ls -l "/z/Lucifer/TwinverseAI/handoff/"
 
 Expected: 파일이 새 위치에 있음
 
-- [ ] **Step 1b: 잘못 만든 중복 폴더 정리**
+- [x] **Step 1b: 잘못 만든 중복 폴더 정리**
 
 `Z:` 드라이브 자체가 `\\192.168.219.101\TwinverseFolder` 이므로 `Z:\TwinverseFolder\` 는
 2026-07-29 세션에서 착오로 만든 중복 폴더다. Step 1 에서 안의 파일을 옮겼으므로 비어 있어야 한다.
@@ -335,7 +335,7 @@ ls -d /z/TwinverseFolder 2>&1
 
 Expected: `중복 폴더 제거됨` 그리고 `No such file or directory`
 
-- [ ] **Step 2: 메모리 규칙 갱신**
+- [x] **Step 2: 메모리 규칙 갱신**
 
 `~/.claude/projects/c--WORK-TwinverseAI/memory/feedback_handoff_txt_z_drive.md` 의
 frontmatter `description` 을 다음으로 교체:
@@ -359,7 +359,7 @@ description: 감독님이 직접 수행해야 할 작업 절차는 항상 Lucife
 
 파일 마지막 `관련:` 줄에 `[[reference-lucifer-workspace]]` 를 추가한다.
 
-- [ ] **Step 3: MEMORY.md 인덱스 문구 갱신**
+- [x] **Step 3: MEMORY.md 인덱스 문구 갱신**
 
 `~/.claude/projects/c--WORK-TwinverseAI/memory/MEMORY.md` 의 해당 줄을 교체:
 
@@ -367,7 +367,7 @@ description: 감독님이 직접 수행해야 할 작업 절차는 항상 Lucife
 - [핸드오프 txt는 Lucifer로](feedback_handoff_txt_z_drive.md) — 감독님이 직접 할 작업은 Z:\Lucifer\<프로젝트>\handoff\ 에 txt로 작성 (미등록 프로젝트는 루트)
 ```
 
-- [ ] **Step 4: 검증**
+- [x] **Step 4: 검증**
 
 ```bash
 grep -n "Lucifer" ~/.claude/projects/c--WORK-TwinverseAI/memory/feedback_handoff_txt_z_drive.md
@@ -376,7 +376,7 @@ grep -n "Lucifer" ~/.claude/projects/c--WORK-TwinverseAI/memory/MEMORY.md
 
 Expected: 두 파일 모두 새 경로를 언급함
 
-- [ ] **Step 5: 계획 문서 커밋**
+- [x] **Step 5: 계획 문서 커밋**
 
 ```bash
 git add docs/superpowers/plans/2026-07-29-lucifer-foundation.md
