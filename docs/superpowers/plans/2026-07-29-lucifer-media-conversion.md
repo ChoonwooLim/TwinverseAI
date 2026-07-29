@@ -534,9 +534,15 @@ class TestVideoFrameHygiene(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
             src = root / "clip.mp4"
+            # 단일 연속 testsrc 는 프레임 간 변화가 너무 미세해 scene 점수가
+            # 0.3 문턱을 절대 넘지 않는다 (실측 최댓값 ~0.02) -> ffmpeg 가 프레임을
+            # 하나도 못 뽑아 convert_video 가 위생 검사 이전에 RuntimeError 로
+            # 죽는다. 뚜렷한 장면 전환을 하나 만들어 실제로 프레임이 뽑히게 한다.
             subprocess.run(
-                ["ffmpeg", "-nostdin", "-y", "-f", "lavfi",
-                 "-i", "testsrc=duration=1:size=160x120:rate=5", str(src)],
+                ["ffmpeg", "-nostdin", "-y",
+                 "-f", "lavfi", "-i", "testsrc=duration=1:size=160x120:rate=5",
+                 "-f", "lavfi", "-i", "color=c=blue:duration=1:size=160x120:rate=5",
+                 "-filter_complex", "[0:v][1:v]concat=n=2:v=1", str(src)],
                 capture_output=True, timeout=120,
             )
             self.assertTrue(src.exists(), "테스트 영상 생성 실패")
