@@ -264,37 +264,46 @@ Expected: `node:node 600`
 `root:root` 로 나오면 **여기서 멈추고** 먼저 고친다:
 `ssh ... "docker exec -u root openclaw chown node:node /data/.openclaw/openclaw.json && docker restart openclaw"`
 
-- [ ] **Step 3: 지니 봇 토큰을 컨테이너에 node 소유로 넣는다**
+- [x] **Step 3: 봇 토큰 2개를 컨테이너의 영구 위치에 node 소유로 넣는다**
+
+> **중요 (2026-07-29 실측으로 정정):** `--token-file` 은 토큰 **값을 복사하지 않고 경로를
+> 참조로만 저장**한다 (`channels.telegram.accounts.<id>.tokenFile`). 그래서 `/tmp` 에 두고
+> 등록 후 지우면 봇이 조용히 인증 불능이 된다. 반드시 **`/data` 하위 영구 경로**에 두고,
+> 등록 후에도 **지우지 않는다.** `/data` 는 호스트 `/srv/openclaw/data` 바인드 마운트라
+> 컨테이너 재시작에도 살아남는다.
 
 토큰이 argv 에 노출되지 않도록 stdin 으로 흘린다.
 
 ```bash
 ssh stevenlim@192.168.219.117 'set -a; . ~/lucifer-secrets/bot-tokens.env; set +a; \
-printf "%s" "$JINI_TOKEN" | docker exec -i -u node openclaw sh -c "cat > /tmp/jini.token && chmod 600 /tmp/jini.token && wc -c < /tmp/jini.token"'
+docker exec -u node openclaw sh -c "mkdir -p /data/.openclaw/lucifer-secrets && chmod 700 /data/.openclaw/lucifer-secrets"; \
+printf "%s" "$JINI_TOKEN" | docker exec -i -u node openclaw sh -c "cat > /data/.openclaw/lucifer-secrets/jini.token && chmod 600 /data/.openclaw/lucifer-secrets/jini.token"; \
+printf "%s" "$ROY_TOKEN" | docker exec -i -u node openclaw sh -c "cat > /data/.openclaw/lucifer-secrets/roy.token && chmod 600 /data/.openclaw/lucifer-secrets/roy.token"; \
+docker exec -u node openclaw sh -c "ls -la /data/.openclaw/lucifer-secrets/"'
 ```
 
-Expected: 40 대 초반의 바이트 수 (텔레그램 봇 토큰 길이). `0` 이면 env 파일의 변수명을 확인한다.
+Expected: `jini.token` 과 `roy.token` 이 각각 **46 바이트**, `-rw------- node node` 로 보인다.
+크기가 `0` 이면 env 파일의 변수명을 확인한다.
 
-- [ ] **Step 4: 지니 계정을 등록한다**
+- [x] **Step 4: 지니 계정을 등록한다**
 
 ```bash
 ssh stevenlim@192.168.219.117 'docker exec -u node openclaw \
-  openclaw channels add --channel telegram --account jini --name "지니" --token-file /tmp/jini.token; \
-  docker exec -u node openclaw rm -f /tmp/jini.token'
+  openclaw channels add --channel telegram --account jini --name "지니" \
+  --token-file /data/.openclaw/lucifer-secrets/jini.token'
 ```
 
-Expected: 등록 성공 메시지. 마지막 명령이 임시 토큰 파일을 지운다.
+Expected: `Added Telegram account "jini".` — 토큰 파일은 **지우지 않는다.**
 
-- [ ] **Step 5: 로이 봇도 같은 방식으로 등록한다**
+- [x] **Step 5: 로이 계정을 등록한다**
 
 ```bash
-ssh stevenlim@192.168.219.117 'set -a; . ~/lucifer-secrets/bot-tokens.env; set +a; \
-printf "%s" "$ROY_TOKEN" | docker exec -i -u node openclaw sh -c "cat > /tmp/roy.token && chmod 600 /tmp/roy.token"; \
-docker exec -u node openclaw openclaw channels add --channel telegram --account roy --name "로이" --token-file /tmp/roy.token; \
-docker exec -u node openclaw rm -f /tmp/roy.token'
+ssh stevenlim@192.168.219.117 'docker exec -u node openclaw \
+  openclaw channels add --channel telegram --account roy --name "로이" \
+  --token-file /data/.openclaw/lucifer-secrets/roy.token'
 ```
 
-Expected: 등록 성공 메시지
+Expected: `Added Telegram account "roy".`
 
 - [ ] **Step 6: 두 계정이 붙었는지 확인한다**
 
@@ -348,15 +357,16 @@ Expected: `telegram` 관련 에러 스택이 없다.
 - Consumes: Task 1 의 `<STEVEN_USER_ID>`, Task 2 의 `<TOPIC_ID>`, Task 3 의 계정 2개
 - Produces: 이름을 부를 때만 응답하는 동작 — Task 5 의 미러링 대상 세션이 여기서 생긴다.
 
-- [ ] **Step 1: 이름을 안 불러도 응답하는지 확인 (실패 검증)**
+> **설정을 두 번에 나눠 쓴다 (2026-07-29 실측으로 정정).** 원래 계획은 접근 제어와
+> `requireMention` 을 한 번에 쓰고, 그 **전에** "이름 없이 보내면 둘 다 응답" 을 실패
+> 검증으로 삼았다. 그런데 `groups` 허용목록이 없는 상태에서는 게이트웨이가 애초에
+> `skipping group message (reason: not-allowed)` 로 전부 버린다. 즉 그 시점의 침묵은
+> `requireMention` 과 무관해서 검증이 성립하지 않는다.
+>
+> 그래서 **접근 제어만 먼저 켜서 "둘 다 응답" 을 확인한 뒤**, `requireMention` 을 얹어
+> 침묵으로 바뀌는 것을 본다. 이래야 침묵이 멘션 조건의 효과임이 증명된다.
 
-감독님께 그룹의 `TwinverseAI` 토픽에서 **이름 없이** `테스트` 라고 보내달라고 요청한다.
-
-Expected(현재 상태): 지니와 로이가 **둘 다 응답한다.** `requireMention` 이 아직 없기 때문이다.
-이 단계는 다음 Step 이 실제로 뭔가를 바꿨다는 증거를 만들기 위한 것이다.
-둘 다 침묵한다면 Task 3 의 바인딩이 안 붙은 것이므로 되돌아가 확인한다.
-
-- [ ] **Step 2: 설정을 백업한다**
+- [x] **Step 1: 설정을 백업한다**
 
 ```bash
 ssh stevenlim@192.168.219.117 'docker exec -u node openclaw sh -c \
@@ -365,39 +375,74 @@ ssh stevenlim@192.168.219.117 'docker exec -u node openclaw sh -c \
 
 Expected: 백업 파일이 `node:node` 소유로 생성된다.
 
-- [ ] **Step 3: 접근 제어와 멘션 트리거를 쓴다**
+- [x] **Step 2: 접근 제어만 먼저 쓴다 (멘션 조건 없이)**
 
-`<STEVEN_USER_ID>` 와 `<TOPIC_ID>` 를 실측값으로 치환한다.
 `docker exec -i -u node` 로 실행해 **파일 소유권이 root 로 넘어가지 않게** 한다.
+토픽 키 `"10"` 은 **문자열**이어야 한다 — 숫자로 쓰면 JSON 키가 달라져 매칭되지 않는다.
 
 ```bash
-ssh stevenlim@192.168.219.117 'docker exec -i -u node openclaw python3 - <<EOF
+ssh stevenlim@192.168.219.117 'docker exec -i -u node openclaw python3 - <<"PYEOF"
 import json, pathlib
 p = pathlib.Path("/data/.openclaw/openclaw.json")
 d = json.loads(p.read_text(encoding="utf-8"))
 tg = d.setdefault("channels", {}).setdefault("telegram", {})
 tg["groupPolicy"] = "allowlist"
-tg["groupAllowFrom"] = ["<STEVEN_USER_ID>"]
+tg["groupAllowFrom"] = ["1958446460"]
 tg["groups"] = {
     "-1004482716134": {
         "enabled": True,
-        "requireMention": True,
-        "topics": {
-            "<TOPIC_ID>": {"enabled": True, "requireMention": True}
-        },
+        "topics": {"10": {"enabled": True}},
     }
 }
 p.write_text(json.dumps(d, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-print(json.dumps(d["channels"]["telegram"], ensure_ascii=False, indent=1))
-EOF'
+print(json.dumps(tg, ensure_ascii=False, indent=1))
+PYEOF'
 ```
 
-Expected: `channels.telegram` 트리가 위 내용대로 출력된다.
+Expected: `groupPolicy` / `groupAllowFrom` / `groups` 가 위 내용대로 출력된다.
+로그에 `restarting telegram channel` 과 `[jini] starting provider (@OpenclawJini_bot)` /
+`[roy] starting provider (@Openclaw2Roy_bot)` 가 이어서 나온다. 두 줄의 봇 username 이
+서로 달라야 한다 — 같으면 Task 3 에서 토큰이 섞인 것이다.
 
-`requireMention` 을 그룹 레벨과 토픽 레벨 양쪽에 쓰는 이유: 토픽 설정이 우선하지만,
-아직 등록 안 된 다른 토픽에서도 조용해야 하므로 그룹 레벨이 안전망이 된다.
+- [x] **Step 3: 접근 게이트가 열렸는지 확인 (거부 사유 전환으로 검증)**
 
-- [ ] **Step 4: 소유권과 hot-reload 를 확인한다**
+감독님께 `TwinverseAI` 토픽에서 **이름 없이** `테스트` 라고 보내달라고 요청한 뒤 로그를 본다.
+
+```bash
+ssh stevenlim@192.168.219.117 "docker exec -u node openclaw openclaw channels logs 2>&1 | grep -E 'reason' | tail -5"
+```
+
+Expected: 거부 사유가 **`not-allowed` → `no-mention` 으로 바뀐다.**
+
+> **실측으로 알게 된 것 (2026-07-29):** 이 빌드는 그룹에서 `requireMention` 이
+> **기본값으로 이미 켜져 있다.** 그래서 원래 기대했던 "둘 다 응답" 은 나오지 않는다.
+> 대신 거부 사유의 전환이 그보다 나은 증거다 — `not-allowed` 는 접근 게이트에서 막힌
+> 것이고 `no-mention` 은 접근을 통과해 멘션 게이트에서만 막힌 것이라, 두 게이트를
+> 정확히 분리해 보여준다.
+>
+> 여전히 `not-allowed` 면 Step 2 의 `groupAllowFrom` 숫자나 토픽 키가 틀린 것이다.
+
+- [ ] **Step 4: 멘션 조건을 얹는다**
+
+```bash
+ssh stevenlim@192.168.219.117 'docker exec -i -u node openclaw python3 - <<"PYEOF"
+import json, pathlib
+p = pathlib.Path("/data/.openclaw/openclaw.json")
+d = json.loads(p.read_text(encoding="utf-8"))
+g = d["channels"]["telegram"]["groups"]["-1004482716134"]
+g["requireMention"] = True
+g["topics"]["10"]["requireMention"] = True
+p.write_text(json.dumps(d, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+print(json.dumps(g, ensure_ascii=False, indent=1))
+PYEOF'
+```
+
+Expected: 그룹·토픽 양쪽에 `"requireMention": true` 가 붙는다.
+
+양쪽에 쓰는 이유: 토픽 설정이 우선하지만, 아직 등록 안 된 다른 토픽에서도 조용해야
+하므로 그룹 레벨이 안전망이 된다.
+
+- [ ] **Step 5: 소유권과 hot-reload 를 확인한다**
 
 ```bash
 ssh stevenlim@192.168.219.117 "docker exec -u node openclaw stat -c '%U:%G %a' /data/.openclaw/openclaw.json; \
@@ -414,14 +459,80 @@ Expected: `node:node 600` 이고, 로그에 config 재로딩 흔적이 있으며
 Step 4 에서 재시작했든 아니든 한 번 확인한다. 이 값이 바뀌면 TwinverseAI 백엔드의
 `OPENCLAW_TOKEN` 도 갱신해야 한다.
 
+`printf %s` 를 써서 **개행 없이** 해시한다. `printenv | sha256sum` 은 printenv 가 붙이는
+줄바꿈까지 해시해 전혀 다른 값(`cc373f4ee3336c22`)을 내므로, 토큰이 멀쩡한데도
+"바뀌었다" 고 오판하게 된다. 2026-07-29 에 실제로 한 번 헛짚었다.
+
 ```bash
 ssh stevenlim@192.168.219.117 'docker exec -u node openclaw sh -c \
-  "printenv OPENCLAW_GATEWAY_TOKEN | sha256sum | cut -c1-16"'
+  "printf %s \"\$OPENCLAW_GATEWAY_TOKEN\" | sha256sum | cut -c1-16"'
 ```
 
 Expected: `ddda846ba5f129b4` (2026-07-29 기준값). 다르면 멈추고 원인을 먼저 밝힌다.
+`docker inspect openclaw --format "{{.Created}}"` 로 컨테이너 재생성 여부부터 확인할 것 —
+이 값은 컨테이너 생성 시 env 로 고정되므로 재생성 없이는 바뀔 수 없다.
 
-- [ ] **Step 6: 종단 검증 — 이름 호출 3종**
+- [x] **Step 6: 한글 이름용 `mentionPatterns` 를 명시한다 (필수)**
+
+> **2026-07-29 실측으로 추가된 단계.** 이걸 빼면 `지니야` 라고 불러도 **영원히 응답하지
+> 않는다.** 원인은 OpenClaw 가 아니라 JavaScript 정규식이다.
+>
+> `mentionPatterns` 를 명시하지 않으면 OpenClaw 는 에이전트 identity 이름에서
+> `deriveMentionPatterns()` 로 `\b@?<이름>\b` 패턴을 자동 생성한다. 그런데 JS 의 `\b` 는
+> **ASCII `[A-Za-z0-9_]` 기준**이라 한글 앞뒤에서는 경계가 성립하지 않는다. 실측:
+>
+> | 패턴 | 입력 | 결과 |
+> |---|---|---|
+> | `\b@?지니\b` | `지니야 안녕` | **false** |
+> | `\b@?지니\b` | `지니 안녕` | **false** (정확히 그 단어인데도) |
+> | `지니` | `지니야 안녕` | true |
+>
+> 즉 한글 이름 에이전트는 자동 파생 패턴으로는 **어떤 입력과도 매치되지 않는다.**
+> 로그에는 `reason: "no-mention"` 만 찍혀서 원인이 드러나지 않는다.
+>
+> 해결은 `agents.list[].groupChat.mentionPatterns` 를 직접 주는 것이다. 이 값이 있으면
+> `resolveMentionPatterns()` 가 파생 패턴 대신 이것을 쓴다 (우선순위:
+> 에이전트 `groupChat.mentionPatterns` → 전역 `messages.groupChat.mentionPatterns` →
+> identity 파생). `\b` 를 빼고 부분일치로 두면 `지니야`·`지니가`·`지니 안녕` 이 모두 걸린다.
+
+```bash
+ssh stevenlim@192.168.219.117 'docker exec -i -u node openclaw python3 - <<"PYEOF"
+import json, pathlib
+p = pathlib.Path("/data/.openclaw/openclaw.json")
+d = json.loads(p.read_text(encoding="utf-8"))
+PATTERNS = {
+    "myjini": ["지니", "@OpenclawJini_bot", "🧞"],
+    "main":   ["로이", "@Openclaw2Roy_bot", "🦊"],
+}
+for a in d["agents"]["list"]:
+    pats = PATTERNS.get(a["id"])
+    if pats:
+        a.setdefault("groupChat", {})["mentionPatterns"] = pats
+p.write_text(json.dumps(d, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+for a in d["agents"]["list"]:
+    if a["id"] in PATTERNS:
+        print(a["id"], "->", json.dumps(a["groupChat"], ensure_ascii=False))
+PYEOF'
+```
+
+Expected: 두 에이전트에 `mentionPatterns` 가 붙고, 로그에
+`config hot reload applied (agents.list)` 가 뜬다.
+
+감독님께 테스트를 부탁하기 전에 패턴이 실제로 갈라지는지 먼저 확인한다:
+
+```bash
+ssh stevenlim@192.168.219.117 'docker exec -i -u node openclaw node -e "
+const P = { myjini: [\"지니\",\"@OpenclawJini_bot\",\"🧞\"], main: [\"로이\",\"@Openclaw2Roy_bot\",\"🦊\"] };
+for (const t of [\"지니야 안녕\", \"로이야 안녕\", \"안녕\"]) {
+  const hit = Object.entries(P).filter(([, ps]) => ps.some(p => new RegExp(p, \"i\").test(t.toLowerCase()))).map(([k]) => k);
+  console.log(t, \"-> \", hit.length ? hit.join(\",\") : \"(none)\");
+}
+"'
+```
+
+Expected: `지니야 안녕 -> myjini`, `로이야 안녕 -> main`, `안녕 -> (none)`
+
+- [ ] **Step 7: 종단 검증 — 이름 호출 3종**
 
 감독님께 `TwinverseAI` 토픽에서 다음 세 가지를 순서대로 보내달라고 요청한다.
 
