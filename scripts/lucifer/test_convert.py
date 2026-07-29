@@ -107,11 +107,13 @@ class TestFailureIsolation(unittest.TestCase):
                 (data / name).write_text("x\n", encoding="utf-8")
 
             converters.convert_document = flaky
+            original_error_log = convert.ERROR_LOG
             convert.ERROR_LOG = root / "_common" / "_convert-errors.log"
             try:
                 converted = convert.run_once(root)
             finally:
                 converters.convert_document = original
+                convert.ERROR_LOG = original_error_log
 
         # bad.txt 가 터졌지만 앞뒤 파일은 모두 시도·성공했어야 한다
         self.assertEqual(attempted, ["aaa.txt", "bad.txt", "zzz.txt"])
