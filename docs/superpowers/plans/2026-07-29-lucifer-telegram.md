@@ -724,7 +724,11 @@ if (!in --channels list)                    skip("session")    // ← 우리를 
 해법: **`claude --channels plugin:telegram@claude-plugins-official`** 으로 세션을 시작한다
 (`--channels <servers...>`, `--help` 에 숨겨진 실험 옵션). 항목은 태그 문법이 강제된다 —
 `plugin:<name>@<marketplace>` (플러그인 채널) 또는 `server:<name>` (수동 MCP 서버).
-`telegram` 처럼 태그 없이 주면 문법 안내와 함께 거부된다 (2026-07-29 실측). 시작 시 "Channels (experimental) messages from X inject
+`telegram` 처럼 태그 없이 주면 문법 안내와 함께 거부된다 (2026-07-29 실측).
+
+**2026-07-29 21:40 종단 검증 통과.** `claude --channels plugin:telegram@claude-plugins-official`
+로 시작한 CLI 세션에서 감독님의 개인톡 메시지가 `<channel source="telegram">` 으로
+주입되는 것을 확인했다. 이로써 클로드 봇도 인바운드·아웃바운드 양방향 완성. 시작 시 "Channels (experimental) messages from X inject
 directly in this session" 안내가 뜨면 성공이고, 인바운드가 `<channel source="telegram">`
 블록으로 대화에 주입된다.
 
@@ -737,7 +741,7 @@ directly in this session" 안내가 뜨면 성공이고, 인바운드가 `<chann
 | 아웃바운드 | 폴링 슬롯과 무관 (Bot API HTTP 직접 호출) — 슬롯을 뺏겨도 계속 동작해 혼란을 준다 |
 | 진단 방법 | `strings`/grep 으로 claude.exe 에서 `notifications/claude/channel` 주변 게이트 문자열 추출 |
 
-**운용 방침:** 인바운드가 필요한 세션만 `claude --channels telegram` 으로 시작한다.
+**운용 방침:** 인바운드가 필요한 세션만 `claude --channels plugin:telegram@claude-plugins-official` 으로 시작한다.
 여러 세션이 떠 있으면 마지막에 뜬 세션의 server 가 폴링 슬롯을 가져가므로,
 인바운드 수신 세션은 한 번에 하나뿐이다.
 
