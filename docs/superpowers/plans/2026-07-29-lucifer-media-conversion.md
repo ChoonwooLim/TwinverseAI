@@ -455,6 +455,11 @@ def run_once(root: Path = LUCIFER) -> int:
                 if not needs_conversion(src, dst):
                     continue
                 convert_one(src, dst)
+                # 변환기가 예외 없이 돌아왔어도 목적지가 없을 수 있다.
+                # (유튜브 링크는 백오프 대기 중이면 표식을 쓰지 않고 반환한다.)
+                # 그때 성공으로 세면 로그가 하루 수백 줄의 거짓 성공을 뿜는다.
+                if not dst.exists():
+                    continue
                 converted += 1
                 print(f"변환: {src.name} -> {dst.relative_to(root)}")
             except Exception as exc:  # 한 파일 실패가 전체를 멈추면 안 된다
