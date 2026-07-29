@@ -1,0 +1,174 @@
+/* ═══════════════════════════════════════════════
+   DocTimeline — Dark Glass Neon
+   ═══════════════════════════════════════════════ */
+
+.timeline {
+  display: grid;
+  grid-template-columns: 132px 1fr;
+  gap: var(--sp-8, 2.5rem);
+  align-items: start;
+}
+
+@media (max-width: 760px) {
+  .timeline {
+    grid-template-columns: 1fr;
+    gap: var(--sp-5, 1.25rem);
+  }
+}
+
+/* ── 좌측 연/월 인덱스 ── */
+
+.index {
+  position: sticky;
+  top: var(--sp-6, 1.75rem);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1, 0.25rem);
+  font-family: var(--font-body, 'Inter'), sans-serif;
+}
+
+@media (max-width: 760px) {
+  .index {
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}
+
+.yearBlock {
+  display: contents;
+}
+
+.yearBtn,
+.monthBtn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2, 0.5rem);
+  width: 100%;
+  padding: var(--sp-2, 0.5rem) var(--sp-3, 0.75rem);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm, 5px);
+  color: var(--text-tertiary, #888);
+  cursor: pointer;
+  transition: color var(--dur-fast, 120ms), background var(--dur-fast, 120ms);
+}
+
+@media (max-width: 760px) {
+  .yearBtn,
+  .monthBtn {
+    width: auto;
+  }
+}
+
+.yearBtn {
+  font-size: var(--text-sm, 0.875rem);
+  font-weight: 700;
+  color: var(--text-secondary, #ccc);
+}
+
+.monthBtn {
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: 600;
+  padding-left: var(--sp-5, 1.25rem);
+}
+
+.yearBtn:hover,
+.monthBtn:hover {
+  color: var(--neon-cyan, #00d4ff);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.active {
+  color: var(--neon-cyan, #00d4ff);
+  background: rgba(0, 212, 255, 0.08);
+  border-color: rgba(0, 212, 255, 0.25);
+}
+
+.count {
+  font-size: var(--text-xs, 0.75rem);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-tertiary, #888);
+}
+
+/* ── 우측 카드 목록 ── */
+
+.stream {
+  min-width: 0;
+}
+
+.monthHeading {
+  font-family: var(--font-display, 'Noto Sans KR'), sans-serif;
+  font-size: var(--text-sm, 0.875rem);
+  font-weight: 700;
+  letter-spacing: var(--tracking-wide, 0.08em);
+  color: var(--text-tertiary, #888);
+  margin: var(--sp-7, 2rem) 0 var(--sp-3, 0.75rem);
+  padding-bottom: var(--sp-2, 0.5rem);
+  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
+}
+
+.stream > div:first-child .monthHeading {
+  margin-top: 0;
+}
+
+.card {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-4, 1rem);
+  padding: var(--sp-3, 0.75rem) var(--sp-4, 1rem);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
+  border-radius: var(--radius-md, 10px);
+  margin-bottom: var(--sp-2, 0.5rem);
+  text-decoration: none;
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  transition: border-color var(--dur-fast, 120ms), background var(--dur-fast, 120ms);
+}
+
+.card:hover {
+  border-color: rgba(102, 126, 234, 0.45);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.cardDate {
+  flex-shrink: 0;
+  font-size: var(--text-sm, 0.875rem);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--neon-indigo, #667eea);
+}
+
+.cardBody {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3, 0.75rem);
+  min-width: 0;
+}
+
+.cardTitle {
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--text-secondary, #ccc);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card:hover .cardTitle {
+  color: #ffffff;
+}
+
+.badge {
+  flex-shrink: 0;
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: 700;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(102, 126, 234, 0.15);
+  color: var(--neon-indigo, #667eea);
+}
+
+.empty {
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--text-tertiary, #888);
+}

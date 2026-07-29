@@ -1,8 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import api from "../../services/api";
+import { parseDoc, groupByDate } from "../../utils/docEntries";
+import DocTimeline from "../../components/docs/DocTimeline";
 import styles from "./AdminDocs.module.css";
 
 const DOC_TITLES = {
@@ -12,6 +14,20 @@ const DOC_TITLES = {
   "work-log": "작업일지",
   "pixel-streaming-server": "픽셀스트리밍 서버",
 };
+
+/** "24일 · 29건 · 2026.04 – 07" */
+function summarize(groups) {
+  const dated = groups.filter((g) => g.year !== null);
+  const entryCount = groups.reduce((n, g) => n + g.entries.length, 0);
+  const parts = [`${groups.length}일`, `${entryCount}건`];
+  if (dated.length) {
+    const fmt = (g) => `${g.year}.${String(g.month).padStart(2, "0")}`;
+    const to = fmt(dated[0]);                    // groups는 내림차순이라 앞이 최신
+    const from = fmt(dated[dated.length - 1]);
+    parts.push(from === to ? to : `${from} – ${to}`);
+  }
+  return parts.join(" · ");
+}
 
 export default function AdminDocs() {
   const { docKey } = useParams();
@@ -27,6 +43,11 @@ export default function AdminDocs() {
       .finally(() => setLoading(false));
   }, [docKey]);
 
+  const groups = useMemo(() => {
+    const entries = parseDoc(content);
+    return entries ? groupByDate(entries) : null;
+  }, [content]);
+
   if (!docKey) {
     return (
       <div className={styles.page}>
@@ -41,9 +62,16 @@ export default function AdminDocs() {
       <div className={styles.docHeader}>
         <span className={styles.overline}>Project Documentation</span>
         <h1 className={styles.title}>{DOC_TITLES[docKey] || docKey}</h1>
+        {groups && <p className={styles.summary}>{summarize(groups)}</p>}
       </div>
       {loading ? (
-        <p className={styles.hint}>로딩 중...</p>
+        <div className={styles.skeleton} aria-label="로딩 중">
+          {Array.from({ length: 6 }, (_, i) => (
+            <span key={i} className={styles.skeletonRow} />
+          ))}
+        </div>
+      ) : groups ? (
+        <DocTimeline docKey={docKey} groups={groups} />
       ) : (
         <div className={styles.content}>
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>

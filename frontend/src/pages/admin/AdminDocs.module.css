@@ -3,7 +3,46 @@
    ═══════════════════════════════════════════════ */
 
 .page {
-  max-width: 820px;
+  max-width: 1000px;
+}
+
+.summary {
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--text-tertiary, #888);
+  margin: var(--sp-3, 0.75rem) 0 0;
+}
+
+/* ── 로딩 스켈레톤 ── */
+
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2, 0.5rem);
+}
+
+.skeletonRow {
+  height: 46px;
+  border-radius: var(--radius-md, 10px);
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.03) 25%,
+    rgba(255, 255, 255, 0.07) 37%,
+    rgba(255, 255, 255, 0.03) 63%
+  );
+  background-size: 400% 100%;
+  animation: skeletonShimmer 1.4s ease infinite;
+}
+
+@keyframes skeletonShimmer {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeletonRow {
+    animation: none;
+  }
 }
 
 /* ── Doc Header ── */
