@@ -255,6 +255,43 @@ class TestYoutubeLinks(unittest.TestCase):
             self.assertFalse(dst.exists(), "실패했는데 완료 표식이 생겼다")
             self.assertTrue((dst.parent / "abc12345678.failed").exists())
 
+    def test_backoff_skip_does_not_look_like_completion(self):
+        """두 번째 실행에서 백오프로 건너뛰어도 완료 표식이 생기면 안 된다.
+
+        failures 만 보고 판단하면 두 번째 실행에서 목록이 비어 .done 이 써지고,
+        needs_conversion 이 이후를 전부 막아 24시간 재시도가 영원히 안 온다.
+        """
+        from unittest import mock
+
+        with tempfile.TemporaryDirectory() as d:
+            data = Path(d)
+            src = data / "links.md"
+            src.write_text("https://youtu.be/abc12345678\n", encoding="utf-8")
+            dst = data / "_ai" / "links" / ".done"
+            dst.parent.mkdir(parents=True)
+
+            class FakeResult:
+                returncode = 1
+
+            calls = []
+
+            def fake_run(*a, **k):
+                calls.append(1)
+                return FakeResult()
+
+            with mock.patch.object(converters.subprocess, "run", fake_run):
+                # 1회차: 실제 시도 -> 실패 -> 예외
+                with self.assertRaises(RuntimeError):
+                    converters.convert_youtube_links(src, dst)
+                # 2회차: 백오프 구간이라 yt-dlp 를 부르지 않고 조용히 통과
+                converters.convert_youtube_links(src, dst)
+
+            self.assertEqual(len(calls), 1, "백오프 중인데 yt-dlp 를 다시 불렀다")
+            self.assertFalse(
+                dst.exists(),
+                "자막을 못 받았는데 완료 표식이 생겼다 (이후 재시도가 영원히 막힌다)",
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
