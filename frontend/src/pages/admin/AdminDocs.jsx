@@ -64,6 +64,9 @@ export default function AdminDocs() {
   // 손으로 친 URL·북마크·뒤로가기로 날짜가 붙어 들어와도 타임라인을 보여준다.
   const showDetail = Boolean(groups && date && !isTableDoc(groups));
   const showTimeline = Boolean(groups) && !showDetail;
+  // 넓은 측정폭은 content 도착 여부가 아니라 docKey 로 정한다 — 타임라인 대상인지는
+  // fetch 전에 이미 알 수 있으므로, 스켈레톤이 820px 로 떴다가 1000px 로 튀지 않는다.
+  const wide = isTimelineDoc(docKey) && !showDetail;
 
   if (!docKey) {
     return (
@@ -75,9 +78,8 @@ export default function AdminDocs() {
   }
 
   return (
-    // 넓은 측정폭은 2단 타임라인이 실제로 렌더될 때만 쓴다. fallback 산문 문서와
-    // 하루 상세는 읽기 좋은 820px을 유지한다.
-    <div className={showTimeline ? `${styles.page} ${styles.pageWide}` : styles.page}>
+    // 2단 타임라인 문서만 넓게. fallback 산문 문서와 하루 상세는 820px을 유지한다.
+    <div className={wide ? `${styles.page} ${styles.pageWide}` : styles.page}>
       <div className={styles.docHeader}>
         <span className={styles.overline}>Project Documentation</span>
         <h1 className={styles.title}>{DOC_TITLES[docKey] || docKey}</h1>

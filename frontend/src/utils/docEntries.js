@@ -202,6 +202,12 @@ export function parseTableDoc(md) {
       if (lines[i].trim() === "") continue;
       break; // 표 끝
     }
+    // 빈 줄을 건너뛰게 되면서 빈 줄 너머의 "다음 표"까지 걸어 들어갈 수 있게 됐다.
+    // 구분줄(|---|---|)은 표 머리에만 나오므로 그 자체가 새 표의 신호이고, 구분줄이
+    // 뒤따르는 행은 새 표의 헤더다. 헤더가 한 박자 먼저 오므로 둘 다 막아야
+    // `날짜`·`------` 같은 쓰레기 엔트리가 생기지 않는다.
+    if (isSeparatorRow(lines[i])) break;
+    if (i + 1 < lines.length && isSeparatorRow(lines[i + 1])) break;
     const cells = splitRow(lines[i]);
     const rawDate = cells[dateCol] || "";
     const iso = ISO_DATE.exec(rawDate);
