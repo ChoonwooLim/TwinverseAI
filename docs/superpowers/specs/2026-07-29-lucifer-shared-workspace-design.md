@@ -33,14 +33,21 @@ Claude Code는 상시 동작하지 않는다. 감독님이 세션을 열 때만 
 
 ### 면 1: 텔레그램 그룹 "Lucifer" — 대화
 
-봇 3개가 같은 그룹에 들어간다. OpenClaw의 라우팅이 `channel:accountId` 단위이므로
-에이전트마다 봇 계정이 하나씩 필요하다.
+봇 3개가 같은 그룹에 들어간다. 이 중 2개는 OpenClaw가 관리하고, 1개는 Claude Code가
+독립적으로 관리한다 — 서로 다른 시스템이므로 설정 방법도 다르다.
+
+**OpenClaw 관리 (봇 2개).** 라우팅이 `channel:accountId` 단위이므로 에이전트마다
+봇 계정이 하나씩 필요하다.
 
 ```
-telegram:jini   -> agent myjini  (지니)
-telegram:roy    -> agent main    (로이)
-telegram:claude -> Claude Code   (별도 시스템)
+telegram:jini -> agent myjini  (지니)
+telegram:roy  -> agent main    (로이)
 ```
+
+`openclaw agents bind --agent myjini --bind telegram:jini` 형태로 바인딩한다.
+
+**Claude Code 관리 (봇 1개).** OpenClaw와 무관하며 `telegram:configure` 스킬로
+별도 설정한다. OpenClaw의 라우팅 테이블에는 등장하지 않는다.
 
 각 봇은 자기 이름이 불릴 때만 응답한다. 감독님과 Claude Code가 설계 얘기를 길게
 주고받아도 끼어들지 않는다.
@@ -83,9 +90,13 @@ Steven이 Claude Code 호출 --> chat/ 읽고 그동안의 대화 전부 파악 
 대신 **OpenClaw가 이미 남기는 세션 파일을 변환**한다.
 
 - 소스: `/data/.openclaw/agents/{myjini,main}/sessions/*.jsonl`
-- 변환: 호스트 측 스크립트가 주기 실행 (systemd timer 또는 cron)
+- 변환: 호스트 측 스크립트를 **systemd timer로 1분 주기** 실행
+  (cron은 분 단위가 하한이고 systemd timer가 실패 로그·재시도를 다루기 쉬움)
 - 출력: `Lucifer/chat/YYYY-MM-DD.md` — 두 에이전트 대화를 시간순으로 병합, 발화자 표기
-- 증분 처리: 파일별 마지막 처리 오프셋을 상태 파일에 기록해 중복 append 방지
+- 증분 처리: 파일별 마지막 처리 오프셋을 `Lucifer/.mirror-state.json`에 기록해
+  중복 append 방지. 상태 파일이 없거나 깨지면 당일 분만 재생성한다.
+- 실패 시: 스크립트는 조용히 죽지 않고 `Lucifer/chat/_mirror-errors.log`에 남긴다.
+  기록 유실을 눈에 보이게 하는 것이 목적이다.
 
 이렇게 하면 지니·로이의 행동과 무관하게 기록이 반드시 남는다.
 
