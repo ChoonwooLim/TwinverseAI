@@ -202,8 +202,12 @@ describe("groupByDate", () => {
     expect(apr15.entries).toHaveLength(2);
   });
 
-  it("날짜 내림차순으로 정렬한다 — 원본 순서가 뒤집혀 있어도", () => {
-    const md = `## 2026-04-08\n\n뒤에 온 날\n\n## 2026-04-07\n\n앞에 온 날\n`;
+  it("날짜 내림차순으로 정렬한다 — 원본 순서가 오름차순이어도", () => {
+    // 원본(소스) 순서를 일부러 오름차순(과거 → 최근)으로 둔다.
+    // parseSectionDoc과 Map은 모두 삽입 순서를 보존하므로, groupByDate의
+    // .sort()가 실제로 동작하지 않으면 이 순서 그대로 ["2026-04-07", "2026-04-08"]가
+    // 나와 아래 기대값(내림차순)과 어긋난다.
+    const md = `## 2026-04-07\n\n앞선 날\n\n## 2026-04-08\n\n나중 날\n`;
     const groups = groupByDate(parseSectionDoc(md));
     expect(groups.map((g) => g.date)).toEqual(["2026-04-08", "2026-04-07"]);
   });
@@ -223,10 +227,37 @@ describe("groupByDate", () => {
 
 describe("buildIndex", () => {
   it("연·월별 날 그룹 수를 내림차순으로 센다", () => {
-    const md = `## 2026-05-03\n\na\n\n## 2026-04-15\n\nb\n\n## 2026-04-15\n\nc\n\n## 2026-04-04\n\nd\n`;
-    const index = buildIndex(groupByDate(parseSectionDoc(md)));
+    // groupByDate를 거치지 않고 DayGroup[]을 직접 구성한다 — groupByDate가 이미
+    // 날짜 내림차순으로 정렬해서 넘겨주면, 같은 연도의 월이 항상 내림차순으로
+    // 인접해 들어오므로 buildIndex 자신의 .sort() 두 곳(연도, 월)이 삭제돼도
+    // 우연히 통과해 버린다. 여기서는 두 해(2025, 2026)를 오름차순으로,
+    // 각 해의 두 달도 오름차순으로 나열해 buildIndex의 정렬을 직접 검증한다.
+    const groups = [
+      { date: "2025-03-10", year: 2025, month: 3, entries: [] },
+      { date: "2025-04-05", year: 2025, month: 4, entries: [] },
+      { date: "2025-04-20", year: 2025, month: 4, entries: [] },
+      { date: "2026-01-15", year: 2026, month: 1, entries: [] },
+      { date: "2026-01-22", year: 2026, month: 1, entries: [] },
+      { date: "2026-02-01", year: 2026, month: 2, entries: [] },
+    ];
+    const index = buildIndex(groups);
     expect(index).toEqual([
-      { year: 2026, count: 3, months: [{ month: 5, count: 1 }, { month: 4, count: 2 }] },
+      {
+        year: 2026,
+        count: 3,
+        months: [
+          { month: 2, count: 1 },
+          { month: 1, count: 2 },
+        ],
+      },
+      {
+        year: 2025,
+        count: 3,
+        months: [
+          { month: 4, count: 2 },
+          { month: 3, count: 1 },
+        ],
+      },
     ]);
   });
 
