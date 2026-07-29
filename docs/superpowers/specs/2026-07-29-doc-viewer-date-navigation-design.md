@@ -134,11 +134,13 @@ PROJECT DOCUMENTATION
 
 | 경로 | 화면 |
 |---|---|
-| `/admin/docs/:docKey` | 타임라인 (기존 라우트) |
+| `/admin/docs/:docKey` | 타임라인 |
 | `/admin/docs/:docKey/:date` | 그 날 상세 (**신규**) |
 
-[`App.jsx`](../../../frontend/src/App.jsx) 73행 아래에 라우트 한 줄 추가. 딥링크와
-새로고침이 유지된다. 표형은 URL을 바꾸지 않고 로컬 state로 펼친다.
+[`App.jsx`](../../../frontend/src/App.jsx) 73행의 기존 라우트를 `:date?` 옵셔널 파라미터로
+교체한다(react-router 7.14 지원). 라우트를 둘로 나누면 목록↔상세 이동 때 컴포넌트가
+언마운트돼 136KB를 매번 다시 받는다. 딥링크와 새로고침은 그대로 유지된다.
+표형은 URL을 바꾸지 않고 로컬 state로 펼친다.
 
 존재하지 않는 날짜로 진입하면 타임라인으로 되돌리고 "해당 날짜의 기록이 없습니다"
 안내를 띄운다.
