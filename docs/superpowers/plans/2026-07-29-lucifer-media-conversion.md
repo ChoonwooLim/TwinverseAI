@@ -643,15 +643,15 @@ ls -R "$D/_ai/" | head -20
 '
 ```
 
-Expected: `_smoke.md` 와 `_smoke.frames/` 가 생기고, 마크다운에 프레임 설명이 한국어로 들어 있음
+Expected: `_smoke.mp4.md` 와 `_smoke.mp4.frames/` 가 생기고, 마크다운에 프레임 설명이 한국어로 들어 있음
 
 확인 후 정리:
 
 ```bash
 ssh stevenlim@192.168.219.117 '
 D=/media/stevenlim/TwinverseFolder/Lucifer/TwinverseAI/data
-rm -f "$D/_smoke.mp4" "$D/_ai/_smoke.md"
-rm -rf "$D/_ai/_smoke.frames"
+rm -f "$D/_smoke.mp4" "$D/_ai/_smoke.mp4.md"
+rm -rf "$D/_ai/_smoke.mp4.frames"
 '
 ```
 
