@@ -79,6 +79,20 @@ class TestConvertDocument(unittest.TestCase):
             self.assertTrue(src.exists())
 
 
+class TestVideoTargets(unittest.TestCase):
+    def test_maps_mp4_to_markdown_under_ai(self):
+        with tempfile.TemporaryDirectory() as d:
+            data = Path(d)
+            src = data / "demo.mp4"
+            src.write_bytes(b"x")
+            pairs = convert.plan_targets(data)
+            self.assertEqual(len(pairs), 1)
+            self.assertEqual(pairs[0][1], data / "_ai" / "demo.mp4.md")
+
+    def test_frame_cap_is_twenty(self):
+        self.assertEqual(converters.MAX_FRAMES, 20)
+
+
 class TestFailureIsolation(unittest.TestCase):
     def test_convert_one_rejects_unknown_suffix(self):
         with tempfile.TemporaryDirectory() as d:
