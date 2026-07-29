@@ -79,7 +79,7 @@ telegram:roy  -> agent main    (로이)
 
 | 보는 위치 | 경로 |
 |---|---|
-| Steven (Windows) | `Z:\TwinverseFolder\Lucifer\` |
+| Steven (Windows) | `Z:\Lucifer\` |
 | twinverse-ai 호스트 | `/media/stevenlim/TwinverseFolder/Lucifer/` |
 | 지니·로이 (컨테이너) | `/shared/` (신규 bind mount) |
 

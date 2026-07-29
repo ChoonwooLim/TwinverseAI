@@ -26,7 +26,7 @@
 
 | 보는 위치 | 경로 |
 |---|---|
-| Steven (Windows) | `Z:\TwinverseFolder\Lucifer\` |
+| Steven (Windows) | `Z:\Lucifer\` |
 | twinverse-ai 호스트 | `/media/stevenlim/TwinverseFolder/Lucifer/` |
 | 컨테이너 (지니·로이) | `/shared/` |
 
@@ -117,7 +117,7 @@ Expected: `projects: ['TwinverseAI']` 그리고 소유자가 `stevenlim stevenli
 - [ ] **Step 5: Windows 쪽에서 보이는지 확인**
 
 ```bash
-ls -R /z/TwinverseFolder/Lucifer/ | head -20
+ls -R /z/Lucifer/ | head -20
 ```
 
 Expected: 같은 트리가 보임. 안 보이면 CIFS 캐시 문제이므로 `ls /z/TwinverseFolder/` 를 먼저 실행해 갱신한다.
@@ -266,7 +266,7 @@ Expected: `status: ok`
 - [ ] **Step 2: 감독님 Windows 에서 보이는지 확인**
 
 ```bash
-cat "/z/TwinverseFolder/Lucifer/TwinverseAI/memo/hello-from-jini.md"
+cat "/z/Lucifer/TwinverseAI/memo/hello-from-jini.md"
 ```
 
 Expected: 지니가 쓴 한국어 자기소개가 보임
@@ -309,11 +309,31 @@ Expected: 소유자 `stevenlim stevenlim` (CIFS가 uid 1000으로 강제하므�
 
 ```bash
 mv "/z/TwinverseFolder/TODO-claude-max-recovery-20260729.txt" \
-   "/z/TwinverseFolder/Lucifer/TwinverseAI/handoff/TODO-claude-max-recovery-20260729.txt"
-ls -l "/z/TwinverseFolder/Lucifer/TwinverseAI/handoff/"
+   "/z/Lucifer/TwinverseAI/handoff/TODO-claude-max-recovery-20260729.txt"
+ls -l "/z/Lucifer/TwinverseAI/handoff/"
 ```
 
 Expected: 파일이 새 위치에 있음
+
+- [ ] **Step 1b: 잘못 만든 중복 폴더 정리**
+
+`Z:` 드라이브 자체가 `\\192.168.219.101\TwinverseFolder` 이므로 `Z:\TwinverseFolder\` 는
+2026-07-29 세션에서 착오로 만든 중복 폴더다. Step 1 에서 안의 파일을 옮겼으므로 비어 있어야 한다.
+
+```bash
+ls -A "/z/TwinverseFolder/"
+```
+
+Expected: 아무것도 출력되지 않음 (비어 있음)
+
+비어 있음을 확인한 뒤에만 삭제한다. 내용이 남아 있으면 삭제하지 말고 보고한다.
+
+```bash
+rmdir "/z/TwinverseFolder/" && echo "중복 폴더 제거됨"
+ls -d /z/TwinverseFolder 2>&1
+```
+
+Expected: `중복 폴더 제거됨` 그리고 `No such file or directory`
 
 - [ ] **Step 2: 메모리 규칙 갱신**
 
@@ -330,10 +350,10 @@ description: 감독님이 직접 수행해야 할 작업 절차는 항상 Lucife
 감독님이 직접 실행해야 하는 단계(브라우저 인증, 물리적 조작, 대화형 명령 등)가 생기면
 채팅으로만 안내하지 말고 **항상 txt 파일로 작성**한다.
 
-- Lucifer 에 등록된 프로젝트: `Z:\TwinverseFolder\Lucifer\<프로젝트>\handoff\`
+- Lucifer 에 등록된 프로젝트: `Z:\Lucifer\<프로젝트>\handoff\`
 - 등록되지 않은 프로젝트: `Z:\TwinverseFolder\` 루트 (기존 방식)
 
-등록 여부는 `Z:\TwinverseFolder\Lucifer\_registry.json` 의 `projects` 키로 확인한다.
+등록 여부는 `Z:\Lucifer\_registry.json` 의 `projects` 키로 확인한다.
 2026-07-29 지시: "앞으로는 항상 이 방식으로 텍스트 만들어줘".
 ```
 
@@ -344,7 +364,7 @@ description: 감독님이 직접 수행해야 할 작업 절차는 항상 Lucife
 `~/.claude/projects/c--WORK-TwinverseAI/memory/MEMORY.md` 의 해당 줄을 교체:
 
 ```markdown
-- [핸드오프 txt는 Lucifer로](feedback_handoff_txt_z_drive.md) — 감독님이 직접 할 작업은 Z:\TwinverseFolder\Lucifer\<프로젝트>\handoff\ 에 txt로 작성 (미등록 프로젝트는 루트)
+- [핸드오프 txt는 Lucifer로](feedback_handoff_txt_z_drive.md) — 감독님이 직접 할 작업은 Z:\Lucifer\<프로젝트>\handoff\ 에 txt로 작성 (미등록 프로젝트는 루트)
 ```
 
 - [ ] **Step 4: 검증**
@@ -369,7 +389,7 @@ git commit -m "docs: Lucifer 기반 구현 계획 (1/4) 완료 체크"
 
 이 계획이 끝나면 다음이 모두 참이어야 한다.
 
-1. `Z:\TwinverseFolder\Lucifer\TwinverseAI\{chat,memo,data,handoff}\` 가 존재한다
+1. `Z:\Lucifer\TwinverseAI\{chat,memo,data,handoff}\` 가 존재한다
 2. `_registry.json` 에 TwinverseAI 가 등록돼 있다 (`topicId`는 아직 `null`)
 3. 컨테이너에서 `/shared` 로 읽고 쓸 수 있다
 4. 게이트웨이 토큰 해시가 재생성 전후 동일하다 (재배포 불필요)
