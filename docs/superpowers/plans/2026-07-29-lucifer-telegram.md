@@ -647,51 +647,70 @@ UTC 10:36 → KST 19:36 변환, 발화자 표기, `_mirror-errors.log` 비어 �
 
 ---
 
-## Task 7: Claude Code 봇 연결
+## Task 7: Claude Code 봇 연결 — 완료
 
-`@VScodeOpus_bot` 은 OpenClaw 가 아니라 Claude Code 의 `telegram` 스킬이 관리한다.
-설정이 Windows 쪽에 있고 라우팅 테이블도 별개라 앞선 Task 들과 섞이지 않는다.
+`@VScodeOpus_bot` 은 OpenClaw 가 아니라 Claude Code 의 `telegram` 플러그인이 관리한다.
+설정이 Windows 쪽(`~/.claude/channels/telegram/`)에 있고 라우팅 테이블도 별개다.
 
-**Files:**
-- Modify: Claude Code 텔레그램 채널 설정 (`telegram:configure` 스킬이 관리)
+- [x] **Step 1: 토큰을 전사에 남기지 않고 저장한다**
 
-**Interfaces:**
-- Consumes: Task 1 의 `<STEVEN_USER_ID>`, Task 2 의 `<TOPIC_ID>`
-- Produces: 감독님이 텔레그램에서 Claude Code 에 말을 걸 수 있는 경로
-
-- [ ] **Step 1: 현재 채널이 없음을 확인 (실패 검증)**
-
-`telegram:configure` 스킬을 호출해 상태를 조회한다.
-
-Expected: 봇 토큰 미설정 상태로 보고된다.
-
-- [ ] **Step 2: 봇 토큰을 가져온다**
+서버에서 로컬 파일로 **직접 파이프**한다. 값이 화면·대화기록에 찍히지 않는다.
 
 ```bash
-ssh stevenlim@192.168.219.117 'set -a; . ~/lucifer-secrets/bot-tokens.env; set +a; printf "%s\n" "$CLAUDE_TOKEN"'
+mkdir -p ~/.claude/channels/telegram
+ssh stevenlim@192.168.219.117 'set -a; . ~/lucifer-secrets/bot-tokens.env; set +a;   printf "TELEGRAM_BOT_TOKEN=%s
+" "$CLAUDE_TOKEN"' > ~/.claude/channels/telegram/.env
 ```
 
-이 출력은 토큰 원문이다. 스킬 설정에만 쓰고 문서·커밋에 남기지 않는다.
-
-- [ ] **Step 3: `telegram:configure` 로 채널을 설정한다**
-
-`telegram:configure` 스킬을 호출해 Step 2 의 토큰을 등록하고, 접근 정책은
-`<STEVEN_USER_ID>` 만 허용으로 좁힌다.
-
-- [ ] **Step 4: 종단 검증**
-
-감독님께 `TwinverseAI` 토픽에서 `클로드야 안녕` 이라고 보내달라고 요청한다.
-
-Expected: 클로드만 응답하고 지니·로이는 침묵한다. 지니나 로이가 같이 응답하면
-Task 4 의 `requireMention` 이 이름 매칭을 느슨하게 하고 있는 것이므로,
-Task 4 Step 3 의 토픽 설정에 각 계정별 `accounts.<id>.groups` 오버라이드를 넣어 좁힌다.
-
-- [ ] **Step 5: 커밋**
+검증(마스킹된 형태로만):
 
 ```bash
-git add -A docs/superpowers/plans/2026-07-29-lucifer-telegram.md
-git commit -m "docs(plan): 계획 3 완료 체크"
+awk -F= '/^TELEGRAM_BOT_TOKEN=/{printf "%s...(len=%d)
+", substr($2,1,10), length($2)}'   ~/.claude/channels/telegram/.env
 ```
+
+Expected: `8909970902...(len=46)` — `tg_check.py` 가 보고한 클로드 봇 접두와 일치해야 한다.
+
+- [x] **Step 2: 파일 권한을 잠근다 (Windows)**
+
+Git Bash 의 `chmod 600` 은 Windows 에서 실효가 없다 (`-rw-r--r--` 로 남는다).
+자격증명이므로 ACL 로 잠근다.
+
+```powershell
+$p = "$env:USERPROFILE\.claude\channels	elegram\.env"
+icacls $p /inheritance:r /grant:r "$($env:USERNAME):(R,W)"
+```
+
+- [x] **Step 3: 접근 정책을 allowlist 로 잠근다**
+
+감독님 숫자 ID 를 Task 1 에서 이미 확보했으므로 `pairing` 단계를 건너뛴다.
+`pairing` 은 ID 를 모를 때 쓰는 임시 수단이지 유지할 정책이 아니다.
+
+`~/.claude/channels/telegram/access.json`:
+
+```json
+{
+  "dmPolicy": "allowlist",
+  "allowFrom": ["1958446460"],
+  "groups": {
+    "-1004482716134": { "requireMention": true, "allowFrom": ["1958446460"] }
+  },
+  "pending": {},
+  "mentionPatterns": ["클로드", "@VScodeOpus_bot"]
+}
+```
+
+`mentionPatterns` 에 `` 를 쓰지 않는다 — Task 4 Step 6 과 같은 이유로 한글에서
+ASCII 단어경계는 성립하지 않는다.
+
+- [ ] **Step 4: 세션 재시작 후 종단 검증**
+
+플러그인 서버는 `.env` 를 **부팅 시 1회만** 읽는다. 토큰을 새로 넣었으므로
+`/reload-plugins` 또는 Claude Code 세션 재시작이 필요하다.
+(`access.json` 은 매 인바운드마다 다시 읽으므로 재시작 불필요.)
+
+재시작 뒤 감독님이 `TwinverseAI` 토픽에서 `클로드야 안녕` → 클로드만 응답,
+지니·로이 침묵이어야 한다.
 
 ---
 
