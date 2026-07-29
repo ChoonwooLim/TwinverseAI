@@ -66,9 +66,13 @@ telegram:roy  -> agent main    (로이)
 Lucifer/
   chat/      2026-07-29.md     세션 .jsonl -> 마크다운 자동 변환 (네 명 통합 시간순)
   memo/                        넷이 자유롭게 쓰는 공동 메모
-  data/                        공유 콘텐츠·데이터·산출물
+  data/                        공유 콘텐츠·데이터·산출물 (원본)
+    _ai/                       AI가 읽을 수 있게 변환한 파생물 (자동 생성)
   handoff/                     Claude Code -> Steven 작업 지시서 (기존 TODO-*.txt 이관)
 ```
+
+`data/_ai/`는 `data/`의 구조를 그대로 따라간다. 예: `data/기획/deck.pptx` →
+`data/_ai/기획/deck.pdf`. 사람은 원본만 보면 되고, AI는 파생물이 있으면 그것을 읽는다.
 
 ## 데이터 흐름
 
@@ -100,6 +104,56 @@ Steven이 Claude Code 호출 --> chat/ 읽고 그동안의 대화 전부 파악 
 
 이렇게 하면 지니·로이의 행동과 무관하게 기록이 반드시 남는다.
 
+## 미디어·문서 처리
+
+### 형식별 이해 가능 여부
+
+파일을 **보관·전달**하는 것은 형식과 무관하게 전부 된다 (`data/`는 그냥 폴더다).
+문제는 **AI가 내용을 이해하는가**이며, 이는 형식마다 다르다.
+
+| 형식 | Steven | 지니 | 로이 | 클로드 | 조치 |
+|---|---|---|---|---|---|
+| 이미지 | O | O 네이티브 | O | O 네이티브 | 없음 |
+| PDF | O | O 네이티브 | △ | O 네이티브 | 없음 |
+| PPTX·DOCX·XLSX | O | X | X | X | **PDF 변환** |
+| 동영상 | O | X | X | X | **프레임 + 자막 추출** |
+| 유튜브 링크 | O | X | X | X | **자막 추출** |
+| 음성 | O | O | O | — | 없음 (openai 전사 설정됨) |
+
+### 현재 프로바이더 상태 (2026-07-29 실측)
+
+| 기능 | 상태 |
+|---|---|
+| `image.describe` | 설정됨 — openai (gpt-5.4-mini) |
+| `audio.transcribe` | 설정됨 — openai (gpt-4o-transcribe) |
+| `image.generate` | 설정됨 — openai (gpt-image-1) |
+| `video.describe` | **미설정** — Google 키 필요 |
+| `web.search` / `web.fetch` | **미설정** |
+
+로컬 Ollama에 비전 모델(`qwen2.5vl:7b`, `llava:7b`)이 이미 떠 있어, 외부 API 키 없이
+프레임 분석을 붙일 수 있다. 미설정 항목 3개를 외부 키로 메우는 대신 **로컬 변환으로
+우회**하는 것이 이 설계의 선택이다. 키 발급·비용·유출 위험이 모두 사라진다.
+
+### 변환 파이프라인
+
+`data/`에 파일이 들어오면 호스트 측 워처가 `data/_ai/`에 파생물을 만든다.
+
+| 입력 | 출력 | 도구 | 설치 |
+|---|---|---|---|
+| `.pptx` `.docx` `.xlsx` | 같은 이름 `.pdf` | `libreoffice --headless --convert-to pdf` | **필요** |
+| `.mp4` 등 영상 | `<name>.frames/*.jpg` + `<name>.md` (프레임 설명) | ffmpeg + Ollama `qwen2.5vl:7b` | ffmpeg 있음 |
+| 유튜브 링크 (`.url` / `links.md`) | `<id>.transcript.md` | `yt-dlp --write-auto-sub` | **필요** |
+| `.pdf` | 그대로 (변환 불필요) | — | — |
+
+호스트 도구 실측: `ffmpeg` `ffprobe` `pdftotext` `python3` 있음.
+`libreoffice`(≈1GB)와 `yt-dlp` 설치 필요. 디스크 270GB 여유.
+
+프레임 추출은 장면 전환 기준(`ffmpeg -vf select='gt(scene,0.3)'`)으로 뽑아 분량을
+제한한다. 영상 전체를 초당 프레임으로 뜨면 디스크와 추론 시간이 폭증한다.
+
+변환은 **원본을 절대 건드리지 않는다.** 실패해도 원본은 그대로 남고, 실패 사실은
+`data/_ai/_convert-errors.log`에 남긴다.
+
 ## 권한 (검증 완료)
 
 | 주체 | uid/gid |
@@ -128,6 +182,7 @@ Steven이 Claude Code 호출 --> chat/ 읽고 그동안의 대화 전부 파악 
 | 5 | 텔레그램 채널 계정 3개 설정 + 에이전트 바인딩 + 멘션 트리거 | Claude Code |
 | 6 | 세션 → 마크다운 미러링 스크립트 + 주기 실행 | Claude Code |
 | 7 | Claude Code 텔레그램 봇 연결 (`telegram:configure`) | Claude Code |
+| 8 | 변환 도구 설치 (libreoffice, yt-dlp) + 변환 워처 | Claude Code |
 
 Steven이 직접 할 일은 1·2번뿐이다. 봇 토큰은 채팅에 노출하지 않고 서버에서 직접
 입력하는 방식으로 처리한다.
@@ -153,6 +208,10 @@ Steven이 직접 할 일은 1·2번뿐이다. 봇 토큰은 채팅에 노출하�
 5. Claude Code 세션에서 그 파일을 읽어 대화 맥락 파악 가능
 6. `data/`에 파일을 넣으면 Windows·호스트·컨테이너 세 곳에서 모두 보임
 7. 게이트웨이 토큰 해시가 컨테이너 재생성 전후 동일 (재배포 불필요 확인)
+8. `data/`에 `.pptx`를 넣으면 몇 분 내 `data/_ai/`에 `.pdf`가 생기고,
+   지니에게 그 경로를 주면 내용을 설명함
+9. 짧은 `.mp4`를 넣으면 `_ai/`에 프레임과 설명 마크다운이 생김
+10. 변환 실패 시 원본이 손상되지 않고 `_convert-errors.log`에 기록됨
 
 ## 범위 밖 (나중에)
 
