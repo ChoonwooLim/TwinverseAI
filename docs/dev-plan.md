@@ -58,5 +58,5 @@
 | Office 멀티플레이어 UI | DeskLaunch Office 모드 + Multiplayer 뱃지 | 높음 | 완료 |
 | Lucifer 공유 폴더 | 4인(감독님·Claude·지니·로이) 상시 접근 공유 공간 + 프로젝트 등록제 | 높음 | 완료 |
 | Lucifer 미디어 변환 | 문서→PDF / 영상→장면설명 / 유튜브→자막, 5분 systemd 타이머 | 높음 | 완료 |
-| Lucifer 텔레그램 연동 | 봇 3종 ↔ OpenClaw 에이전트 바인딩 + 대화 미러링 (계획 3/4) | 높음 | 대기 |
+| Lucifer 텔레그램 연동 | 봇 3종 ↔ OpenClaw 에이전트 바인딩 + 대화 미러링 (계획 3/4) | 높음 | 완료 |
 | Lucifer 전역 스킬 | `/lucifer` 스킬로 타 프로젝트에서도 동일 사용 (계획 4/4) | 중간 | 대기 |

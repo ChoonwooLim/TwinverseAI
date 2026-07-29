@@ -25,7 +25,8 @@
       "Bash(curl *)",
       "Bash(ssh *)",
       "Bash(scp *)",
-      "Bash(nslookup tvdesk.twinverse.org)"
+      "Bash(nslookup tvdesk.twinverse.org)",
+      "mcp__plugin_telegram_telegram"
     ],
     "defaultMode": "dontAsk",
     "additionalDirectories": [
