@@ -144,9 +144,9 @@ ssh stevenlim@192.168.219.117 "
 echo '--- 토큰 해시 (전) ---'
 docker exec -u node openclaw node -e 'const fs=require(\"fs\"),cr=require(\"crypto\");const c=JSON.parse(fs.readFileSync(\"/data/.openclaw/openclaw.json\",\"utf8\"));const g=c.gateway||{};const h=v=>v?cr.createHash(\"sha256\").update(v).digest(\"hex\").slice(0,16):\"(none)\";console.log(\"auth\",h(g.auth&&g.auth.token));console.log(\"remote\",h(g.remote&&g.remote.token));'
 echo '--- 인증 (전) ---'
-docker exec openclaw openclaw models status 2>&1 | grep -A1 'claude-cli\$' | head -3
+docker exec -u node openclaw openclaw models status 2>&1 | grep -A1 'claude-cli\$' | head -3
 echo '--- 에이전트 수 (전) ---'
-docker exec openclaw openclaw agents list 2>&1 | grep -c '^- '
+docker exec -u node openclaw openclaw agents list 2>&1 | grep -c '^- '
 "
 ```
 
@@ -196,7 +196,7 @@ echo "recreated"
 ssh stevenlim@192.168.219.117 '
 for i in $(seq 1 15); do
   sleep 4
-  if docker exec openclaw sh -c "curl -s -o /dev/null --max-time 3 http://127.0.0.1:18789/" 2>/dev/null; then
+  if docker exec -u node openclaw sh -c "curl -s -o /dev/null --max-time 3 http://127.0.0.1:18789/" 2>/dev/null; then
     echo "gateway up after $((i*4))s"; break
   fi
   echo "waiting ${i}"
@@ -225,11 +225,11 @@ ssh stevenlim@192.168.219.117 "
 echo '--- 토큰 해시 (후) ---'
 docker exec -u node openclaw node -e 'const fs=require(\"fs\"),cr=require(\"crypto\");const c=JSON.parse(fs.readFileSync(\"/data/.openclaw/openclaw.json\",\"utf8\"));const g=c.gateway||{};const h=v=>v?cr.createHash(\"sha256\").update(v).digest(\"hex\").slice(0,16):\"(none)\";console.log(\"auth\",h(g.auth&&g.auth.token));console.log(\"remote\",h(g.remote&&g.remote.token));'
 echo '--- 인증 (후) ---'
-docker exec openclaw openclaw models status 2>&1 | grep -A1 'claude-cli\$' | head -3
+docker exec -u node openclaw openclaw models status 2>&1 | grep -A1 'claude-cli\$' | head -3
 echo '--- 에이전트 수 (후) ---'
-docker exec openclaw openclaw agents list 2>&1 | grep -c '^- '
+docker exec -u node openclaw openclaw agents list 2>&1 | grep -c '^- '
 echo '--- config 소유권 (node:node 여야 함) ---'
-docker exec openclaw sh -c 'ls -l /data/.openclaw/openclaw.json'
+docker exec -u node openclaw sh -c 'ls -l /data/.openclaw/openclaw.json'
 "
 ```
 
@@ -255,7 +255,7 @@ Expected:
 
 ```bash
 ssh stevenlim@192.168.219.117 "
-timeout 200 docker exec openclaw openclaw agent --agent myjini \
+timeout 200 docker exec -u node openclaw openclaw agent --agent myjini \
   -m '/shared/TwinverseAI/memo/hello-from-jini.md 파일을 만들고 거기에 자기소개를 한 문단 써줘. 다 쓰면 완료했다고만 답해.' \
   --json 2>&1 | head -30
 "
@@ -277,7 +277,7 @@ Expected: 지니가 쓴 한국어 자기소개가 보임
 
 ```bash
 ssh stevenlim@192.168.219.117 "
-timeout 200 docker exec openclaw openclaw agent --agent main \
+timeout 200 docker exec -u node openclaw openclaw agent --agent main \
   -m '/shared/TwinverseAI/memo/hello-from-jini.md 를 읽고 지니가 뭐라고 썼는지 한 문장으로 요약해줘.' \
   --json 2>&1 | node -e 'let s=\"\";process.stdin.on(\"data\",d=>s+=d).on(\"end\",()=>{try{const j=JSON.parse(s);console.log(((j.result.payloads||[])[0]||{}).text);}catch(e){console.log(s.slice(0,400));}})'
 "
