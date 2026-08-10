@@ -73,7 +73,16 @@ for gpu_group in video render; do
 done
 
 sudo install -d -o root -g root -m 0755 "$INSTALL_DIR"
-sudo rsync -a --delete --exclude='venv/' "$SOURCE_DIR/" "$INSTALL_DIR/"
+# The SSH staging directory belongs to the deploy account and may be mode 0700.
+# Never copy its root metadata onto the systemd WorkingDirectory.  Normalize all
+# deployed source entries while protecting the existing dependency venv.
+sudo rsync -rltp --delete \
+  --exclude='venv/' \
+  --chown=root:root \
+  --chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r \
+  "$SOURCE_DIR/" "$INSTALL_DIR/"
+sudo chown -R root:root "$INSTALL_DIR"
+sudo chmod 0755 "$INSTALL_DIR"
 if [[ ! -x "$INSTALL_DIR/venv/bin/python" ]]; then
   sudo python3.12 -m venv "$INSTALL_DIR/venv"
 fi

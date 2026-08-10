@@ -31,6 +31,22 @@ def test_linux_requirements_and_systemd_launcher_supply_private_cudnn() -> None:
     assert "Restart=on-failure" in unit
 
 
+def test_deploy_normalizes_untrusted_staging_metadata_and_preserves_venv() -> None:
+    deploy = (SERVICE_ROOT / "scripts" / "deploy.sh").read_text(encoding="utf-8")
+
+    rsync = "sudo rsync -rltp --delete"
+    ownership = 'sudo chown -R root:root "$INSTALL_DIR"'
+    root_mode = 'sudo chmod 0755 "$INSTALL_DIR"'
+    assert rsync in deploy
+    assert "--exclude='venv/'" in deploy
+    assert "--chown=root:root" in deploy
+    assert "--chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r" in deploy
+    assert ownership in deploy
+    assert root_mode in deploy
+    assert deploy.index(rsync) < deploy.index(ownership) < deploy.index(root_mode)
+    assert "sudo rsync -a --delete" not in deploy
+
+
 def test_cpu_fallback_requires_explicit_opt_in(
     settings, monkeypatch: pytest.MonkeyPatch
 ) -> None:  # type: ignore[no-untyped-def]
