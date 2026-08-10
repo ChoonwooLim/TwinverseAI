@@ -1,0 +1,2 @@
+# POSIX entrypoints must remain executable from archives and Windows worktrees.
+*.sh text eol=lf

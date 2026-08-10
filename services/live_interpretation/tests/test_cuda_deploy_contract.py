@@ -10,6 +10,7 @@ import pytest
 from app.transcriber import FasterWhisperTranscriber
 
 SERVICE_ROOT = Path(__file__).resolve().parents[1]
+REPOSITORY_ROOT = SERVICE_ROOT.parents[1]
 
 
 def test_linux_requirements_and_systemd_launcher_supply_private_cudnn() -> None:
@@ -45,6 +46,17 @@ def test_deploy_normalizes_untrusted_staging_metadata_and_preserves_venv() -> No
     assert root_mode in deploy
     assert deploy.index(rsync) < deploy.index(ownership) < deploy.index(root_mode)
     assert "sudo rsync -a --delete" not in deploy
+
+
+@pytest.mark.parametrize("relative_path", ["scripts/deploy.sh", "scripts/launch.sh"])
+def test_service_shell_entrypoints_are_lf_shebangs(relative_path: str) -> None:
+    script = SERVICE_ROOT / relative_path
+    contents = script.read_bytes()
+
+    assert contents.startswith(b"#!/usr/bin/env bash\n")
+    assert b"\r" not in contents
+    attributes = (REPOSITORY_ROOT / ".gitattributes").read_text(encoding="utf-8")
+    assert "*.sh text eol=lf" in attributes.splitlines()
 
 
 def test_cpu_fallback_requires_explicit_opt_in(
