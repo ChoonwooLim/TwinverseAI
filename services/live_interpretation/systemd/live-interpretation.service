@@ -1,0 +1,49 @@
+[Unit]
+Description=Twinverse live interpretation (Whisper + Ollama)
+Wants=network-online.target
+After=network-online.target ollama.service
+ConditionPathExists=/etc/live-interpretation.env
+
+[Service]
+Type=simple
+User=live-interpretation
+Group=live-interpretation
+WorkingDirectory=/srv/live-interpretation
+EnvironmentFile=/etc/live-interpretation.env
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=HF_HOME=/var/cache/live-interpretation/huggingface
+ExecStartPre=/srv/live-interpretation/venv/bin/python -m app.check_config
+ExecStart=/srv/live-interpretation/scripts/launch.sh
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=600
+TimeoutStopSec=30
+KillSignal=SIGINT
+CacheDirectory=live-interpretation
+CacheDirectoryMode=0700
+UMask=0077
+LimitNOFILE=8192
+
+# GPU device nodes remain visible; PrivateDevices=true would break CUDA.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+RestrictNamespaces=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+LockPersonality=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target
