@@ -4,23 +4,9 @@ set -Eeuo pipefail
 
 INSTALL_DIR="/srv/live-interpretation"
 PYTHON="$INSTALL_DIR/venv/bin/python"
+cd "$INSTALL_DIR"
 
-NVIDIA_LIBRARY_PATH="$($PYTHON - <<'PY'
-from importlib import import_module
-from pathlib import Path
-
-paths = []
-for package_name in ("nvidia.cublas.lib", "nvidia.cudnn.lib"):
-    package = import_module(package_name)
-    if package.__file__ is None:
-        raise SystemExit(f"unable to resolve {package_name} library root")
-    library_dir = Path(package.__file__).resolve().parent
-    if not library_dir.is_dir():
-        raise SystemExit(f"missing runtime library directory for {package_name}")
-    paths.append(str(library_dir))
-print(":".join(paths))
-PY
-)"
+NVIDIA_LIBRARY_PATH="$("$PYTHON" -m app.cuda_paths)"
 
 if [[ -z "$NVIDIA_LIBRARY_PATH" ]]; then
   echo "NVIDIA runtime library path resolution failed" >&2

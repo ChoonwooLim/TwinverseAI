@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 import sys
 from dataclasses import replace
 from pathlib import Path
@@ -7,6 +8,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from app.cuda_paths import CudaLibraryPathError, resolve_nvidia_library_paths
 from app.transcriber import FasterWhisperTranscriber
 
 SERVICE_ROOT = Path(__file__).resolve().parents[1]
@@ -22,7 +24,8 @@ def test_linux_requirements_and_systemd_launcher_supply_private_cudnn() -> None:
 
     assert "nvidia-cublas-cu12" in requirements
     assert "nvidia-cudnn-cu12" in requirements
-    assert "nvidia.cublas" in launcher and "nvidia.cudnn" in launcher
+    assert "-m app.cuda_paths" in launcher
+    assert "import_module" not in launcher and ".__file__" not in launcher
     assert "LD_LIBRARY_PATH" in launcher
     assert "--port 8201" in launcher
     assert "--workers 1" in launcher
@@ -30,6 +33,43 @@ def test_linux_requirements_and_systemd_launcher_supply_private_cudnn() -> None:
     assert "--no-access-log" in launcher
     assert "ExecStart=/srv/live-interpretation/scripts/launch.sh" in unit
     assert "Restart=on-failure" in unit
+
+
+def test_cuda_path_resolver_supports_real_namespace_packages(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    package_root = tmp_path / "site-packages"
+    cublas = package_root / "nvidia" / "cublas" / "lib"
+    cudnn = package_root / "nvidia" / "cudnn" / "lib"
+    cublas.mkdir(parents=True)
+    cudnn.mkdir(parents=True)
+    assert not any(path.name == "__init__.py" for path in package_root.rglob("*"))
+
+    saved_modules = {
+        name: module
+        for name, module in sys.modules.items()
+        if name == "nvidia" or name.startswith("nvidia.")
+    }
+    for name in saved_modules:
+        sys.modules.pop(name, None)
+    monkeypatch.setattr(sys, "path", [str(package_root)])
+    importlib.invalidate_caches()
+    try:
+        assert resolve_nvidia_library_paths() == (cublas.resolve(), cudnn.resolve())
+    finally:
+        for name in tuple(sys.modules):
+            if name == "nvidia" or name.startswith("nvidia."):
+                sys.modules.pop(name, None)
+        sys.modules.update(saved_modules)
+        importlib.invalidate_caches()
+
+
+def test_cuda_path_resolver_fails_closed_when_package_is_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("app.cuda_paths.find_spec", lambda _name: None)
+    with pytest.raises(CudaLibraryPathError, match="unavailable"):
+        resolve_nvidia_library_paths()
 
 
 def test_deploy_normalizes_untrusted_staging_metadata_and_preserves_venv() -> None:
