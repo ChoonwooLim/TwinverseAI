@@ -72,6 +72,7 @@ class Settings:
     max_start_message_bytes: int = 8_192
     max_frame_bytes: int = 65_536
     audio_queue_frames: int = 64
+    segment_queue_items: int = 4
     transcription_timeout_seconds: float = 45.0
     translation_timeout_seconds: float = 20.0
     max_transcript_chars: int = 4_000
@@ -113,10 +114,13 @@ class Settings:
                 "INTERPRETATION_MAX_START_MESSAGE_BYTES", 8_192, 512, 65_536
             ),
             max_frame_bytes=_env_int(
-                "INTERPRETATION_MAX_FRAME_BYTES", 65_536, 640, 262_144
+                "INTERPRETATION_MAX_FRAME_BYTES", 65_536, 640, 65_536
             ),
             audio_queue_frames=_env_int(
                 "INTERPRETATION_AUDIO_QUEUE_FRAMES", 64, 4, 512
+            ),
+            segment_queue_items=_env_int(
+                "INTERPRETATION_SEGMENT_QUEUE_ITEMS", 4, 1, 16
             ),
             transcription_timeout_seconds=_env_float(
                 "INTERPRETATION_TRANSCRIPTION_TIMEOUT_SECONDS", 45.0, 1.0, 180.0

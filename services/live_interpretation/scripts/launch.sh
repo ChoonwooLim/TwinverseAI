@@ -32,5 +32,6 @@ exec "$INSTALL_DIR/venv/bin/uvicorn" app.main:app \
   --host 0.0.0.0 \
   --port 8201 \
   --workers 1 \
+  --ws-max-size 65536 \
   --no-access-log \
   --log-level info

@@ -19,13 +19,16 @@ It does not modify or share the web application's process lifecycle.
   log statement.
 - Uvicorn access logging is disabled by the systemd unit.
 - Frame size, frame queue, session count, session duration, idle duration,
-  transcript size, utterance duration, and model-call duration are bounded.
+  segment queue, transcript size, utterance duration, and model-call duration are
+  bounded.
 - One process and one GPU inference slot are the default. A timed-out native
   inference keeps its slot until its worker really exits, avoiding overlapping
   CUDA work after cancellation.
 - `/health` is liveness only. `/ready` returns 200 only after the Whisper model
   completes a synthetic-silence inference warm-up and the configured Ollama model
-  is available. Missing cuDNN therefore fails readiness before real audio arrives.
+  is available. A failed startup closes dependencies and exits so
+  `Restart=on-failure` can retry; missing cuDNN therefore never reaches readiness
+  before real audio arrives.
 
 The consumer is responsible for its own transcript retention policy. Receiving a
 `caption.source.final` or `caption.translation.final` event does not authorize
@@ -162,6 +165,7 @@ Stable error codes include:
 | `invalid_audio_frame` | PCM frame was empty or not 16-bit aligned |
 | `audio_frame_too_large` | Frame exceeded the byte limit |
 | `audio_backpressure` | Bounded frame queue filled |
+| `segment_backpressure` | Bounded inference queue filled; the oldest queued segment was dropped |
 | `audio_idle_timeout` | No audio arrived within the idle limit |
 | `session_time_limit` | Connection reached its wall-clock limit |
 | `transcription_failed` | Whisper failed or timed out for one segment |
@@ -198,11 +202,21 @@ Operational limits can be tuned with `INTERPRETATION_MAX_SESSIONS`,
 `INTERPRETATION_FRAME_IDLE_TIMEOUT_SECONDS`,
 `INTERPRETATION_MAX_SESSION_SECONDS`,
 `INTERPRETATION_MAX_START_MESSAGE_BYTES`, `INTERPRETATION_MAX_FRAME_BYTES`,
-`INTERPRETATION_AUDIO_QUEUE_FRAMES`,
+`INTERPRETATION_AUDIO_QUEUE_FRAMES`, `INTERPRETATION_SEGMENT_QUEUE_ITEMS`,
 `INTERPRETATION_TRANSCRIPTION_TIMEOUT_SECONDS`,
 `INTERPRETATION_TRANSLATION_TIMEOUT_SECONDS`,
 `INTERPRETATION_MAX_TRANSCRIPT_CHARS`, and the `INTERPRETATION_VAD_*` variables
 defined in `app/config.py`. Configuration values are range checked.
+
+The default completed-segment queue holds four items. At the default maximum
+utterance duration, one PCM16/16 kHz/mono segment is at most
+`20 * 16,000 * 2 = 640,000` bytes, so the pending queue is bounded to about
+2.56 MB per session (20.48 MB across the default eight-session capacity), plus
+Python object and one in-flight segment overhead. If that queue fills, the oldest
+queued segment is dropped while the current native inference remains untouched
+and the newly completed segment is retained. The connection emits a recoverable
+`segment_backpressure` error with content-free drop metadata plus degraded status;
+live PCM/VAD ingestion continues.
 
 Do not put the service token in Git, a systemd unit, shell history, deployment
 arguments, or this README. On `twinverse-ai`, create it interactively:

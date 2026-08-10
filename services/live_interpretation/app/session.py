@@ -37,9 +37,20 @@ class EventSender:
     async def status(self, status: str, **payload: object) -> None:
         await self.send("caption.status", status=status, **payload)
 
-    async def error(self, code: str, message: str, *, recoverable: bool) -> None:
+    async def error(
+        self,
+        code: str,
+        message: str,
+        *,
+        recoverable: bool,
+        **metadata: object,
+    ) -> None:
         await self.send(
-            "caption.error", code=code, message=message, recoverable=recoverable
+            "caption.error",
+            code=code,
+            message=message,
+            recoverable=recoverable,
+            **metadata,
         )
 
 
@@ -79,26 +90,54 @@ async def handle_stream(websocket: WebSocket, runtime: Runtime) -> None:
         await _safe_close(websocket, 1013, "Try again later")
         return
 
-    processor: asyncio.Task[None] | None = None
+    processors: list[asyncio.Task[None]] = []
+    audio_queue: asyncio.Queue[bytes] | None = None
+    segment_queue: asyncio.Queue[tuple[VadSegment, int]] | None = None
     try:
         start = await _receive_session_start(websocket, runtime)
         if start is None:
             return
 
         sender = EventSender(websocket, start)
-        queue: asyncio.Queue[bytes] = asyncio.Queue(maxsize=settings.audio_queue_frames)
+        audio_queue = asyncio.Queue(maxsize=settings.audio_queue_frames)
+        segment_queue = asyncio.Queue(maxsize=settings.segment_queue_items)
         await sender.status("active", phase="ready")
-        processor = asyncio.create_task(
-            _process_audio(queue, sender, start, runtime, websocket),
-            name="interpretation-audio-processor",
+        processors.append(
+            asyncio.create_task(
+                _process_audio(audio_queue, segment_queue, sender, runtime, websocket),
+                name="interpretation-vad-processor",
+            )
         )
-        await _receive_audio(websocket, queue, sender, runtime)
+        processors.append(
+            asyncio.create_task(
+                _process_segments(segment_queue, sender, start, runtime, websocket),
+                name="interpretation-segment-processor",
+            )
+        )
+        await _receive_audio(websocket, audio_queue, sender, runtime)
     finally:
-        if processor is not None:
+        for processor in processors:
             processor.cancel()
+        for processor in processors:
             with suppress(asyncio.CancelledError, WebSocketDisconnect):
                 await processor
+        # Consent/upstream loss must not finalize a partial utterance.  Cancel
+        # both stages, discard pending in-memory PCM, and deliberately do not
+        # call EnergyVad.flush().  A shielded native Whisper call may finish
+        # behind Runtime's semaphore, but its late result has no sender task.
+        _discard_queue(audio_queue)
+        _discard_queue(segment_queue)
         await runtime.release_session()
+
+
+def _discard_queue(queue: asyncio.Queue[object] | None) -> None:
+    if queue is None:
+        return
+    while True:
+        try:
+            queue.get_nowait()
+        except asyncio.QueueEmpty:
+            return
 
 
 async def _receive_session_start(
@@ -221,8 +260,8 @@ async def _receive_audio(
 
 async def _process_audio(
     queue: asyncio.Queue[bytes],
+    segment_queue: asyncio.Queue[tuple[VadSegment, int]],
     sender: EventSender,
-    start: SessionStart,
     runtime: Runtime,
     websocket: WebSocket,
 ) -> None:
@@ -248,9 +287,26 @@ async def _process_audio(
                     continue
                 if signal.segment is not None:
                     segment_number += 1
-                    await _process_segment(
-                        signal.segment, segment_number, sender, start, runtime
-                    )
+                    try:
+                        segment_queue.put_nowait((signal.segment, segment_number))
+                    except asyncio.QueueFull:
+                        # Preserve caption freshness: never cancel the segment
+                        # already in native inference, but replace the oldest
+                        # queued segment with the newly completed one. No audio
+                        # or transcript content is included in drop metadata.
+                        dropped_segment, _ = segment_queue.get_nowait()
+                        del dropped_segment
+                        segment_queue.put_nowait((signal.segment, segment_number))
+                        await sender.error(
+                            "segment_backpressure",
+                            "Inference queue capacity reached",
+                            recoverable=True,
+                            dropped_count=1,
+                            drop_policy="oldest_queued",
+                        )
+                        await sender.status(
+                            "degraded", phase="ready", component="inference"
+                        )
     except asyncio.CancelledError:
         raise
     except WebSocketDisconnect:
@@ -262,6 +318,31 @@ async def _process_audio(
                 "internal_error", "Audio processing failed", recoverable=False
             )
         await _safe_close(websocket, 1011, "Audio processing failed")
+
+
+async def _process_segments(
+    queue: asyncio.Queue[tuple[VadSegment, int]],
+    sender: EventSender,
+    start: SessionStart,
+    runtime: Runtime,
+    websocket: WebSocket,
+) -> None:
+    try:
+        while True:
+            segment, segment_number = await queue.get()
+            await _process_segment(segment, segment_number, sender, start, runtime)
+            del segment
+    except asyncio.CancelledError:
+        raise
+    except WebSocketDisconnect:
+        return
+    except Exception as exc:
+        logger.error("segment processor failed (%s)", type(exc).__name__)
+        with suppress(RuntimeError, WebSocketDisconnect):
+            await sender.error(
+                "internal_error", "Segment processing failed", recoverable=False
+            )
+        await _safe_close(websocket, 1011, "Segment processing failed")
 
 
 async def _process_segment(

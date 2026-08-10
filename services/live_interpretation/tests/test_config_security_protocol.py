@@ -21,6 +21,27 @@ def test_missing_token_fails_closed() -> None:
     assert bearer_token_is_valid("Bearer anything", "") is False
 
 
+def test_segment_queue_and_transport_frame_limits_are_bounded(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv(
+        "INTERPRETATION_SERVICE_TOKEN",
+        "test-token-0123456789-abcdefghijklmnop",
+    )
+    configured = Settings.from_env()
+    assert configured.segment_queue_items == 4
+    assert configured.max_frame_bytes == 65_536
+
+    monkeypatch.setenv("INTERPRETATION_SEGMENT_QUEUE_ITEMS", "17")
+    with pytest.raises(ValueError, match="INTERPRETATION_SEGMENT_QUEUE_ITEMS"):
+        Settings.from_env()
+
+    monkeypatch.setenv("INTERPRETATION_SEGMENT_QUEUE_ITEMS", "4")
+    monkeypatch.setenv("INTERPRETATION_MAX_FRAME_BYTES", "65537")
+    with pytest.raises(ValueError, match="INTERPRETATION_MAX_FRAME_BYTES"):
+        Settings.from_env()
+
+
 def test_bearer_token_uses_constant_time_comparison(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

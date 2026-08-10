@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 import logging
+import time
 from array import array
 from dataclasses import replace
 
@@ -8,7 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
-from app.interfaces import DependencyError
+from app.interfaces import DependencyError, Transcript
 from app.main import create_app
 from tests.fakes import FakeTranscriber, FakeTranslator
 
@@ -32,6 +34,19 @@ def _headers(token: str) -> dict[str, str]:
 
 def _pcm(value: int, milliseconds: int = 20) -> bytes:
     return array("h", [value] * (16_000 * milliseconds // 1_000)).tobytes()
+
+
+class _SlowSequencedTranscriber(FakeTranscriber):
+    def __init__(self, delay_seconds: float) -> None:
+        super().__init__()
+        self.delay_seconds = delay_seconds
+        self.calls = 0
+
+    async def transcribe(self, pcm16, source_language):  # type: ignore[no-untyped-def]
+        self.received_lengths.append(len(pcm16))
+        await asyncio.sleep(self.delay_seconds)
+        self.calls += 1
+        return Transcript(f"segment-{self.calls}", "ko")
 
 
 def test_health_and_readiness(settings) -> None:  # type: ignore[no-untyped-def]
@@ -194,8 +209,124 @@ def test_stream_emits_final_source_and_all_translations_without_logging_content(
     assert "sensitive transcript" not in caplog.text
 
 
-def test_dependency_start_failure_keeps_health_live_but_readiness_closed(
+def test_slow_inference_does_not_block_continuous_vad_or_ordered_results(
     settings,
+) -> None:  # type: ignore[no-untyped-def]
+    # 64 real-time 20 ms frames are the old raw-queue failure window (1.28 s).
+    # Keep the first inference busy longer than that while a second utterance and
+    # continuous frames are still ingested.
+    slow = _SlowSequencedTranscriber(delay_seconds=1.4)
+    configured = replace(
+        settings,
+        audio_queue_frames=64,
+        segment_queue_items=4,
+        transcription_timeout_seconds=5.0,
+    )
+    app = create_app(
+        settings=configured,
+        transcriber=slow,
+        translator=FakeTranslator(),
+    )
+
+    with TestClient(app) as client:
+        with client.websocket_connect(
+            "/v1/stream", headers=_headers(configured.service_token)
+        ) as websocket:
+            websocket.send_json(_start_payload())
+            assert websocket.receive_json()["phase"] == "ready"
+            websocket.send_bytes(_pcm(2_000))
+            websocket.send_bytes(_pcm(0))
+            websocket.send_bytes(_pcm(0))
+
+            for frame_number in range(80):
+                websocket.send_bytes(_pcm(2_000 if frame_number == 20 else 0))
+                time.sleep(0.02)
+
+            events: list[dict[str, object]] = []
+            finals: list[dict[str, object]] = []
+            while len(finals) < 2:
+                event = websocket.receive_json()
+                events.append(event)
+                if event["type"] == "caption.translation.final":
+                    finals.append(event)
+
+    assert [event["source_text"] for event in finals] == ["segment-1", "segment-2"]
+    assert [event["segment_id"] for event in finals] == ["3:1", "3:2"]
+    assert not any(
+        event.get("code") in {"audio_backpressure", "segment_backpressure"}
+        for event in events
+    )
+
+
+def test_segment_queue_overflow_drops_oldest_queued_and_keeps_connection(
+    settings,
+) -> None:  # type: ignore[no-untyped-def]
+    slow = _SlowSequencedTranscriber(delay_seconds=0.15)
+    configured = replace(
+        settings,
+        audio_queue_frames=64,
+        segment_queue_items=1,
+        transcription_timeout_seconds=2.0,
+    )
+    app = create_app(
+        settings=configured,
+        transcriber=slow,
+        translator=FakeTranslator(),
+    )
+
+    with TestClient(app) as client:
+        with client.websocket_connect(
+            "/v1/stream", headers=_headers(configured.service_token)
+        ) as websocket:
+            websocket.send_json(_start_payload())
+            assert websocket.receive_json()["phase"] == "ready"
+            for _ in range(3):
+                websocket.send_bytes(_pcm(2_000))
+                websocket.send_bytes(_pcm(0))
+                websocket.send_bytes(_pcm(0))
+
+            events: list[dict[str, object]] = []
+            finals: list[dict[str, object]] = []
+            saw_overflow = False
+            while not (saw_overflow and len(finals) >= 2):
+                event = websocket.receive_json()
+                events.append(event)
+                if event.get("code") == "segment_backpressure":
+                    saw_overflow = True
+                if event["type"] == "caption.translation.final":
+                    finals.append(event)
+
+            # The WebSocket remains usable after overload. Segment two was the
+            # oldest queued item and was dropped; the fresh third segment lived.
+            websocket.send_bytes(_pcm(2_000))
+            websocket.send_bytes(_pcm(0))
+            websocket.send_bytes(_pcm(0))
+            while len(finals) < 3:
+                event = websocket.receive_json()
+                events.append(event)
+                if event["type"] == "caption.translation.final":
+                    finals.append(event)
+
+    assert saw_overflow
+    assert [event["segment_id"] for event in finals] == ["3:1", "3:3", "3:4"]
+    overflow_index = next(
+        index
+        for index, event in enumerate(events)
+        if event.get("code") == "segment_backpressure"
+    )
+    assert events[overflow_index]["recoverable"] is True
+    assert events[overflow_index]["dropped_count"] == 1
+    assert events[overflow_index]["drop_policy"] == "oldest_queued"
+    assert "text" not in events[overflow_index]
+    assert any(
+        event.get("status") == "degraded" and event.get("component") == "inference"
+        for event in events[overflow_index + 1 :]
+    )
+
+
+def test_dependency_start_failure_terminates_lifespan_for_systemd_retry(
+    settings,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:  # type: ignore[no-untyped-def]
     class BrokenTranscriber(FakeTranscriber):
         async def start(self) -> None:
@@ -206,12 +337,18 @@ def test_dependency_start_failure_keeps_health_live_but_readiness_closed(
         transcriber=BrokenTranscriber(),
         translator=FakeTranslator(),
     )
-    with TestClient(app) as client:
-        assert client.get("/health").status_code == 200
-        response = client.get("/ready")
+    caplog.set_level(logging.ERROR)
 
-    assert response.status_code == 503
-    assert response.json() == {"status": "unavailable"}
+    with pytest.raises(
+        DependencyError, match="interpretation runtime initialization failed"
+    ):
+        with TestClient(app):
+            pass
+
+    assert app.state.runtime.state == "unavailable"
+    assert app.state.runtime.transcriber.closed
+    assert app.state.runtime.translator.closed
+    assert "must not be exposed" not in caplog.text
 
 
 def test_segment_dependency_failure_uses_namespaced_error_and_degraded_status(

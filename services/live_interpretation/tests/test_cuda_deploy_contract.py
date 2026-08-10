@@ -25,8 +25,10 @@ def test_linux_requirements_and_systemd_launcher_supply_private_cudnn() -> None:
     assert "LD_LIBRARY_PATH" in launcher
     assert "--port 8201" in launcher
     assert "--workers 1" in launcher
+    assert "--ws-max-size 65536" in launcher
     assert "--no-access-log" in launcher
     assert "ExecStart=/srv/live-interpretation/scripts/launch.sh" in unit
+    assert "Restart=on-failure" in unit
 
 
 def test_cpu_fallback_requires_explicit_opt_in(

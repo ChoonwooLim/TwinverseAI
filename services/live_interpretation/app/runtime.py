@@ -45,7 +45,12 @@ class Runtime:
             self.state = "unavailable"
             logger.error("interpretation runtime unavailable (%s)", type(exc).__name__)
             await self._close_dependencies()
-            return
+            # A process that stays alive in an unavailable state defeats
+            # systemd's Restart=on-failure recovery.  Preserve the sanitized
+            # boundary while making a failed warm-up a real startup failure.
+            raise DependencyError(
+                "interpretation runtime initialization failed"
+            ) from None
         self.state = "ready"
         logger.info("interpretation runtime ready")
 
@@ -94,13 +99,17 @@ class Runtime:
     async def translate(
         self, text: str, source_language: Language, target_languages: Sequence[Language]
     ) -> dict[Language, str]:
-        try:
-            return await asyncio.wait_for(
-                self.translator.translate(text, source_language, target_languages),
-                timeout=self.settings.translation_timeout_seconds,
-            )
-        except TimeoutError:
-            raise DependencyError("translation timed out") from None
+        # Ollama and Whisper share the same physical GPU.  Bound both adapters
+        # with the same semaphore so concurrent sessions cannot fan out an
+        # unbounded number of Ollama generations beside CUDA transcription.
+        async with self._inference_semaphore:
+            try:
+                return await asyncio.wait_for(
+                    self.translator.translate(text, source_language, target_languages),
+                    timeout=self.settings.translation_timeout_seconds,
+                )
+            except TimeoutError:
+                raise DependencyError("translation timed out") from None
 
     async def _with_timeout_preserving_worker(
         self, operation: Coroutine[Any, Any, T], timeout: float, timeout_message: str
