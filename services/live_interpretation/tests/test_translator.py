@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 
 import httpx
 import pytest
@@ -71,10 +72,10 @@ async def test_ollama_translator_accepts_only_exact_language_schema(
         == {
             "type": "string",
             "minLength": 1,
-            "maxLength": settings.max_transcript_chars,
         }
         for property_schema in translations["properties"].values()
     )
+    assert "maxLength" not in json.dumps(schema)
 
 
 @pytest.mark.asyncio
@@ -120,6 +121,20 @@ async def test_ollama_translator_rejects_tool_calls(settings: Settings) -> None:
         translator = OllamaTranslator(settings, client=client)
         with pytest.raises(DependencyProtocolError, match="tool_call_present"):
             await translator.translate("안녕하세요", "ko", ["ja"])
+
+
+@pytest.mark.asyncio
+async def test_ollama_translator_rejects_oversized_value_after_parsing(
+    settings: Settings,
+) -> None:
+    limited = replace(settings, max_transcript_chars=5)
+    content = json.dumps({"translations": {"ja": "123456"}})
+    async with httpx.AsyncClient(
+        base_url="http://ollama.invalid", transport=_transport(content=content)
+    ) as client:
+        translator = OllamaTranslator(limited, client=client)
+        with pytest.raises(DependencyProtocolError, match="invalid_translation_length"):
+            await translator.translate("hello", "en", ["ja"])
 
 
 @pytest.mark.asyncio

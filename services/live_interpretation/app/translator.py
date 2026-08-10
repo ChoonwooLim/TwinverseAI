@@ -22,12 +22,11 @@ Return output that validates exactly against the supplied output_schema.
 Do not return markdown, code fences, explanations, or any other keys."""
 
 
-def _translation_schema(
-    targets: Sequence[Language], max_chars: int
-) -> dict[str, object]:
+def _translation_schema(targets: Sequence[Language]) -> dict[str, object]:
+    # Ollama 0.20.5's grammar backend returns HTTP 500 for string maxLength.
+    # Keep generation structural and enforce max_transcript_chars after parsing.
     translation_properties = {
-        target: {"type": "string", "minLength": 1, "maxLength": max_chars}
-        for target in targets
+        target: {"type": "string", "minLength": 1} for target in targets
     }
     return {
         "type": "object",
@@ -93,9 +92,7 @@ class OllamaTranslator:
         if not targets:
             return {}
 
-        output_schema = _translation_schema(
-            targets, self._settings.max_transcript_chars
-        )
+        output_schema = _translation_schema(targets)
         input_document = json.dumps(
             {
                 "source_language": source_language,
