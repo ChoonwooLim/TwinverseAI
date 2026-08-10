@@ -31,12 +31,18 @@ def test_segment_queue_and_transport_frame_limits_are_bounded(
     configured = Settings.from_env()
     assert configured.segment_queue_items == 4
     assert configured.max_frame_bytes == 65_536
+    assert configured.idle_drain_timeout_seconds == 90.0
 
     monkeypatch.setenv("INTERPRETATION_SEGMENT_QUEUE_ITEMS", "17")
     with pytest.raises(ValueError, match="INTERPRETATION_SEGMENT_QUEUE_ITEMS"):
         Settings.from_env()
 
     monkeypatch.setenv("INTERPRETATION_SEGMENT_QUEUE_ITEMS", "4")
+    monkeypatch.setenv("INTERPRETATION_IDLE_DRAIN_TIMEOUT_SECONDS", "601")
+    with pytest.raises(ValueError, match="INTERPRETATION_IDLE_DRAIN_TIMEOUT_SECONDS"):
+        Settings.from_env()
+
+    monkeypatch.setenv("INTERPRETATION_IDLE_DRAIN_TIMEOUT_SECONDS", "90")
     monkeypatch.setenv("INTERPRETATION_MAX_FRAME_BYTES", "65537")
     with pytest.raises(ValueError, match="INTERPRETATION_MAX_FRAME_BYTES"):
         Settings.from_env()

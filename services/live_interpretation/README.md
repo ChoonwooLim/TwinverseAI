@@ -19,8 +19,8 @@ It does not modify or share the web application's process lifecycle.
   log statement.
 - Uvicorn access logging is disabled by the systemd unit.
 - Frame size, frame queue, session count, session duration, idle duration,
-  segment queue, transcript size, utterance duration, and model-call duration are
-  bounded.
+  completed-segment drain duration, segment queue, transcript size, utterance
+  duration, and model-call duration are bounded.
 - One process and one GPU inference slot are the default. A timed-out native
   inference keeps its slot until its worker really exits, avoiding overlapping
   CUDA work after cancellation.
@@ -170,7 +170,7 @@ Stable error codes include:
 | `session_time_limit` | Connection reached its wall-clock limit |
 | `transcription_failed` | Whisper failed or timed out for one segment |
 | `unsupported_source_language` | Auto-detection was outside ko/ja/en |
-| `translation_failed` | Ollama failed, timed out, or returned invalid JSON |
+| `translation_failed` | Ollama failed, timed out, or violated the exact translation schema |
 
 WebSocket close codes: 4401 unauthorized, 4400 invalid contract, 4408 start
 timeout, 1009 oversized input, 1013 unavailable/backpressure, and 1011 internal
@@ -200,6 +200,7 @@ Operational limits can be tuned with `INTERPRETATION_MAX_SESSIONS`,
 `INTERPRETATION_INFERENCE_CONCURRENCY`,
 `INTERPRETATION_SESSION_START_TIMEOUT_SECONDS`,
 `INTERPRETATION_FRAME_IDLE_TIMEOUT_SECONDS`,
+`INTERPRETATION_IDLE_DRAIN_TIMEOUT_SECONDS`,
 `INTERPRETATION_MAX_SESSION_SECONDS`,
 `INTERPRETATION_MAX_START_MESSAGE_BYTES`, `INTERPRETATION_MAX_FRAME_BYTES`,
 `INTERPRETATION_AUDIO_QUEUE_FRAMES`, `INTERPRETATION_SEGMENT_QUEUE_ITEMS`,
@@ -217,6 +218,21 @@ queued segment is dropped while the current native inference remains untouched
 and the newly completed segment is retained. The connection emits a recoverable
 `segment_backpressure` error with content-free drop metadata plus degraded status;
 live PCM/VAD ingestion continues.
+
+When audio becomes idle, the VAD processor is stopped without flushing: queued raw
+frames and any active unfinished utterance are discarded. Segments that VAD had
+already completed are different; their ordered inference queue gets up to the
+default 90-second idle-drain limit to emit finals, but never past the hard session
+deadline. The service then emits `audio_idle_timeout` and closes. A real client
+`websocket.disconnect` received before that boundary skips this grace and
+immediately cancels/discards both stages.
+
+Ollama receives a dynamic JSON Schema in the `/api/chat` `format` field. The root
+permits only `translations`; the nested object requires exactly the requested
+language keys, string values, and no additional properties. The same schema is
+included in the prompt for grounding, while the parser independently revalidates
+the response and rejects tool calls, missing/extra languages, or a bare language
+map.
 
 Do not put the service token in Git, a systemd unit, shell history, deployment
 arguments, or this README. On `twinverse-ai`, create it interactively:

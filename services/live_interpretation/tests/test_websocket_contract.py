@@ -49,6 +49,16 @@ class _SlowSequencedTranscriber(FakeTranscriber):
         return Transcript(f"segment-{self.calls}", "ko")
 
 
+class _SlowTranslator(FakeTranslator):
+    def __init__(self, delay_seconds: float) -> None:
+        super().__init__()
+        self.delay_seconds = delay_seconds
+
+    async def translate(self, text, source_language, target_languages):  # type: ignore[no-untyped-def]
+        await asyncio.sleep(self.delay_seconds)
+        return await super().translate(text, source_language, target_languages)
+
+
 def test_health_and_readiness(settings) -> None:  # type: ignore[no-untyped-def]
     transcriber = FakeTranscriber()
     translator = FakeTranslator()
@@ -256,6 +266,181 @@ def test_slow_inference_does_not_block_continuous_vad_or_ordered_results(
         event.get("code") in {"audio_backpressure", "segment_backpressure"}
         for event in events
     )
+
+
+def test_audio_idle_drains_accepted_and_queued_segments_before_closing(
+    settings,
+) -> None:  # type: ignore[no-untyped-def]
+    slow_transcriber = _SlowSequencedTranscriber(delay_seconds=0.08)
+    slow_translator = _SlowTranslator(delay_seconds=0.08)
+    configured = replace(
+        settings,
+        frame_idle_timeout_seconds=0.05,
+        idle_drain_timeout_seconds=1.0,
+        transcription_timeout_seconds=1.0,
+        translation_timeout_seconds=1.0,
+    )
+    app = create_app(
+        settings=configured,
+        transcriber=slow_transcriber,
+        translator=slow_translator,
+    )
+
+    with TestClient(app) as client:
+        with client.websocket_connect(
+            "/v1/stream", headers=_headers(configured.service_token)
+        ) as websocket:
+            websocket.send_json(_start_payload(target_languages=["ko", "ja"]))
+            assert websocket.receive_json()["phase"] == "ready"
+            for _ in range(2):
+                websocket.send_bytes(_pcm(2_000))
+                websocket.send_bytes(_pcm(0))
+                websocket.send_bytes(_pcm(0))
+
+            # Send no keepalive frames. The 50 ms audio-idle deadline expires
+            # while the first 160 ms inference is active and segment two waits.
+            events: list[dict[str, object]] = []
+            while not any(
+                event.get("code") == "audio_idle_timeout" for event in events
+            ):
+                events.append(websocket.receive_json())
+            with pytest.raises(WebSocketDisconnect) as closed:
+                websocket.receive_json()
+
+    finals = [event for event in events if event["type"] == "caption.translation.final"]
+    assert [event["segment_id"] for event in finals] == ["3:1", "3:2"]
+    assert [event["source_text"] for event in finals] == ["segment-1", "segment-2"]
+    assert events[-1]["code"] == "audio_idle_timeout"
+    assert closed.value.code == 1000
+    assert len(slow_translator.calls) == 2
+
+
+def test_audio_idle_completed_segment_drain_is_bounded(settings) -> None:  # type: ignore[no-untyped-def]
+    slow_transcriber = _SlowSequencedTranscriber(delay_seconds=0.3)
+    translator = FakeTranslator()
+    configured = replace(
+        settings,
+        frame_idle_timeout_seconds=0.1,
+        idle_drain_timeout_seconds=0.05,
+        transcription_timeout_seconds=1.0,
+    )
+    app = create_app(
+        settings=configured,
+        transcriber=slow_transcriber,
+        translator=translator,
+    )
+
+    with TestClient(app) as client:
+        with client.websocket_connect(
+            "/v1/stream", headers=_headers(configured.service_token)
+        ) as websocket:
+            websocket.send_json(_start_payload(target_languages=["ko", "ja"]))
+            assert websocket.receive_json()["phase"] == "ready"
+            websocket.send_bytes(_pcm(2_000))
+            websocket.send_bytes(_pcm(0))
+            websocket.send_bytes(_pcm(0))
+            events: list[dict[str, object]] = []
+            while not any(event.get("phase") == "transcription" for event in events):
+                events.append(websocket.receive_json())
+            while not any(
+                event.get("code") == "audio_idle_timeout" for event in events
+            ):
+                events.append(websocket.receive_json())
+            with pytest.raises(WebSocketDisconnect):
+                websocket.receive_json()
+
+    assert not any(
+        event["type"] in {"caption.source.final", "caption.translation.final"}
+        for event in events
+    )
+    assert slow_transcriber.calls == 1
+    assert translator.calls == []
+
+
+def test_actual_client_disconnect_does_not_flush_partial_utterance(
+    settings,
+) -> None:  # type: ignore[no-untyped-def]
+    transcriber = FakeTranscriber()
+    app = create_app(
+        settings=settings,
+        transcriber=transcriber,
+        translator=FakeTranslator(),
+    )
+
+    with TestClient(app) as client:
+        with client.websocket_connect(
+            "/v1/stream", headers=_headers(settings.service_token)
+        ) as websocket:
+            websocket.send_json(_start_payload())
+            assert websocket.receive_json()["phase"] == "ready"
+            websocket.send_bytes(_pcm(2_000))
+            speech = websocket.receive_json()
+            assert speech["phase"] == "speech"
+            # Exiting the client context delivers a real websocket.disconnect.
+            # The active VAD utterance must be discarded, never flushed.
+
+    assert transcriber.received_lengths == []
+
+
+def test_actual_client_disconnect_discards_inflight_late_result(
+    settings,
+) -> None:  # type: ignore[no-untyped-def]
+    transcriber = _SlowSequencedTranscriber(delay_seconds=0.15)
+    translator = FakeTranslator()
+    app = create_app(
+        settings=settings,
+        transcriber=transcriber,
+        translator=translator,
+    )
+
+    with TestClient(app) as client:
+        with client.websocket_connect(
+            "/v1/stream", headers=_headers(settings.service_token)
+        ) as websocket:
+            websocket.send_json(_start_payload(target_languages=["ko", "ja"]))
+            assert websocket.receive_json()["phase"] == "ready"
+            websocket.send_bytes(_pcm(2_000))
+            websocket.send_bytes(_pcm(0))
+            websocket.send_bytes(_pcm(0))
+            while True:
+                event = websocket.receive_json()
+                if event.get("phase") == "transcription":
+                    break
+            # websocket.disconnect cancels the sender pipeline immediately.
+            # Runtime may let shielded native work exit behind its semaphore,
+            # but that late transcript must never reach translation or output.
+
+    assert transcriber.calls == 1
+    assert translator.calls == []
+
+
+def test_audio_idle_does_not_flush_partial_utterance(settings) -> None:  # type: ignore[no-untyped-def]
+    transcriber = FakeTranscriber()
+    configured = replace(
+        settings,
+        frame_idle_timeout_seconds=0.05,
+        idle_drain_timeout_seconds=1.0,
+    )
+    app = create_app(
+        settings=configured,
+        transcriber=transcriber,
+        translator=FakeTranslator(),
+    )
+
+    with TestClient(app) as client:
+        with client.websocket_connect(
+            "/v1/stream", headers=_headers(configured.service_token)
+        ) as websocket:
+            websocket.send_json(_start_payload())
+            assert websocket.receive_json()["phase"] == "ready"
+            websocket.send_bytes(_pcm(2_000))
+            assert websocket.receive_json()["phase"] == "speech"
+            idle = websocket.receive_json()
+            assert idle["code"] == "audio_idle_timeout"
+            with pytest.raises(WebSocketDisconnect):
+                websocket.receive_json()
+
+    assert transcriber.received_lengths == []
 
 
 def test_segment_queue_overflow_drops_oldest_queued_and_keeps_connection(

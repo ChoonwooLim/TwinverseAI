@@ -68,6 +68,7 @@ class Settings:
     inference_concurrency: int = 1
     session_start_timeout_seconds: float = 5.0
     frame_idle_timeout_seconds: float = 30.0
+    idle_drain_timeout_seconds: float = 90.0
     max_session_seconds: int = 3_600
     max_start_message_bytes: int = 8_192
     max_frame_bytes: int = 65_536
@@ -106,6 +107,9 @@ class Settings:
             ),
             frame_idle_timeout_seconds=_env_float(
                 "INTERPRETATION_FRAME_IDLE_TIMEOUT_SECONDS", 30.0, 5.0, 300.0
+            ),
+            idle_drain_timeout_seconds=_env_float(
+                "INTERPRETATION_IDLE_DRAIN_TIMEOUT_SECONDS", 90.0, 1.0, 600.0
             ),
             max_session_seconds=_env_int(
                 "INTERPRETATION_MAX_SESSION_SECONDS", 3_600, 60, 14_400

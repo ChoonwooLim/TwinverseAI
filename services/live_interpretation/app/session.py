@@ -91,6 +91,7 @@ async def handle_stream(websocket: WebSocket, runtime: Runtime) -> None:
         return
 
     processors: list[asyncio.Task[None]] = []
+    audio_processor: asyncio.Task[None] | None = None
     audio_queue: asyncio.Queue[bytes] | None = None
     segment_queue: asyncio.Queue[tuple[VadSegment, int]] | None = None
     try:
@@ -102,19 +103,53 @@ async def handle_stream(websocket: WebSocket, runtime: Runtime) -> None:
         audio_queue = asyncio.Queue(maxsize=settings.audio_queue_frames)
         segment_queue = asyncio.Queue(maxsize=settings.segment_queue_items)
         await sender.status("active", phase="ready")
-        processors.append(
-            asyncio.create_task(
-                _process_audio(audio_queue, segment_queue, sender, runtime, websocket),
-                name="interpretation-vad-processor",
-            )
+        audio_processor = asyncio.create_task(
+            _process_audio(audio_queue, segment_queue, sender, runtime, websocket),
+            name="interpretation-vad-processor",
         )
+        processors.append(audio_processor)
         processors.append(
             asyncio.create_task(
                 _process_segments(segment_queue, sender, start, runtime, websocket),
                 name="interpretation-segment-processor",
             )
         )
-        await _receive_audio(websocket, audio_queue, sender, runtime)
+        session_deadline = await _receive_audio(websocket, audio_queue, sender, runtime)
+        if session_deadline is not None:
+            # Audio idle is an input boundary, not consent to finalize an active
+            # VAD utterance. Stop and discard raw/partial PCM first, then give
+            # only segments that were already completed a bounded chance to
+            # publish their final result before closing the idle connection.
+            audio_processor.cancel()
+            with suppress(asyncio.CancelledError, WebSocketDisconnect):
+                await audio_processor
+            _discard_queue(audio_queue)
+
+            loop = asyncio.get_running_loop()
+            drain_timeout = min(
+                settings.idle_drain_timeout_seconds,
+                max(0.0, session_deadline - loop.time()),
+            )
+            drained = await _drain_segments(segment_queue, drain_timeout)
+            if not drained:
+                logger.warning("completed segment drain timed out")
+
+            if loop.time() >= session_deadline:
+                with suppress(RuntimeError, WebSocketDisconnect):
+                    await sender.error(
+                        "session_time_limit",
+                        "Maximum session duration reached",
+                        recoverable=False,
+                    )
+                await _safe_close(websocket, 1000, "Session duration reached")
+            else:
+                with suppress(RuntimeError, WebSocketDisconnect):
+                    await sender.error(
+                        "audio_idle_timeout",
+                        "Audio stream timed out",
+                        recoverable=True,
+                    )
+                await _safe_close(websocket, 1000, "Audio idle timeout")
     finally:
         for processor in processors:
             processor.cancel()
@@ -136,8 +171,21 @@ def _discard_queue(queue: asyncio.Queue[object] | None) -> None:
     while True:
         try:
             queue.get_nowait()
+            queue.task_done()
         except asyncio.QueueEmpty:
             return
+
+
+async def _drain_segments(
+    queue: asyncio.Queue[tuple[VadSegment, int]], timeout: float
+) -> bool:
+    if timeout <= 0:
+        return False
+    try:
+        await asyncio.wait_for(queue.join(), timeout=timeout)
+    except TimeoutError:
+        return False
+    return True
 
 
 async def _receive_session_start(
@@ -188,7 +236,7 @@ async def _receive_audio(
     queue: asyncio.Queue[bytes],
     sender: EventSender,
     runtime: Runtime,
-) -> None:
+) -> float | None:
     settings = runtime.settings
     loop = asyncio.get_running_loop()
     deadline = loop.time() + settings.max_session_seconds
@@ -202,7 +250,7 @@ async def _receive_audio(
                 recoverable=False,
             )
             await _safe_close(websocket, 1000, "Session duration reached")
-            return
+            return None
         timeout = min(settings.frame_idle_timeout_seconds, remaining)
         try:
             message = await asyncio.wait_for(websocket.receive(), timeout=timeout)
@@ -214,15 +262,12 @@ async def _receive_audio(
                     recoverable=False,
                 )
                 await _safe_close(websocket, 1000, "Session duration reached")
+                return None
             else:
-                await sender.error(
-                    "audio_idle_timeout", "Audio stream timed out", recoverable=True
-                )
-                await _safe_close(websocket, 1000, "Audio idle timeout")
-            return
+                return deadline
 
         if message.get("type") == "websocket.disconnect":
-            return
+            return None
         frame = message.get("bytes")
         if not isinstance(frame, bytes):
             await sender.error(
@@ -231,7 +276,7 @@ async def _receive_audio(
                 recoverable=False,
             )
             await _safe_close(websocket, 4400, "Binary audio required")
-            return
+            return None
         if not frame or len(frame) % 2:
             await sender.error(
                 "invalid_audio_frame",
@@ -239,7 +284,7 @@ async def _receive_audio(
                 recoverable=False,
             )
             await _safe_close(websocket, 4400, "Invalid audio frame")
-            return
+            return None
         if len(frame) > settings.max_frame_bytes:
             await sender.error(
                 "audio_frame_too_large",
@@ -247,7 +292,7 @@ async def _receive_audio(
                 recoverable=False,
             )
             await _safe_close(websocket, 1009, "Audio frame too large")
-            return
+            return None
         try:
             queue.put_nowait(frame)
         except asyncio.QueueFull:
@@ -255,7 +300,7 @@ async def _receive_audio(
                 "audio_backpressure", "Audio queue capacity reached", recoverable=True
             )
             await _safe_close(websocket, 1013, "Audio backpressure")
-            return
+            return None
 
 
 async def _process_audio(
@@ -279,34 +324,38 @@ async def _process_audio(
     try:
         while True:
             frame = await queue.get()
-            signals = vad.feed(frame)
-            del frame
-            for signal in signals:
-                if signal.kind == "speech_started":
-                    await sender.status("active", phase="speech")
-                    continue
-                if signal.segment is not None:
-                    segment_number += 1
-                    try:
-                        segment_queue.put_nowait((signal.segment, segment_number))
-                    except asyncio.QueueFull:
-                        # Preserve caption freshness: never cancel the segment
-                        # already in native inference, but replace the oldest
-                        # queued segment with the newly completed one. No audio
-                        # or transcript content is included in drop metadata.
-                        dropped_segment, _ = segment_queue.get_nowait()
-                        del dropped_segment
-                        segment_queue.put_nowait((signal.segment, segment_number))
-                        await sender.error(
-                            "segment_backpressure",
-                            "Inference queue capacity reached",
-                            recoverable=True,
-                            dropped_count=1,
-                            drop_policy="oldest_queued",
-                        )
-                        await sender.status(
-                            "degraded", phase="ready", component="inference"
-                        )
+            try:
+                signals = vad.feed(frame)
+                for signal in signals:
+                    if signal.kind == "speech_started":
+                        await sender.status("active", phase="speech")
+                        continue
+                    if signal.segment is not None:
+                        segment_number += 1
+                        try:
+                            segment_queue.put_nowait((signal.segment, segment_number))
+                        except asyncio.QueueFull:
+                            # Preserve caption freshness: never cancel the segment
+                            # already in native inference, but replace the oldest
+                            # queued segment with the newly completed one. No audio
+                            # or transcript content is included in drop metadata.
+                            dropped_segment, _ = segment_queue.get_nowait()
+                            segment_queue.task_done()
+                            del dropped_segment
+                            segment_queue.put_nowait((signal.segment, segment_number))
+                            await sender.error(
+                                "segment_backpressure",
+                                "Inference queue capacity reached",
+                                recoverable=True,
+                                dropped_count=1,
+                                drop_policy="oldest_queued",
+                            )
+                            await sender.status(
+                                "degraded", phase="ready", component="inference"
+                            )
+            finally:
+                del frame
+                queue.task_done()
     except asyncio.CancelledError:
         raise
     except WebSocketDisconnect:
@@ -330,8 +379,11 @@ async def _process_segments(
     try:
         while True:
             segment, segment_number = await queue.get()
-            await _process_segment(segment, segment_number, sender, start, runtime)
-            del segment
+            try:
+                await _process_segment(segment, segment_number, sender, start, runtime)
+            finally:
+                del segment
+                queue.task_done()
     except asyncio.CancelledError:
         raise
     except WebSocketDisconnect:
