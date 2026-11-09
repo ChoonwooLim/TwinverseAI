@@ -1,8 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { OPENCLAW_ITEMS } from "./openClawNavigation";
 import styles from "./Sidebar.module.css";
 
 const SIDEBAR_CONFIG = {
+  openclaw: {
+    title: "OpenClaw",
+    items: OPENCLAW_ITEMS,
+  },
   community: {
     title: "커뮤니티",
     items: [
@@ -101,9 +106,9 @@ export default function Sidebar({ section }) {
   if (!config) return null;
 
   return (
-    <aside className={styles.sidebar}>
+    <aside className={`${styles.sidebar} ${section === "openclaw" ? styles.openClawSidebar : ""}`} aria-label={config.title}>
       <h3 className={styles.title}>{config.title}</h3>
-      <nav className={styles.nav}>
+      <nav className={styles.nav} aria-label={`${config.title} 메뉴`}>
         {config.items.map((item) => {
           const hasChildren = Array.isArray(item.children) && item.children.length > 0;
           const userCollapsed = collapsed[item.path];
@@ -119,6 +124,7 @@ export default function Sidebar({ section }) {
               <div className={styles.row}>
                 <Link
                   to={item.path}
+                  aria-current={location.pathname === item.path ? "page" : undefined}
                   className={`${styles.link} ${location.pathname === item.path ? styles.active : ""} ${hasChildren ? styles.linkWithToggle : ""}`}
                 >
                   {item.label}

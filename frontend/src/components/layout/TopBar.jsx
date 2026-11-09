@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { OPENCLAW_ITEMS, isOpenClawPath } from "./openClawNavigation";
+import { isOpenClawPath } from "./openClawNavigation";
 import styles from "./TopBar.module.css";
 
 const NAV_ITEMS = [
@@ -10,7 +10,6 @@ const NAV_ITEMS = [
   { label: "서비스", path: "/services" },
   { label: "디자인", path: "/designs" },
   { label: "커뮤니티", path: "/community/notice" },
-  { label: "사업계획서", external: "/business-plan-2026.html", newTab: true },
 ];
 
 const DESK_ITEMS = [
@@ -160,16 +159,9 @@ function TopBar() {
           />
           {isAdmin && (
             <>
-              <NavigationDropdown
-                id="openclaw-navigation"
-                label="OpenClaw"
-                items={OPENCLAW_ITEMS}
-                active={isOpenClawPage}
-                open={openDropdown === "openclaw"}
-                onToggle={() => setOpenDropdown((current) => current === "openclaw" ? null : "openclaw")}
-                onNavigate={closeMenus}
-                pathname={location.pathname}
-              />
+              <Link to="/admin/openclaw" className={`${styles.navLink} ${isOpenClawPage ? styles.active : ""}`} onClick={closeMenus}>
+                OpenClaw
+              </Link>
               <Link to="/admin" className={`${styles.navLink} ${isActive("/admin") && !isOpenClawPage ? styles.active : ""}`} onClick={closeMenus}>
                 관리자
               </Link>

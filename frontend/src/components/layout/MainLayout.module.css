@@ -25,8 +25,6 @@
   padding: var(--sp-10, 2.5rem) var(--sp-8, 2rem) var(--sp-16, 4rem) var(--sp-8, 2rem);
 }
 
-.wideBody { max-width: 100%; }
-
 .full {
   max-width: 100%;
 }

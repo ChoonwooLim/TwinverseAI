@@ -171,4 +171,20 @@
   .sidebar {
     display: none;
   }
+
+  .openClawSidebar {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    padding: 0.5rem 0;
+    border-right: none;
+    border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,0.06));
+  }
+  .openClawSidebar .title { margin: 0; padding: 0.5rem 1rem; }
+  .openClawSidebar .nav {
+    flex-direction: row;
+    overflow-x: auto;
+  }
+  .openClawSidebar .nav > div { flex-shrink: 0; }
+  .openClawSidebar .link { min-height: 44px; white-space: nowrap; }
 }
