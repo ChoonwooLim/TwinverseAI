@@ -71,8 +71,16 @@
 .reviewList > li { counter-increment: review-item; }
 .reviewEntry { position: relative; padding: 1.15rem 0 1.15rem 2rem; border-top: 1px solid #dcd9d2; }
 .reviewEntry::before { content: counter(review-item) '.'; position: absolute; top: 1.15rem; left: .15rem; color: #303743; font-weight: 800; }
-.reviewEntryHeading { display: flex; align-items: flex-start; gap: .5rem; min-width: 0; }
-.reviewEntryHeading h4 { min-width: 0; margin: -.05rem 0 .65rem; color: #171b22; font-size: .96rem; line-height: 1.5; letter-spacing: 0; overflow-wrap: anywhere; }
+.emailItemTitleRow { display: flex; align-items: flex-start; justify-content: space-between; gap: .75rem; min-width: 0; }
+.emailItemTitleRow h4 { min-width: 0; flex: 1 1 auto; margin: 0; color: #f2f4ff; font-size: .9rem; line-height: 1.5; letter-spacing: 0; overflow-wrap: anywhere; }
+.reviewEntry .emailItemTitleRow h4 { color: #171b22; font-size: .96rem; }
+.itemToggle { display: inline-flex; align-items: center; justify-content: center; gap: .3rem; flex: 0 0 auto; min-width: 70px; min-height: 36px; padding: .4rem .6rem; border: 1px solid rgba(0,212,255,.32); border-radius: var(--radius-sm); background: rgba(0,212,255,.06); color: #bae6fd; font-size: .68rem; font-weight: 650; cursor: pointer; }
+.itemToggle:hover, .itemToggle:focus-visible { border-color: var(--neon-cyan); background: rgba(0,212,255,.12); color: white; outline: 2px solid rgba(0,212,255,.25); outline-offset: 2px; }
+.documentItemToggle { border-color: #aaa59b; background: #f4f1eb; color: #303743; }
+.documentItemToggle:hover, .documentItemToggle:focus-visible { border-color: #596273; background: #ece8e0; color: #171b22; outline-color: rgba(89,98,115,.28); }
+.reviewEntryContent { margin-top: .65rem; }
+.reviewEntryContent[hidden], .itemCardContent[hidden] { display: none; }
+.reviewEntryBadges { display: flex; flex-wrap: wrap; gap: .3rem; margin-bottom: .55rem; }
 .reviewEntryMeta { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .35rem 1rem; margin: 0 0 .85rem; padding: .65rem .75rem; background: #f1f2f3; }
 .reviewEntryMeta div, .reviewEntryFacts div { min-width: 0; }
 .reviewEntryMeta dt, .reviewEntryFacts dt { color: #687180; font-size: .66rem; font-weight: 700; }
@@ -142,11 +150,12 @@
 .bulkApply:disabled { opacity: .5; cursor: not-allowed; }
 
 .itemList { display: flex; flex-direction: column; gap: .7rem; }
+.itemList[hidden] { display: none; }
 .itemCard { padding: 1rem; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: rgba(255,255,255,.028); display: flex; flex-direction: column; gap: .7rem; transition: border-color var(--dur-fast), background var(--dur-fast); }
 .itemCard.selected { border-color: rgba(0,212,255,.45); background: rgba(0,212,255,.04); }
+.itemCardContent { display: flex; flex-direction: column; gap: .7rem; }
 .itemHead { display: flex; gap: .75rem; align-items: flex-start; }
 .itemHeadMain { min-width: 0; flex: 1 1 auto; }
-.itemHeadMain h4 { color: #f2f4ff; font-size: .9rem; line-height: 1.4; letter-spacing: 0; overflow-wrap: anywhere; margin: .35rem 0; }
 .itemMeta { display: flex; flex-wrap: wrap; gap: .25rem .65rem; color: var(--text-tertiary); font-size: .65rem; }
 .itemBadges { display: flex; flex-wrap: wrap; gap: .3rem; align-items: center; }
 .sourceLink { display: inline-flex; align-items: center; gap: .3rem; width: fit-content; margin-top: .55rem; padding: .4rem .65rem; min-height: 34px; border: 1px solid rgba(0,212,255,.38); border-radius: var(--radius-sm); color: #bae6fd; background: rgba(0,212,255,.07); font-size: .7rem; font-weight: 650; text-decoration: none; transition: border-color var(--dur-fast), background var(--dur-fast), color var(--dur-fast); }
@@ -240,6 +249,8 @@
   .reviewEntry { padding-left: 1.4rem; }
   .reviewEntry::before { left: 0; }
   .reviewEntryMeta, .reviewEntryFacts { grid-template-columns: 1fr; }
+  .emailItemTitleRow { align-items: stretch; flex-direction: column; }
+  .itemToggle { width: 100%; min-height: 44px; }
   .accountGrid { grid-template-columns: 1fr; }
   .summaryStrip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -263,4 +274,7 @@
   .workspace, .detailPanel, .detailContent { display: block !important; max-height: none; overflow: visible; padding: 0; border: 0; box-shadow: none; background: white; }
   .reviewDocument { max-width: none; margin: 0; padding: 12mm 15mm; border: 0; box-shadow: none; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
   .reviewEntry { break-inside: avoid; }
+  .itemToggle { display: none !important; }
+  .reviewEntryContent[hidden] { display: block !important; }
+  .itemCardContent[hidden] { display: flex !important; }
 }

@@ -88,12 +88,58 @@ function RiskTag({ tag }) {
   return <span className={`${styles.riskTag} ${styles[`risk_${tag}`]}`}>{RISK_TAG_LABELS[tag]}</span>;
 }
 
+function ReviewItem({ item }) {
+  const [expanded, setExpanded] = useState(true);
+  const reactId = useId().replace(/:/g, "");
+  const contentId = `email-review-content-${reactId}`;
+  const titleId = `email-review-title-${reactId}`;
+  const title = item.subject || "제목 없음";
+
+  return (
+    <article className={styles.reviewEntry} aria-labelledby={titleId}>
+      <div className={styles.emailItemTitleRow}>
+        <h4 id={titleId}>{title}</h4>
+        <button
+          type="button"
+          className={`${styles.itemToggle} ${styles.documentItemToggle}`}
+          onClick={() => setExpanded((value) => !value)}
+          aria-expanded={expanded}
+          aria-controls={contentId}
+          aria-label={expanded ? `${title} 내용 접기` : `${title} 내용 펼치기`}
+        >
+          <span aria-hidden="true">{expanded ? "▴" : "▾"}</span>
+          {expanded ? "접기" : "펼치기"}
+        </button>
+      </div>
+      <div id={contentId} className={styles.reviewEntryContent} hidden={!expanded}>
+        <div className={styles.reviewEntryBadges}>
+          <PriorityBadge priority={item.priority} />
+        </div>
+        <dl className={styles.reviewEntryMeta}>
+          <div><dt>계정</dt><dd>{item.account || "정보 없음"}</dd></div>
+          <div><dt>보낸사람</dt><dd>{item.sender || "정보 없음"}</dd></div>
+          <div>
+            <dt>수신시각</dt>
+            <dd>{item.receivedTimeUnknown ? "수신시각 확인 필요" : <time dateTime={item.receivedAt}>{formatDate(item.receivedAt, true)}</time>}</dd>
+          </div>
+        </dl>
+        <dl className={styles.reviewEntryFacts}>
+          <div><dt>요약</dt><dd>{item.summary || "제공된 요약이 없어 제목과 발신 정보를 먼저 확인해야 합니다."}</dd></div>
+          <div><dt>중요 이유</dt><dd>{item.reason || item.classificationBasis || "중요 항목으로 분류되어 사용자 확인이 필요합니다."}</dd></div>
+          <div><dt>시급성</dt><dd>{item.urgency || (item.priority === "urgent" ? "가능한 한 즉시 확인" : "오늘 중 확인 권장")}</dd></div>
+          <div><dt>권장 조치</dt><dd>{item.recommendedAction || "메일 상세를 확인한 뒤 아래 의사결정 카드에서 처리 방침을 기록하세요."}</dd></div>
+        </dl>
+      </div>
+    </article>
+  );
+}
+
 function ReviewDocument({ report, digest }) {
   const [expanded, setExpanded] = useState(false);
   const count = digest.reviewItems.length;
   const canToggle = count > EMAIL_LIST_PREVIEW_LIMIT;
   const contentVisible = !canToggle || expanded;
-  const visibleItems = contentVisible ? digest.reviewItems : [];
+  const reviewItems = digest.reviewItems;
   const conclusion = count === 0
     ? "오늘 새로 수신된 메일 중 반드시 검토할 긴급·중요 항목은 없습니다."
     : `오늘 새로 수신된 메일 가운데 ${count}건은 사용자의 검토가 필요하며, 이 중 ${digest.immediateCount}건은 즉시 확인이 권장됩니다.`;
@@ -142,28 +188,9 @@ function ReviewDocument({ report, digest }) {
           <p className={styles.documentEmpty}>현재 기준으로 검토할 새 긴급·중요 메일이 없습니다. 아래 상세 목록에서 이전 항목과 처리 기록을 확인할 수 있습니다.</p>
         ) : (
           <ol className={styles.reviewList}>
-            {visibleItems.map((item) => (
+            {reviewItems.map((item) => (
               <li key={item.id || `${item.account}-${item.subject}-${item.receivedAt || "legacy"}`}>
-                <article className={styles.reviewEntry}>
-                  <div className={styles.reviewEntryHeading}>
-                    <PriorityBadge priority={item.priority} />
-                    <h4>{item.subject || "제목 없음"}</h4>
-                  </div>
-                  <dl className={styles.reviewEntryMeta}>
-                    <div><dt>계정</dt><dd>{item.account || "정보 없음"}</dd></div>
-                    <div><dt>보낸사람</dt><dd>{item.sender || "정보 없음"}</dd></div>
-                    <div>
-                      <dt>수신시각</dt>
-                      <dd>{item.receivedTimeUnknown ? "수신시각 확인 필요" : <time dateTime={item.receivedAt}>{formatDate(item.receivedAt, true)}</time>}</dd>
-                    </div>
-                  </dl>
-                  <dl className={styles.reviewEntryFacts}>
-                    <div><dt>요약</dt><dd>{item.summary || "제공된 요약이 없어 제목과 발신 정보를 먼저 확인해야 합니다."}</dd></div>
-                    <div><dt>중요 이유</dt><dd>{item.reason || item.classificationBasis || "중요 항목으로 분류되어 사용자 확인이 필요합니다."}</dd></div>
-                    <div><dt>시급성</dt><dd>{item.urgency || (item.priority === "urgent" ? "가능한 한 즉시 확인" : "오늘 중 확인 권장")}</dd></div>
-                    <div><dt>권장 조치</dt><dd>{item.recommendedAction || "메일 상세를 확인한 뒤 아래 의사결정 카드에서 처리 방침을 기록하세요."}</dd></div>
-                  </dl>
-                </article>
+                <ReviewItem item={item} />
               </li>
             ))}
           </ol>
@@ -190,57 +217,76 @@ function DecisionItem({
   onClearDecision,
   saving,
 }) {
+  const [expanded, setExpanded] = useState(true);
   const currentDecision = pendingDecision ?? decision?.decision ?? null;
   const dirty = pendingDecision != null && pendingDecision !== decision?.decision;
   const itemId = item.id || "";
-  const reactId = useId();
-  const checkboxId = `email-item-${reactId.replace(/:/g, "")}`;
+  const reactId = useId().replace(/:/g, "");
+  const checkboxId = `email-item-${reactId}`;
+  const contentId = `email-item-content-${reactId}`;
+  const titleId = `email-item-title-${reactId}`;
+  const title = item.subject || "제목 없음";
   const sourceLink = buildEmailSourceLink(item);
 
   return (
-    <article className={`${styles.itemCard} ${selected ? styles.selected : ""}`} aria-labelledby={`${checkboxId}-subject`}>
-      <div className={styles.itemHead}>
-        <label className={styles.selectLabel} htmlFor={checkboxId}>
-          <input
-            id={checkboxId}
-            type="checkbox"
-            checked={selected}
-            onChange={() => onToggleSelect(itemId)}
-            disabled={!itemId}
-            aria-label={`${item.subject} 선택`}
-          />
-          <span aria-hidden="true" />
-        </label>
-        <div className={styles.itemHeadMain}>
-          <div className={styles.itemBadges}>
-            <PriorityBadge priority={item.priority || "reference"} />
-            {(item.riskTags || []).map((tag) => <RiskTag key={tag} tag={tag} />)}
-            {dirty && <span className={styles.dirtyBadge}>저장 대기</span>}
-            {currentDecision && !dirty && (
-              <span className={styles.savedBadge} title={decision?.decidedByUsername || ""}>
-                저장됨 · {DECISION_LABELS[currentDecision] || currentDecision}
-              </span>
+    <article className={`${styles.itemCard} ${selected ? styles.selected : ""}`} aria-labelledby={titleId}>
+      <div className={styles.emailItemTitleRow}>
+        <h4 id={titleId}>{title}</h4>
+        <button
+          type="button"
+          className={styles.itemToggle}
+          onClick={() => setExpanded((value) => !value)}
+          aria-expanded={expanded}
+          aria-controls={contentId}
+          aria-label={expanded ? `${title} 내용 접기` : `${title} 내용 펼치기`}
+        >
+          <span aria-hidden="true">{expanded ? "▴" : "▾"}</span>
+          {expanded ? "접기" : "펼치기"}
+        </button>
+      </div>
+
+      <div id={contentId} className={styles.itemCardContent} hidden={!expanded}>
+        <div className={styles.itemHead}>
+          <label className={styles.selectLabel} htmlFor={checkboxId}>
+            <input
+              id={checkboxId}
+              type="checkbox"
+              checked={selected}
+              onChange={() => onToggleSelect(itemId)}
+              disabled={!itemId}
+              aria-label={`${title} 선택`}
+            />
+            <span aria-hidden="true" />
+          </label>
+          <div className={styles.itemHeadMain}>
+            <div className={styles.itemBadges}>
+              <PriorityBadge priority={item.priority || "reference"} />
+              {(item.riskTags || []).map((tag) => <RiskTag key={tag} tag={tag} />)}
+              {dirty && <span className={styles.dirtyBadge}>저장 대기</span>}
+              {currentDecision && !dirty && (
+                <span className={styles.savedBadge} title={decision?.decidedByUsername || ""}>
+                  저장됨 · {DECISION_LABELS[currentDecision] || currentDecision}
+                </span>
+              )}
+            </div>
+            <div className={styles.itemMeta}>
+              <span>계정 {item.account || "정보 없음"}</span>
+              <span>발신자 {item.sender || "정보 없음"}</span>
+              <span>수신 {item.receivedAt ? <time dateTime={item.receivedAt}>{formatDate(item.receivedAt, true)}</time> : "정보 없음"}</span>
+            </div>
+            {sourceLink && (
+              <a
+                className={`${styles.sourceLink} ${sourceLink.exact ? styles.sourceLinkExact : styles.sourceLinkSearch}`}
+                href={sourceLink.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={sourceLink.title}
+              >
+                <span aria-hidden="true">↗</span> {sourceLink.label}
+              </a>
             )}
           </div>
-          <h4 id={`${checkboxId}-subject`}>{item.subject}</h4>
-          <div className={styles.itemMeta}>
-            <span>계정 {item.account || "정보 없음"}</span>
-            <span>발신자 {item.sender || "정보 없음"}</span>
-            <span>수신 {item.receivedAt ? <time dateTime={item.receivedAt}>{formatDate(item.receivedAt, true)}</time> : "정보 없음"}</span>
-          </div>
-          {sourceLink && (
-            <a
-              className={`${styles.sourceLink} ${sourceLink.exact ? styles.sourceLinkExact : styles.sourceLinkSearch}`}
-              href={sourceLink.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              title={sourceLink.title}
-            >
-              <span aria-hidden="true">↗</span> {sourceLink.label}
-            </a>
-          )}
         </div>
-      </div>
 
       <dl className={styles.itemFacts}>
         <div><dt>한눈 요약</dt><dd>{item.summary || "구형 보고서에는 내용 기반 요약이 제공되지 않았습니다."}</dd></div>
@@ -261,33 +307,34 @@ function DecisionItem({
         )}
       </dl>
 
-      <div className={styles.decisionRow} role="group" aria-label={`${item.subject} 결정`}>
-        {DECISION_OPTIONS.map((opt) => {
-          const active = currentDecision === opt.key;
-          return (
+        <div className={styles.decisionRow} role="group" aria-label={`${title} 결정`}>
+          {DECISION_OPTIONS.map((opt) => {
+            const active = currentDecision === opt.key;
+            return (
+              <button
+                key={opt.key}
+                type="button"
+                className={`${styles.decisionButton} ${active ? styles.decisionActive : ""}`}
+                onClick={() => onPickDecision(itemId, opt.key, decision?.decision)}
+                disabled={saving || !itemId}
+                aria-pressed={active}
+                title={opt.help}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+          {currentDecision && (
             <button
-              key={opt.key}
               type="button"
-              className={`${styles.decisionButton} ${active ? styles.decisionActive : ""}`}
-              onClick={() => onPickDecision(itemId, opt.key, decision?.decision)}
-              disabled={saving || !itemId}
-              aria-pressed={active}
-              title={opt.help}
+              className={styles.decisionReset}
+              onClick={() => onClearDecision(itemId, decision != null, pendingDecision != null)}
+              disabled={saving}
             >
-              {opt.label}
+              결정 취소
             </button>
-          );
-        })}
-        {currentDecision && (
-          <button
-            type="button"
-            className={styles.decisionReset}
-            onClick={() => onClearDecision(itemId, decision != null, pendingDecision != null)}
-            disabled={saving}
-          >
-            결정 취소
-          </button>
-        )}
+          )}
+        </div>
       </div>
     </article>
   );
@@ -720,7 +767,7 @@ function ReportDetail({ report, loading, error, onBack, onRefresh }) {
           <div className={styles.sectionEmpty}>조건에 맞는 메일이 없습니다.</div>
         ) : (
           <div id="email-decision-items" className={styles.itemList} hidden={!itemListVisible}>
-            {displayedItems.map((item) => (
+            {sortedItems.map((item) => (
               <DecisionItem
                 key={item.id}
                 item={item}
