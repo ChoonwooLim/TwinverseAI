@@ -1,0 +1,54 @@
+.recovery {
+  max-width: 680px;
+  margin: clamp(2rem, 8vh, 6rem) auto;
+  padding: clamp(1.25rem, 4vw, 2.5rem);
+  border: 1px solid var(--border-default, #343a4c);
+  border-radius: 12px;
+  background: var(--surface-raised, #141827);
+  color: var(--text-primary, #f3f5fa);
+}
+
+.root {
+  width: min(680px, calc(100% - 2rem));
+  box-sizing: border-box;
+}
+
+.eyebrow {
+  color: var(--neon-cyan, #00d4ff);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.recovery h1 {
+  margin: 0.5rem 0 1rem;
+  font-size: clamp(1.4rem, 4vw, 2rem);
+  line-height: 1.4;
+  word-break: keep-all;
+}
+
+.recovery p {
+  line-height: 1.8;
+}
+
+.notice {
+  color: var(--text-secondary, #c6cad5);
+  font-size: 0.875rem;
+}
+
+.recovery button {
+  margin-top: 1rem;
+  min-height: 44px;
+  padding: 0.75rem 1rem;
+  border: 0;
+  border-radius: 6px;
+  background: var(--neon-cyan, #00d4ff);
+  color: #07131a;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.recovery button:focus-visible {
+  outline: 2px solid var(--text-primary, #f3f5fa);
+  outline-offset: 4px;
+}

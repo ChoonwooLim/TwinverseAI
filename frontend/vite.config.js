@@ -12,6 +12,9 @@ export default defineConfig({
     },
   },
   build: {
+    // Invalidate HTML responses cached at old JS URLs during the rollback incident.
+    // Keep this namespace stable; content hashes and the server archive handle releases.
+    assetsDir: 'assets/releases-v2',
     rollupOptions: {
       output: {
         manualChunks(id) {

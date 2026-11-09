@@ -11,7 +11,6 @@ load_dotenv(encoding="utf-8")
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from rate_limit import limiter
@@ -435,6 +434,7 @@ Claude Code에서 외부 도구 서버를 연동하여 기능을 확장하는 �
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     startup_tasks = [
+        ("frontend-assets", lambda: _frontend.archive_current_assets() if _frontend else None),
         ("gallery-defaults", _copy_gallery_defaults),
         ("create-db", create_db_and_tables),
         ("seed-admin", _seed_admin),
@@ -574,13 +574,17 @@ def serve_upload(filename: str):
 
 
 # Serve frontend static files in production (Docker build copies to /app/static)
-_static_dir = Path(__file__).resolve().parent / "static"
-if _static_dir.exists():
-    @app.get("/{full_path:path}")
-    def serve_spa(full_path: str):
-        file_path = _static_dir / full_path
-        if file_path.is_file():
-            return FileResponse(file_path)
-        return FileResponse(_static_dir / "index.html")
+from frontend_static import FrontendStatic
 
-    app.mount("/assets", StaticFiles(directory=_static_dir / "assets"), name="static-assets")
+_static_dir = Path(__file__).resolve().parent / "static"
+_frontend = None
+if _static_dir.is_dir():
+    _frontend = FrontendStatic(_static_dir, _get_uploads_dir() / ".frontend-assets")
+
+    @app.api_route("/{full_path:path}", methods=["GET", "HEAD"], include_in_schema=False)
+    def serve_spa(full_path: str):
+        result = _frontend.resolve(full_path)
+        headers = {"Cache-Control": result.cache_control, "X-Content-Type-Options": "nosniff"}
+        if result.path is None:
+            raise HTTPException(status_code=404, detail="Not found", headers=headers)
+        return FileResponse(result.path, headers=headers)
