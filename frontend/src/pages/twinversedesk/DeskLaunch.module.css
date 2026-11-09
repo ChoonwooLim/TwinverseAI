@@ -598,6 +598,12 @@
   max-width: 65ch;
 }
 
+.sectionDesc a {
+  color: var(--neon-cyan, #00d4ff);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
 /* ── Feature Grid ── */
 .featureGrid {
   display: grid;

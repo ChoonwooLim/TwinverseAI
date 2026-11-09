@@ -3,6 +3,8 @@
    No glassmorphism cards. Pure space, drama, light.
    ═══════════════════════════════════════════════ */
 
+.goalNote { margin: 2rem auto 0; max-width: 850px; text-align: center; color: #c0c3da; font-size: .875rem; line-height: 1.8; }
+
 .vision {
   width: 100%;
   overflow-x: hidden;

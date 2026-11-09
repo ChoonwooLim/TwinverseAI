@@ -7,6 +7,209 @@
   padding: 0 1rem;
 }
 
+.page :is(button, a, summary, input):focus-visible {
+  outline: 2px solid var(--neon-cyan, #00d4ff);
+  outline-offset: 4px;
+}
+
+.page :is(h2, h1) {
+  scroll-margin-top: 6rem;
+}
+
+.headerMeta, .sectionNav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem 1.5rem;
+  margin-top: 1.25rem;
+  font-size: 0.78rem;
+  color: var(--text-secondary, #ccc);
+}
+
+.sectionNav a, .sectionHeading a, .guideSources a {
+  color: var(--neon-cyan, #00d4ff);
+  text-underline-offset: 4px;
+}
+
+.sectionNav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 0.9rem;
+}
+
+.workflow {
+  padding: 0.75rem 0 2.5rem;
+}
+
+.workflow h2, .sectionHeading h2 {
+  margin: 0;
+  color: var(--text-primary, #f3f5fa);
+  font-size: clamp(1.2rem, 2vw, 1.55rem);
+  line-height: 1.4;
+  word-break: keep-all;
+}
+
+.workflowSteps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2rem;
+  list-style: none;
+  margin: 1.25rem 0 0;
+  padding: 0;
+}
+
+.workflowSteps li {
+  display: flex;
+  gap: 0.8rem;
+}
+
+.workflowSteps li > span, .guideNumber {
+  color: var(--neon-cyan, #00d4ff);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.workflowSteps strong {
+  font-size: 0.9rem;
+  color: var(--text-primary, #f3f5fa);
+}
+
+.workflowSteps p, .sectionHeading p {
+  font-size: 0.85rem;
+  line-height: 1.75;
+  color: var(--text-secondary, #ccc);
+}
+
+.workflowSteps p {
+  margin: 0.45rem 0 0;
+}
+
+.guideSection {
+  margin-bottom: 3rem;
+}
+
+.sectionHeading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: end;
+  gap: 1.5rem 2.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.sectionHeading p {
+  margin: 0;
+}
+
+.guideList {
+  border-top: 1px solid var(--border-default, rgba(255, 255, 255, 0.1));
+}
+
+.guideItem {
+  border-bottom: 1px solid var(--border-default, rgba(255, 255, 255, 0.1));
+}
+
+.guideItem summary {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 1.05rem 0.5rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.guideItem summary::-webkit-details-marker {
+  display: none;
+}
+
+.guideItem summary:hover, .guideItem[open] summary {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.guideTitle {
+  display: grid;
+  grid-template-columns: 12rem minmax(0, 1fr);
+  gap: 1rem;
+  flex: 1;
+}
+
+.guideTitle > span {
+  color: var(--text-secondary, #ccc);
+  font-size: 0.8rem;
+}
+
+.guideTitle strong {
+  font-size: 0.9rem;
+  color: var(--text-primary, #f3f5fa);
+  font-weight: 500;
+}
+
+.guideToggle {
+  color: var(--neon-cyan, #00d4ff);
+  font-size: 1.25rem;
+  width: 1rem;
+  text-align: center;
+}
+
+.guideItem[open] .guideToggle {
+  transform: rotate(45deg);
+}
+
+.guideBody {
+  padding: 0 2.75rem 1.5rem;
+  max-width: 980px;
+  font-size: 0.85rem;
+  line-height: 1.8;
+  color: var(--text-secondary, #ccc);
+}
+
+.guideBody p {
+  margin: 0.4rem 0 0.75rem;
+}
+
+.guideBody ul {
+  padding-left: 1.25rem;
+}
+
+.guideBody li + li {
+  margin-top: 0.45rem;
+}
+
+.guideSources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  margin-top: 1rem;
+  font-size: 0.78rem;
+}
+
+.catalogCount {
+  margin-left: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--neon-cyan, #00d4ff);
+}
+
+.selectionNotice {
+  margin: 0 0 1rem;
+  padding: 1rem 1.2rem;
+  background: rgba(0, 212, 255, 0.04);
+  border: 1px solid rgba(0, 212, 255, 0.15);
+  border-radius: 8px;
+  color: var(--text-secondary, #ccc);
+  font-size: 0.85rem;
+  line-height: 1.8;
+}
+
+.resultCount {
+  margin: 0.25rem 0 0;
+  color: var(--text-secondary, #ccc);
+  font-size: 0.8rem;
+}
+
+.cardActions {
+  display: flex;
+  gap: 0.5rem;
+}
+
 /* ── Page Header ── */
 .pageHeader {
   padding-bottom: 1.75rem;
@@ -163,6 +366,10 @@
   font-size: 0.85rem;
   cursor: pointer;
   transition: transform 0.15s;
+  font-family: inherit;
+  max-width: 100%;
+  flex-wrap: wrap;
+  text-align: left;
 }
 
 .currentSelChip:hover {
@@ -173,6 +380,7 @@
   width: 10px;
   height: 10px;
   border-radius: 50%;
+  flex-shrink: 0;
 }
 
 .currentSelDesc {
@@ -239,7 +447,7 @@
 /* ── Grid ── */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
   gap: 1rem;
   margin-bottom: 3rem;
 }
@@ -357,6 +565,7 @@
   cursor: pointer;
   backdrop-filter: blur(4px);
   transition: background 0.15s;
+  min-height: 44px;
 }
 
 .cardApplyBtn:hover {
@@ -399,8 +608,8 @@
   position: absolute;
   top: 12px;
   right: 12px;
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
   background: rgba(0, 0, 0, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 50%;
@@ -595,4 +804,47 @@
   border-radius: 3px;
   font-family: 'JetBrains Mono', monospace;
   color: var(--neon-cyan, #00d4ff);
+}
+
+@media (max-width: 768px) {
+  .workflowSteps, .sectionHeading {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+
+  .guideTitle {
+    grid-template-columns: 1fr;
+    gap: 0.3rem;
+  }
+
+  .guideBody {
+    padding-inline: 0.5rem;
+  }
+
+  .modalPreview, .modalMeta {
+    padding: 1.5rem;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .modalPreview {
+    border-right: 0;
+    padding-top: 4rem;
+  }
+
+  .projectTab, .projectAddBtn, .projectRemoveBtn, .catTab {
+    min-height: 44px;
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page *, .page *::before, .page *::after {
+    transition: none;
+    animation: none;
+  }
+
+  .card:hover, .currentSelChip:hover {
+    transform: none;
+  }
 }

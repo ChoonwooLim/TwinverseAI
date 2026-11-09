@@ -133,13 +133,15 @@
 }
 
 .comparOld {
-  font-size: var(--text-xs, 0.75rem);
-  color: var(--text-tertiary, #888);
+  font-size: var(--text-sm, 0.875rem);
+  line-height: 1.6;
+  color: var(--text-secondary, #ccc);
   padding: var(--sp-3, 0.75rem) var(--sp-4, 1rem);
 }
 
 .compareNew {
-  font-size: var(--text-xs, 0.75rem);
+  font-size: var(--text-sm, 0.875rem);
+  line-height: 1.6;
   color: var(--neon-cyan, #00d4ff);
   padding: var(--sp-3, 0.75rem) var(--sp-4, 1rem);
 }
@@ -267,6 +269,7 @@
 
 .phaseMeta {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--sp-3, 0.75rem);
   margin-bottom: var(--sp-2, 0.5rem);
@@ -439,8 +442,24 @@
     padding-bottom: var(--sp-3, 0.75rem);
   }
 
+  .comparOld::before {
+    content: '현재: ';
+    font-weight: 700;
+  }
+
+  .compareNew::before {
+    content: '목표: ';
+    font-weight: 700;
+  }
+
   .archGrid,
   .ueGrid {
     grid-template-columns: 1fr;
   }
+}
+
+.sectionDesc a {
+  color: var(--neon-cyan, #00d4ff);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
 }

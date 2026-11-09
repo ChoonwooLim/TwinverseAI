@@ -13,7 +13,7 @@ const LEVELS = [
     id: "office_main",
     name: "3D Virtual Office",
     map: "/Game/Maps/Office/OfficeMain",
-    desc: "Listen Server 6인 멀티플레이어 — AI NPC(Ollama) + 공간 음성 + 채팅",
+    desc: "여러 사람과 AI가 함께하는 공유 오피스를 개발하고 있습니다.",
     gradient: "linear-gradient(135deg, #00d2ff 0%, #3a47d5 100%)",
     icon: "🏢",
     isOffice: true,
@@ -21,13 +21,13 @@ const LEVELS = [
     // Track A: UE5 5.7.4 Listen Server + PixelStreaming2 멀티 스트리머 템플릿 제작 중
     disabled: true,
     statusLabel: "개발중",
-    statusNote: "UE5 5.7.4 Listen Server 템플릿 + Orbitron 슬롯 파이프라인 구축 중",
+    statusNote: "멀티유저·AI NPC·공간 음성 통합은 아직 공개되지 않았습니다.",
   },
   {
     id: "pcg_modern",
     name: "Modern Office (Solo)",
     map: "/Game/PCG/PCG_Study_Modern",
-    desc: "PCG 기반 모던 오피스 — 절차적 생성으로 매번 새로운 공간",
+    desc: "모던 오피스 장면을 살펴보는 개인 세션 · 스트리밍 서버 준비 필요",
     gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
     icon: "🔬",
   },
@@ -35,39 +35,40 @@ const LEVELS = [
     id: "newyork",
     name: "New York City (Solo)",
     map: "/Game/Maps/NewYork",
-    desc: "뉴욕 시티스케이프 — 도심 속 가상 오피스 환경",
+    desc: "도시 장면을 살펴보는 개인 세션 · 스트리밍 서버 준비 필요",
     gradient: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
     icon: "🌆",
   },
 ];
 
 const REQUIREMENTS = [
-  { label: "브라우저", value: "Chrome 90+ / Edge 90+ / Firefox 100+" },
-  { label: "네트워크", value: "최소 10Mbps (권장 50Mbps+)" },
-  { label: "해상도", value: "1280×720 이상 (권장 1920×1080)" },
-  { label: "오디오", value: "헤드셋 권장 (공간 음향 지원)" },
-  { label: "GPU", value: "서버 렌더링 (클라이언트 GPU 불필요)" },
+  { label: "계정", value: "TwinverseAI 로그인 필요 · 만료 시 다시 로그인" },
+  { label: "브라우저", value: "WebRTC를 지원하는 최신 브라우저 · 키보드·마우스 사용 환경 권장" },
+  { label: "네트워크", value: "안정적인 연결 필요 · 회사망·모바일망에서 영상 연결이 제한될 수 있음" },
+  { label: "플레이어", value: "별도 창/탭으로 열림 · 팝업이 차단되면 이 사이트에 허용" },
+  { label: "영상 처리", value: "3D 렌더링은 서버에서 수행 · 기기에는 영상 재생 능력이 필요" },
+  { label: "서버 조건", value: "UE5 실행 환경·스트리밍 연결·여유 인스턴스가 모두 필요" },
 ];
 
 const FEATURES_PREVIEW = [
   {
-    title: "3D 가상 오피스",
-    desc: "Unreal Engine 5로 렌더링된 고품질 3D 오피스 공간에서 동료들과 함께 일하세요.",
+    title: "현재 · Solo 환경 선택",
+    desc: "Modern Office와 New York City를 선택해 개인 세션을 요청합니다. 실제 콘텐츠는 서버에 준비된 빌드에 따라 제공됩니다.",
     icon: "🏢",
   },
   {
-    title: "MetaHuman 아바타",
-    desc: "포토리얼리스틱 3D 캐릭터로 자신만의 아바타를 커스터마이징하세요.",
+    title: "현재 · 세션 관리",
+    desc: "생성·시작·실행 상태를 확인하고, 별도 플레이어를 열거나 세션을 종료할 수 있습니다.",
     icon: "👤",
   },
   {
-    title: "공간 음성 채팅",
-    desc: "3D 공간에서 거리에 따라 자연스럽게 변하는 음성으로 대화하세요.",
+    title: "개발 중 · 공유 오피스",
+    desc: "여러 사용자의 아바타, 채팅과 공간 음성을 연결하는 경험을 준비합니다. 공유 오피스는 현재 선택할 수 없습니다.",
     icon: "🎧",
   },
   {
-    title: "AI 어시스턴트",
-    desc: "AI NPC에게 업무를 위임하고 회의실에서 AI와 브레인스토밍하세요.",
+    title: "계획 · 공간 내 AI 업무",
+    desc: "NPC 대화·에이전트 연결 기반을 공간 속 업무로 확장합니다. 관리자 AI 도구와 공개 3D 공간의 제공 범위는 구분됩니다.",
     icon: "🤖",
   },
 ];
@@ -104,14 +105,14 @@ export default function DeskLaunch() {
           // GPU server auth mismatch — show banner instead of logging out.
           // The ps2api interceptor no longer wipes credentials for health checks.
           setHealth(null);
-          setHealthError("GPU 서버 인증 오류 — 서버 SECRET_KEY를 확인하세요");
+          setHealthError("스트리밍 서버 인증을 확인하지 못했습니다. 관리자에게 문의해주세요.");
           return;
         }
         setHealth(null);
         setHealthError(
           status
             ? `GPU 서버 응답 오류 (HTTP ${status})`
-            : "GPU 서버 연결 불가 — 서버가 꺼져 있거나 Cloudflare 터널이 끊어졌습니다"
+            : "스트리밍 서버에 연결하지 못했습니다. 잠시 후 다시 확인해주세요."
         );
       }
     };
@@ -252,21 +253,21 @@ export default function DeskLaunch() {
           </span>
           <h1 className={styles.title}>TwinverseDesk</h1>
           <p className={styles.tagline}>
-            차세대 3D 가상 오피스 플랫폼
+            브라우저로 여는 UE5 작업 공간
           </p>
           <p className={styles.heroDesc}>
-            Unreal Engine 5 Pixel Streaming 기반의 AAA급 3D 가상 오피스.<br/>
-            웹 브라우저만으로 몰입감 있는 업무 환경을 경험하세요.
+            Solo 환경을 선택하고 로그인 후 개인 세션을 시작하세요.<br/>
+            서버가 준비되면 별도 플레이어 창에서 3D 공간을 체험할 수 있습니다.
           </p>
           <div className={styles.heroCta}>
             {isLoggedIn && status === "idle" && (
               <button onClick={handleSpawn} className={styles.spawnBtn}>
-                Start My Session
+                내 세션 시작
               </button>
             )}
             {status === "spawning" && (
               <button className={styles.spawnBtn} disabled>
-                Starting...
+                세션 생성 중...
               </button>
             )}
             {status === "starting" && (
@@ -277,12 +278,12 @@ export default function DeskLaunch() {
             )}
             {status === "running" && (
               <button onClick={handleTerminate} className={styles.terminateBtn}>
-                End Session
+                세션 종료
               </button>
             )}
             {status === "error" && !authExpired && (
               <button onClick={handleSpawn} className={styles.spawnBtn}>
-                Retry
+                다시 시도
               </button>
             )}
             {status === "error" && authExpired && (
@@ -316,7 +317,7 @@ export default function DeskLaunch() {
         <div className={styles.offlineBanner} role="alert">
           <span className={styles.offlineBannerIcon}>⚠</span>
           <div className={styles.offlineBannerBody}>
-            <strong className={styles.offlineBannerTitle}>GPU 서버 오프라인</strong>
+            <strong className={styles.offlineBannerTitle}>스트리밍 서버 연결 확인 필요</strong>
             <span className={styles.offlineBannerMsg}>{healthError}</span>
             <span className={styles.offlineBannerHint}>
               세션 시작은 서버가 복구된 후 가능합니다. 서버 관리자에게 문의하거나 잠시 후 새로고침 해주세요.
@@ -328,7 +329,7 @@ export default function DeskLaunch() {
       {/* Level Selector */}
       {status !== "running" && (
         <section className={styles.levelSection}>
-          <h2 className={styles.levelSectionTitle}>Select Environment</h2>
+          <h2 className={styles.levelSectionTitle}>체험할 환경 선택</h2>
           <div className={styles.levelGrid}>
             {LEVELS.map((level) => {
               const isDisabled = !!level.disabled;
@@ -359,7 +360,7 @@ export default function DeskLaunch() {
                   <div className={styles.levelInfo}>
                     <h3 className={styles.levelName}>
                       {level.name}
-                      {level.isOffice && <span className={styles.multiplayerBadge}>Multiplayer</span>}
+                      {level.isOffice && <span className={styles.multiplayerBadge}>공유 공간 · 예정</span>}
                     </h3>
                     <p className={styles.levelDesc}>
                       {level.desc}
@@ -397,9 +398,9 @@ export default function DeskLaunch() {
                     <polygon points="10 8 16 12 10 16" fill="currentColor" stroke="none" />
                   </svg>
                 </div>
-                <h3 className={styles.launchedTitle}>Pixel Streaming 실행 중</h3>
+                <h3 className={styles.launchedTitle}>세션이 준비되었습니다</h3>
                 <p className={styles.launchedDesc}>
-                  세션이 활성화되었습니다. 아래 버튼으로 스트리밍 화면을 열어주세요.
+                  아래 버튼으로 플레이어를 여세요. 영상이 연결되면 공간을 조작할 수 있습니다.
                 </p>
                 <button
                   onClick={() => window.open(session.player_url, "TwinverseDesk", "width=1920,height=1080,menubar=no,toolbar=no,location=no,status=no")}
@@ -426,18 +427,18 @@ export default function DeskLaunch() {
                 {status === "spawning"
                   ? "세션 생성 중..."
                   : status === "starting"
-                    ? "UE5 인스턴스 시작 중... (최대 30초)"
+                    ? "UE5 인스턴스 시작 중... 서버 상태에 따라 시간이 걸릴 수 있습니다"
                     : status === "error"
                       ? "세션 오류 발생"
                       : isLoggedIn
-                        ? "Start My Session 버튼으로 독립 세션을 시작하세요"
+                        ? "내 세션 시작 버튼으로 개인 세션을 요청하세요"
                         : "로그인 후 독립 세션을 시작할 수 있습니다"}
               </p>
               {status === "idle" && (
                 <p className={styles.placeholderHint}>
-                  각 유저별 독립된 UE5 인스턴스가 생성됩니다.
+                  Solo 환경은 사용자별 UE5 세션을 요청합니다.
                   <br />
-                  Wilbur 시그널링 서버가 실행 중이어야 합니다.
+                  스트리밍 서버가 실행 중이고 여유 자원이 있어야 접속할 수 있습니다.
                 </p>
               )}
             </div>
@@ -468,7 +469,7 @@ export default function DeskLaunch() {
 
       {/* 기능 프리뷰 */}
       <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>주요 기능</h2>
+        <h2 className={styles.sectionTitle}>현재 체험과 다음 단계</h2>
         <div className={styles.featureGrid}>
           {FEATURES_PREVIEW.map((f) => (
             <div key={f.title} className={styles.featureCard}>
@@ -482,9 +483,9 @@ export default function DeskLaunch() {
 
       {/* 시스템 요구사항 */}
       <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>시스템 요구사항</h2>
+        <h2 className={styles.sectionTitle}>접속 전 준비사항</h2>
         <p className={styles.sectionDesc}>
-          TwinverseDesk는 Pixel Streaming 기술로 서버에서 렌더링하므로 고사양 PC가 필요하지 않습니다.
+          UE5를 기기에 설치하지 않고 브라우저로 접속합니다. 화질과 반응 속도는 서버·장면·기기·네트워크에 따라 달라집니다.
         </p>
         <div className={styles.reqGrid}>
           {REQUIREMENTS.map((r) => (
@@ -496,56 +497,36 @@ export default function DeskLaunch() {
         </div>
       </section>
 
-      {/* 개발 진행 현황 */}
+      {/* 이용 순서 */}
       <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>개발 진행 현황</h2>
-        <div className={styles.progressGrid}>
-          <div className={styles.progressItem}>
-            <div className={styles.progressBar}>
-              <div className={styles.progressFill} style={{ width: "100%" }} />
-            </div>
-            <div className={styles.progressMeta}>
-              <span>Phase 1: UE5 기반 구조</span>
-              <span>100%</span>
-            </div>
+        <h2 className={styles.sectionTitle}>처음 접속하는 방법</h2>
+        <div className={styles.reqGrid}>
+          <div className={styles.reqRow}>
+            <span className={styles.reqLabel}>1 · 선택</span>
+            <span className={styles.reqValue}>로그인 후 활성화된 Solo 환경을 선택하고 내 세션 시작을 누르세요.</span>
           </div>
-          <div className={styles.progressItem}>
-            <div className={styles.progressBar}>
-              <div className={styles.progressFill} style={{ width: "100%" }} />
-            </div>
-            <div className={styles.progressMeta}>
-              <span>Phase 2: 멀티플레이어 + MetaHuman</span>
-              <span>100%</span>
-            </div>
+          <div className={styles.reqRow}>
+            <span className={styles.reqLabel}>2 · 연결</span>
+            <span className={styles.reqValue}>세션 준비 후 스트리밍 열기로 플레이어를 여세요. 창이 보이지 않으면 팝업 차단을 확인하세요.</span>
           </div>
-          <div className={styles.progressItem}>
-            <div className={styles.progressBar}>
-              <div className={styles.progressFill} style={{ width: "100%" }} />
-            </div>
-            <div className={styles.progressMeta}>
-              <span>Phase 3: AI NPC 시스템</span>
-              <span>100%</span>
-            </div>
+          <div className={styles.reqRow}>
+            <span className={styles.reqLabel}>3 · 체험</span>
+            <span className={styles.reqValue}>영상이 나타나면 플레이어 화면을 클릭하고 장면의 조작 안내를 따르세요. 세션을 유지하려면 이 페이지도 열어두세요.</span>
           </div>
-          <div className={styles.progressItem}>
-            <div className={styles.progressBar}>
-              <div className={styles.progressFill} style={{ width: "80%" }} />
-            </div>
-            <div className={styles.progressMeta}>
-              <span>Phase 4: 프론트엔드 연동</span>
-              <span>80%</span>
-            </div>
-          </div>
-          <div className={styles.progressItem}>
-            <div className={styles.progressBar}>
-              <div className={styles.progressFill} style={{ width: "0%" }} />
-            </div>
-            <div className={styles.progressMeta}>
-              <span>Phase 5: Blueprint + 콘텐츠 빌드</span>
-              <span>0%</span>
-            </div>
+          <div className={styles.reqRow}>
+            <span className={styles.reqLabel}>4 · 종료</span>
+            <span className={styles.reqValue}>체험을 마친 뒤 이 페이지의 세션 종료를 눌러 사용 중인 서버 자원을 반환하세요.</span>
           </div>
         </div>
+        <p className={styles.sectionDesc}>
+          서버 오류나 용량 부족이 표시되면 잠시 후 다시 시도하세요. 로그인 만료는 다시 로그인하면 됩니다.
+          세션은 준비됐지만 영상이 없다면 네트워크 상태를 확인하고 관리자에게 연결 문제를 알려주세요.
+        </p>
+        <p className={styles.sectionDesc}>
+          접속 방식은 Epic Games의{" "}
+          <a href="https://dev.epicgames.com/documentation/en-us/unreal-engine/overview-of-pixel-streaming-in-unreal-engine" target="_blank" rel="noopener noreferrer">Pixel Streaming 개요</a>와{" "}
+          <a href="https://dev.epicgames.com/documentation/unreal-engine/hosting-and-networking-guide-for-pixel-streaming-in-unreal-engine" target="_blank" rel="noopener noreferrer">네트워크 안내</a>에서 확인할 수 있습니다.
+        </p>
       </section>
 
       {/* CTA */}

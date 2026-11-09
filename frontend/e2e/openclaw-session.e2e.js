@@ -229,7 +229,7 @@ test("a non-administrator cannot initialize the retained console", async ({ page
   const state = await fixture(page, "user");
   await page.goto(CHAT_PATH);
   await expect(page).toHaveURL("/");
-  await expect(page.getByRole("heading", { name: "TwinverseAI", exact: true })).toBeVisible();
+  await expect(page.locator("main h1")).toBeVisible();
   await expect(page.getByRole("heading", { name: "OpenClaw 관리 콘솔" })).toHaveCount(0);
   expect(state.requests.filter((path) => path.startsWith(API))).toHaveLength(0);
 });

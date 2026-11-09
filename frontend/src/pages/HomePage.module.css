@@ -29,13 +29,14 @@
 
 .heroTitle {
   font-family: var(--font-display, 'Noto Sans KR'), sans-serif;
-  font-size: clamp(3rem, 8vw, 6rem);
+  font-size: clamp(2.3rem, 5.5vw, 4.75rem);
   font-weight: 700;
-  line-height: 1;
+  line-height: 1.25;
   letter-spacing: -0.03em;
   color: #ffffff;
   margin: 0 0 var(--sp-6, 1.5rem);
-  max-width: 14ch;
+  max-width: 22ch;
+  word-break: keep-all;
   text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.5);
 }
 
@@ -187,6 +188,8 @@
 }
 
 .noticeTitle {
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-family: var(--font-body, 'Inter'), sans-serif;
   font-weight: 500;
   font-size: var(--text-sm, 0.875rem);
@@ -239,4 +242,10 @@
   color: var(--text-secondary, #ccc);
   line-height: 1.6;
   margin: 0;
+}
+
+@media (max-width: 540px) {
+  .noticeItem, .postItem { flex-direction: column; gap: .35rem; }
+  .heroCta { align-items: stretch; }
+  .primaryBtn, .secondaryBtn { text-align: center; }
 }

@@ -293,12 +293,27 @@
 
 .infoValue {
   font-size: var(--text-sm, 0.875rem);
+  overflow-wrap: anywhere;
   color: var(--text-secondary, #ccc);
   padding: var(--sp-3, 0.75rem) var(--sp-5, 1.25rem);
 }
 
 .infoOnline {
   color: #28c840;
+}
+
+.connectionNote {
+  max-width: 75ch;
+  margin: var(--sp-4, 1rem) 0 0;
+  font-size: var(--text-sm, 0.875rem);
+  line-height: 1.8;
+  color: var(--text-secondary, #ccc);
+}
+
+.connectionNote a {
+  color: var(--neon-cyan, #00d4ff);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
 }
 
 /* ── Guide Section ── */

@@ -1,379 +1,173 @@
+﻿import { Link } from "react-router-dom";
 import styles from "./DeskPlan.module.css";
 
-const PHASES = [
-  {
-    phase: "Phase 0",
-    title: "사전 조사 (게이트)",
-    period: "W1",
-    status: "in-progress",
-    tasks: [
-      "Orbitron 기존 배포 파이프라인 내부 구조 조사 (훅 포인트 식별)",
-      "UE5 PixelStreaming2 멀티 스트리머 모드 검증 (단일 프로세스 6 독립 WebRTC 스트림)",
-      "Wilbur 시그널링 서버 관리 API 범위 조사",
-      "Cloudflare API 토큰 권한 확인 (DNS 쓰기 + Tunnel ingress 수정)",
-      "GPU 서버 (twinverse-ai 192.168.219.117) Docker + NVIDIA runtime 가용성 확인",
-    ],
-  },
-  {
-    phase: "Phase 0.5",
-    title: "Twinverse UE5 템플릿 v1 (Track A — 내부)",
-    period: "W2 - W4",
-    status: "planned",
-    tasks: [
-      "UE5 5.7.4 C++ 프로젝트 + PixelStreaming2 / OnlineSubsystem / EnhancedInput / Voice 플러그인",
-      "Listen Server 모드 + GameMode / PlayerController / Character 스캐폴딩",
-      "OfficeMain.umap + NavMesh + 기본 콜리전 (13단계 office-map-spec 준수)",
-      "WASD 이동 + 점프 + 카메라 (Enhanced Input, 리플리케이션)",
-      "닉네임 UMG 머리 위 표시 + 서버 복제",
-      "인게임 채팅 (Server RPC → Multicast)",
-      "공간 음성 채팅 (OnlineSubsystemVoice 또는 WebRTC mesh — 조사 후 선택)",
-      "이모트 AnimMontage + 복제",
-      "의자 상호작용 (Interactable interface)",
-      "어드민 HTTP 엔드포인트 (Kick/Mute) — C++ HttpListener",
-      "Tier 1 소셜 NPC 10명 (OfficeNPCConversation → Ollama gemma3:12b, 잡담)",
-      "Tier 2 에이전트 NPC 3명 (OfficeNPCAgentConversation → OpenClaw gateway, 업무 수행)",
-    ],
-  },
-  {
-    phase: "Phase 1 ~ 2",
-    title: "슬롯 DB + 업로드 파이프라인 (Orbitron, Track B)",
-    period: "W3 - W5",
-    status: "planned",
-    tasks: [
-      "PostgreSQL 스키마: ps_slot_templates / ps_slots / ps_versions / ps_sessions",
-      "슬롯 CRUD API + 관리 UI (관리자 전용)",
-      "tus.io 재개 가능 업로드 (단일 zip 최대 20 GB)",
-      "템플릿 manifest.json 추출 + 버전 증가 + SSE 진행률 이벤트",
-      "owner_user_id / tenant_id / pinned — Phase C (SaaS) 대비 선예약 필드",
-    ],
-  },
-  {
-    phase: "Phase 3 ~ 4",
-    title: "Docker 빌드 + 원격 배포 + 활성화",
-    period: "W5 - W7",
-    status: "planned",
-    tasks: [
-      "템플릿별 Dockerfile (nvidia/cuda:12.6.0-base + UE5 런타임)",
-      "Orbitron → GPU 서버 imageBuilder + 원격 전송 파이프라인",
-      "슬롯 루트 /opt/ps-slots/<slot>/versions/v<N>/ 구조 + current 심볼릭 링크",
-      "Atomic symlink swap 활성화 + 3-version 롤백",
-      "Cloudflare DNS + Tunnel ingress 자동 등록 (SIGHUP reload)",
-    ],
-  },
-  {
-    phase: "Phase 5",
-    title: "런타임 · 큐 · 세션 (Track B)",
-    period: "W7 - W9",
-    status: "planned",
-    tasks: [
-      "On-demand UE5 컨테이너 기동/종료 (유휴 시 자원 반환)",
-      "Wilbur 시그널링 서버 연동 + 뷰포트별 WebRTC peer",
-      "슬롯당 최대 6명 제한 + FIFO 대기열 (SSE 이벤트)",
-      "Join / Heartbeat / Leave API + ghost session sweeper",
-      "HMAC 서명 게스트 링크 + 로그인/게스트 하이브리드 식별",
-      "어드민 Kick / Mute 프록시 (UE5 템플릿 어드민 엔드포인트 호출)",
-    ],
-  },
-  {
-    phase: "Phase 6",
-    title: "사용자 UI",
-    period: "W9 - W10",
-    status: "planned",
-    tasks: [
-      "슬롯 카탈로그 페이지 (Office / Modern / NYC 카드)",
-      "세션 페이지: 스트림 뷰 + 대기열 위치 + 재접속 보정",
-      "게스트 링크 발급 UI (관리자)",
-      "버전 이력 + 롤백 UI",
-    ],
-  },
-  {
-    phase: "Phase 7",
-    title: "기존 임시본 마이그레이션",
-    period: "W10 - W11",
-    status: "planned",
-    tasks: [
-      "기존 project 27 (twinverse-ps2) → 신규 office 슬롯으로 마이그레이션",
-      "ps2.twinverse.org → ps.twinverse.org/office 리다이렉트",
-      "/opt/twinverse-ps2/ 정리",
-      "E2E 테스트 (6인 동시 접속 + NPC 대화 + 채팅 + 음성)",
-    ],
-  },
-];
-
-const COMPARE_ITEMS = [
-  { feature: "멀티플레이 모델", old: "Dedicated Server + 사용자당 UE5 클라 프로세스", now: "Listen Server + 단일 UE5 프로세스 6 뷰포트" },
-  { feature: "동시접속 상한", old: "200+ (이론)", now: "슬롯당 6명 + FIFO 대기열 (Phase B 현실 목표)" },
-  { feature: "GPU 자원", old: "6명 = RTX 3090 2장+", now: "6명 = RTX 3090 1장 (VRAM ~10 GB)" },
-  { feature: "프로세스 수", old: "N+1 (DS + 클라 N)", now: "1 (호스트 = 서버 겸 플레이어)" },
-  { feature: "입장 지연", old: "~10초 (클라 프로세스 부팅)", now: "~1초 (뷰포트 추가)" },
-  { feature: "AI NPC LLM", old: "Anthropic / OpenAI 외부 API 직접 호출 (stateless)", now: "Tier 1 Ollama gemma3:12b (소셜, 10명) + Tier 2 OpenClaw gateway CLI 에이전트 (업무, 3명) 듀얼 모델" },
-  { feature: "배포 단위", old: "단일 프로젝트 (수작업 배포)", now: "Orbitron 슬롯 파이프라인 (템플릿 업로드 → atomic swap)" },
-  { feature: "UE 버전", old: "5.5", now: "5.7.4" },
-  { feature: "식별 체계", old: "JWT 로그인만", now: "로그인 + HMAC 서명 게스트 링크 하이브리드" },
-  { feature: "롤백", old: "수동", now: "3-version symlink 원자적 되돌리기" },
+const CAPABILITIES = [
+  { feature: "브라우저 접속", current: "로그인·환경 선택·Solo 세션 시작/종료 흐름 구현", next: "기기별 연결 품질과 재접속 경험 개선" },
+  { feature: "3D 콘텐츠", current: "Modern Office / New York City 선택 제공, 서버 준비 필요", next: "일과 회의를 위한 공유 오피스 콘텐츠" },
+  { feature: "여러 사람의 협업", current: "공유 3D Virtual Office는 개발 중으로 비활성화", next: "독립된 입력·아바타·공유 상태와 음성 검증" },
+  { feature: "AI 연결", current: "NPC 대화·에이전트 연결 API, 관리자 OpenClaw 콘솔", next: "공간 내 대화 → 업무 요청 → 결과 확인을 하나의 흐름으로 연결" },
+  { feature: "이메일 업무", current: "관리자 보고서 검토와 판단 기록", next: "권한과 승인 범위가 명확한 업무 도구 확장" },
+  { feature: "AI 1인 기업", current: "전문가 역할과 활용 방향 소개", next: "50종 AI 전문가 협업, 개인·팀 작업 공간으로 확장" },
 ];
 
 const ARCHITECTURE = [
+  { layer: "사용자가 여는 웹 포털", tech: "React 19 · Vite 8", desc: "소개와 계정, 실행할 환경, 세션 상태를 한곳에서 안내합니다. 운영 도구에는 역할에 따른 접근 제한을 적용합니다." },
+  { layer: "사용자와 세션을 연결하는 API", tech: "FastAPI · PostgreSQL", desc: "로그인 사용자의 세션을 만들고 조회·유지·종료합니다. 가용 인스턴스 수와 오류를 실행 화면에 전달합니다." },
+  { layer: "화면을 만드는 실행 환경", tech: "UE5 · Pixel Streaming 2", desc: "UE5 런타임, 연결을 중개하는 서버와 브라우저 플레이어가 함께 동작합니다. 영상 연결 성공과 실제 입력 응답까지 검증합니다." },
+  { layer: "대화와 업무를 처리하는 AI", tech: "Ollama · OpenClaw", desc: "AI 컴퓨트와 3D 스트리밍의 역할을 분리합니다. 현재 AI 연결 코드를 바탕으로 사용자 권한, 대화 맥락과 결과 확인 경험을 확장합니다." },
+];
+
+const PHASES = [
   {
-    layer: "프론트엔드",
-    tech: "React 19 + Vite 6 + WebRTC",
-    desc: "슬롯 카탈로그 + 세션 페이지. WebRTC 로 UE5 PixelStreaming2 에 직접 연결, 대기열 상태는 SSE 로 수신.",
+    phase: "01 · 현재 기반", title: "브라우저에서 UE5 공간에 접속", status: "현재 연동", active: true,
+    tasks: ["로그인, Solo 환경 선택, 세션 생성·조회·유지·종료 흐름 구현", "서버 응답과 가용 용량 안내, 별도 플레이어 창 연결", "공개 기준: 운영 서버에서 영상·입력·종료까지 실제 접속 확인"],
   },
   {
-    layer: "Orbitron API (Track B)",
-    tech: "Node.js + PostgreSQL",
-    desc: "슬롯 CRUD, tus 업로드, 버전 관리, 빌드 파이프라인, 원격 배포, 큐/세션 DAO. 모든 상태 변경은 atomic, 역연산 가능.",
+    phase: "02 · 다음 검증", title: "안정적으로 다시 찾는 작업 공간", status: "검증·고도화",
+    tasks: ["세션 시작 실패, 연결 끊김, 용량 부족 상황의 복구 경험 정리", "브라우저·네트워크별 화질, 입력 지연과 세션 유지 시간 측정", "공개 기준: 재접속·장시간 사용·자원 반환의 반복 검증"],
   },
   {
-    layer: "UE5 런타임 (Track A)",
-    tech: "UE5 5.7.4 Listen Server + PixelStreaming2 멀티 스트리머",
-    desc: "단일 프로세스가 호스트(서버) + 플레이어0 겸임. 뷰포트 0~5 각각 독립 WebRTC 스트림. 슬롯별 Docker 컨테이너로 on-demand 기동.",
+    phase: "03 · 공간 속 AI", title: "대화에서 업무 결과까지 연결", status: "통합 계획",
+    tasks: ["NPC 대화와 OpenClaw 에이전트 연결을 실제 공간의 사용자 경험에 통합", "업무 요청·진행 상황·결과 확인·중단 흐름을 일관되게 구성", "공개 기준: 권한별 도구 범위와 사람의 확인이 필요한 작업을 구분"],
   },
   {
-    layer: "시그널링",
-    tech: "Wilbur (Epic PixelStreamingInfrastructure)",
-    desc: "슬롯당 1개 Wilbur 인스턴스, 6 뷰포트 peer 등록. 세션 시작/종료 API 로 Orbitron 과 연동.",
+    phase: "04 · 공유 공간", title: "여러 사람이 함께 쓰는 3D 오피스", status: "개발 계획",
+    tasks: ["현재 비활성화된 공유 오피스를 위한 캐릭터·입력·공유 상태 완성", "채팅, 공간 음성, 좌석과 오브젝트 상호작용 검증", "공개 기준: 동시 접속 부하와 사용자별 조작 분리, 재입장 확인"],
   },
   {
-    layer: "AI 게이트웨이",
-    tech: "twinverse-ai 192.168.219.117 Ollama",
-    desc: "Tier 1 (소셜): Ollama gemma3:12b 로컬 무료. Tier 2 (에이전트): OpenClaw gateway (ws://host:18789) → ChatGPT/Claude Code CLI 에이전트 세션, 도구 사용·persistent. DeskRPG 검증 스택 재사용. ai-shared-registry SSOT 준수.",
+    phase: "05 · 1인 기업", title: "분야별 전문가와 함께하는 업무", status: "장기 확장",
+    tasks: ["기획·개발·디자인·마케팅 등 50종 AI 전문가 협업을 목표로 확대", "개인과 팀의 작업 공간, 자료, 결과물을 연결하는 업무 흐름 설계", "공개 기준: 역할별 결과 품질·비용·사용자 통제의 검증"],
   },
   {
-    layer: "네트워크",
-    tech: "Cloudflare Tunnel + ps.twinverse.org/*",
-    desc: "슬롯별 서브경로 ingress 자동 등록, SIGHUP reload 로 무중단 반영. DNS 쓰기 토큰은 Orbitron secrets.",
-  },
-  {
-    layer: "GPU 서버",
-    tech: "Threadripper 3970X + RTX 3090 24GB + Ubuntu 22.04",
-    desc: "Docker + NVIDIA runtime. 슬롯 루트 /opt/ps-slots/<slot>/current/. Ollama(11434) 는 기존 공유 자원 유지.",
+    phase: "06 · 플랫폼 생태계", title: "사람과 AI가 함께 만드는 Twinverse", status: "장기 비전",
+    tasks: ["디지털 트윈, 교육, 콘텐츠 제작과 비즈니스 공간으로 활용 확장", "창작자·개발자 참여와 디지털 자산 유통 모델 검토", "공개 기준: 이용 정책, 운영 안정성, 지속 가능한 사업 모델 확보"],
   },
 ];
 
-const UE_FEATURES = [
-  {
-    title: "PixelStreaming2 멀티 스트리머",
-    desc: "단일 UE5 프로세스가 다수 독립 WebRTC 스트림을 동시 송출하는 모드. 렌더 씬 1회 계산을 여러 뷰포트가 공유해 GPU 자원을 1/3~1/6 수준으로 절감. 슬롯당 최대 6명 수용.",
-  },
-  {
-    title: "Listen Server 모드",
-    desc: "UE5 표준 멀티플레이의 호스트 권위 모델. 단일 프로세스 안에서 서버 + 플레이어0 을 동시 담당. Twinverse 는 호스트를 시스템 관리 프로세스로 운영하므로 호스트 이탈 이슈는 비해당.",
-  },
-  {
-    title: "Enhanced Input + Replication",
-    desc: "WASD · 점프 · 카메라 · 상호작용 입력을 Enhanced Input 으로 관리. 캐릭터 위치/회전/애니메이션은 Replication 으로 6 플레이어 전체 동기화, AnimMontage 이모트도 Multicast RPC.",
-  },
-  {
-    title: "공간 음성 채팅",
-    desc: "근접 거리 감쇠 공간 음향. OnlineSubsystemVoice 또는 WebRTC mesh 중 조사 후 선택 (Phase 0).",
-  },
-  {
-    title: "Tier 1 소셜 NPC (Ollama)",
-    desc: "슬롯당 최대 10명. UOfficeNPCConversation 이 /api/npc/chat → Ollama gemma3:12b 호출 → 말풍선/채팅. stateless, 2초 쿨다운, 응답 <3초. 잡담/분위기 전용 저비용 계층.",
-  },
-  {
-    title: "Tier 2 에이전트 NPC (OpenClaw)",
-    desc: "슬롯당 최대 3명. UOfficeNPCAgentConversation 이 /api/npc/agent/stream (WebSocket) → OpenClaw gateway(port 18789) chat.send RPC → CLI 에이전트(gpt-5 / Claude Code 등) 스트리밍 응답. persistent session, 도구 사용 가능 (AI 비서·AI 개발자 업무 위임). DeskRPG (tvdesk.twinverse.org) 검증 방식 계승.",
-  },
-  {
-    title: "어드민 제어",
-    desc: "UE5 컨테이너가 HTTP 엔드포인트 (Kick/Mute) 노출. Orbitron public-api 가 이를 프록시해 관리자 UI 에서 호출.",
-  },
-  {
-    title: "의자 / 상호작용",
-    desc: "Interactable interface 기반 의자 착석, 테이블 오브젝트 조작. 착석 상태는 리플리케이션되어 모든 플레이어에게 일관 표시.",
-  },
-  {
-    title: "세션 하트비트 + 유령 세션 청소",
-    desc: "클라이언트가 5초마다 heartbeat. 30초 무응답은 ghost sweeper 가 자동 퇴장 처리. 대기열 자동 승격 (SELECT ... FOR UPDATE atomic).",
-  },
-];
-
-const KPI_TARGETS = [
-  { metric: "슬롯당 동시접속", target: "6", unit: "명" },
-  { metric: "평균 대기 시간", target: "<30", unit: "초" },
-  { metric: "PixelStreaming 지연", target: "<100", unit: "ms" },
-  { metric: "입장 시간", target: "~1", unit: "초" },
-  { metric: "AI NPC 응답", target: "<3", unit: "초" },
-  { metric: "GPU 1장 수용 슬롯", target: "3", unit: "슬롯" },
-  { metric: "롤백 버전 수", target: "3", unit: "버전" },
-  { metric: "가용성", target: "99.9", unit: "%" },
-];
-
-const TRACK_SPLIT = [
-  {
-    track: "Track A — 내부 (Steven + Claude @ TwinverseAI)",
-    scope: "UE5 5.7.4 멀티플레이어 템플릿 v1 제작",
-    items: [
-      "Listen Server + 6 뷰포트 스캐폴딩",
-      "캐릭터 / WASD / 닉네임 / 채팅 / 음성 / 이모트 / 의자",
-      "AI NPC 10명 (Ollama 연결)",
-      "어드민 HTTP 엔드포인트 (Kick/Mute)",
-      "OfficeMain.umap 맵 제작",
-    ],
-  },
-  {
-    track: "Track B — 외부 AI (Orbitron 개발자)",
-    scope: "Orbitron 배포 파이프라인 + 런타임 플랫폼",
-    items: [
-      "슬롯 DB + CRUD + 관리 UI",
-      "tus 업로드 + 빌드 파이프라인",
-      "원격 배포 + atomic 활성화 + 3-version 롤백",
-      "큐 / 세션 / 하트비트 / 게스트 링크",
-      "Cloudflare DNS · Tunnel 자동화",
-      "사용자 UI (카탈로그 · 세션 페이지)",
-    ],
-  },
+const QUALITY_GATES = [
+  { title: "접속 품질", desc: "로그인부터 첫 영상과 입력 응답까지의 시간, 끊김과 재접속 성공률을 실제 환경에서 측정합니다. 회선 속도만으로 체감 품질을 판단하지 않습니다." },
+  { title: "공간의 일관성", desc: "동시에 접속한 사용자의 위치·대화·조작이 의도대로 공유되는지 확인합니다. 영상 시청자 수와 독립적으로 활동하는 사용자 수를 구분합니다." },
+  { title: "AI 작업의 완결성", desc: "무엇을 요청했고 어디까지 실행되었는지, 결과를 어디서 확인하고 어떻게 중단하는지 사용자가 이해할 수 있는 흐름을 검증합니다." },
+  { title: "자원과 운영", desc: "장면별 GPU·인코더·네트워크 비용과 세션 종료 후 자원 반환을 확인한 뒤 동시 사용 범위를 정합니다. 가용성과 성능 수치는 실측에 기반해 공개합니다." },
 ];
 
 export default function DeskPlan() {
   return (
     <div className={styles.page}>
       <header className={styles.pageHeader}>
-        <span className={styles.overline}>TwinverseDesk Development Plan — Phase B (2026-04-15 개정)</span>
-        <h1 className={styles.title}>TwinverseDesk 개발계획</h1>
+        <span className={styles.overline}>TwinverseDesk · Development Roadmap</span>
+        <h1 className={styles.title}>공간과 AI를 연결하는 개발계획</h1>
         <p className={styles.subtitle}>
-          Unreal Engine 5.7.4 Pixel Streaming 2 기반 멀티플레이어 가상 오피스 플랫폼.
-          단일 UE5 프로세스가 6 뷰포트를 동시 송출하는 Listen Server 모델로 GPU 자원을 절감하고,
-          Orbitron 슬롯 파이프라인으로 템플릿 단위 배포를 자동화합니다.
+          브라우저로 여는 UE5 공간에서 시작해, 사람과 AI 전문가가 함께 일하는 작업 환경으로 확장합니다.
+          현재 구현된 연결과 앞으로 공개할 경험을 구분하고, 실제 사용 검증을 다음 단계의 기준으로 삼습니다.
         </p>
       </header>
 
-      {/* 비전 */}
       <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>비전</h2>
+        <h2 className={styles.sectionTitle}>하나의 공간에서 이어지는 업무</h2>
         <div className={styles.visionBox}>
           <blockquote className={styles.vision}>
-            "웹 브라우저에서 접속하는 멀티플레이어 3D 가상 오피스.<br/>
-            RTX 3090 1장으로 3 슬롯 동시 서비스.<br/>
-            <strong>AI NPC 와 함께하는 1인 기업형 업무 환경</strong>을 만듭니다."
+            아이디어를 나누고, AI 전문가와 실행하고,<br />
+            결과를 함께 확인하는 작업 공간.<br />
+            <strong>TwinverseDesk는 Twinverse Platform의 핵심 진입점</strong>을 지향합니다.
           </blockquote>
         </div>
       </section>
 
-      {/* KPI */}
       <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>성능 목표 (KPI)</h2>
-        <div className={styles.kpiGrid}>
-          {KPI_TARGETS.map((k) => (
-            <div key={k.metric} className={styles.kpiCard}>
-              <span className={styles.kpiValue}>{k.target}</span>
-              <span className={styles.kpiUnit}>{k.unit}</span>
-              <span className={styles.kpiLabel}>{k.metric}</span>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* 피벗 비교 (기존 → 현재) */}
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>이전 계획 vs 현재 계획 (2026-04-15 피벗)</h2>
+        <h2 className={styles.sectionTitle}>현재 구현과 다음 목표</h2>
         <p className={styles.sectionDesc}>
-          GPU 자원 한계와 Orbitron 파이프라인 통합 요구에 맞춰 멀티플레이어 모델과 AI 백엔드를 재설계했습니다.
+          구현된 연결도 운영 서버와 자원이 준비되어야 이용할 수 있습니다.
+          다음 목표는 공개 예정 범위이며, 확정 출시일이나 제공 완료를 뜻하지 않습니다.
         </p>
-        <div className={styles.compareTable}>
-          <div className={`${styles.compareRow} ${styles.compareHeader}`}>
-            <span>항목</span>
-            <span>이전</span>
-            <span>현재</span>
+        <div className={styles.compareTable} role="table" aria-label="현재 구현과 다음 목표 비교">
+          <div className={`${styles.compareRow} ${styles.compareHeader}`} role="row">
+            <span role="columnheader">영역</span>
+            <span role="columnheader">현재 구현·공개 범위</span>
+            <span role="columnheader">다음 목표</span>
           </div>
-          {COMPARE_ITEMS.map((c, i) => (
-            <div key={i} className={styles.compareRow}>
-              <span className={styles.compareFeature}>{c.feature}</span>
-              <span className={styles.comparOld}>{c.old}</span>
-              <span className={styles.compareNew}>{c.now}</span>
+          {CAPABILITIES.map((capability) => (
+            <div key={capability.feature} className={styles.compareRow} role="row">
+              <span className={styles.compareFeature} role="cell">{capability.feature}</span>
+              <span className={styles.comparOld} role="cell">{capability.current}</span>
+              <span className={styles.compareNew} role="cell">{capability.next}</span>
             </div>
           ))}
         </div>
       </section>
 
-      {/* 시스템 아키텍처 */}
       <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>시스템 아키텍처</h2>
+        <h2 className={styles.sectionTitle}>경험을 구성하는 네 가지 역할</h2>
         <div className={styles.archGrid}>
-          {ARCHITECTURE.map((a) => (
-            <div key={a.layer} className={styles.archCard}>
+          {ARCHITECTURE.map((layer) => (
+            <article key={layer.layer} className={styles.archCard}>
               <div className={styles.archHeader}>
-                <h3 className={styles.archLayer}>{a.layer}</h3>
-                <code className={styles.archTech}>{a.tech}</code>
+                <h3 className={styles.archLayer}>{layer.layer}</h3>
+                <span className={styles.archTech}>{layer.tech}</span>
               </div>
-              <p className={styles.archDesc}>{a.desc}</p>
-            </div>
+              <p className={styles.archDesc}>{layer.desc}</p>
+            </article>
           ))}
         </div>
-      </section>
-
-      {/* UE5 핵심 */}
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>UE5 5.7.4 핵심 기능</h2>
         <p className={styles.sectionDesc}>
-          Listen Server + PixelStreaming2 멀티 스트리머 조합으로 단일 GPU 1장에서 슬롯당 6 플레이어를 경제적으로 수용합니다.
+          Pixel Streaming은 원격 실행 화면과 사용자 입력을 연결하는 기반 기술입니다.
+          공유 오피스의 협업 규칙과 AI 업무 흐름은 그 위에서 별도로 구현·검증합니다.{" "}
+          <a href="https://dev.epicgames.com/documentation/en-us/unreal-engine/overview-of-pixel-streaming-in-unreal-engine" target="_blank" rel="noopener noreferrer">Epic Games 기술 개요</a>
         </p>
-        <div className={styles.ueGrid}>
-          {UE_FEATURES.map((f) => (
-            <div key={f.title} className={styles.ueCard}>
-              <h3 className={styles.ueTitle}>{f.title}</h3>
-              <p className={styles.ueDesc}>{f.desc}</p>
-            </div>
-          ))}
-        </div>
       </section>
 
-      {/* Track A/B 책임 분리 */}
       <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>작업 트랙 분리</h2>
+        <h2 className={styles.sectionTitle}>단계별 로드맵</h2>
         <p className={styles.sectionDesc}>
-          UE5 템플릿 제작(Track A)은 내부에서, Orbitron 배포 파이프라인(Track B)은 외부 AI 가 담당합니다. 두 트랙은 템플릿 zip 샘플 · manifest 스펙 · 어드민 HTTP 계약만 공유합니다.
+          달력상의 주차나 완료율 대신 다음 경험을 공개하기 위한 기준을 표시합니다.
+          공유 공간과 공간 내 AI 업무는 검증 결과에 따라 공개 범위가 정해집니다.
         </p>
-        <div className={styles.archGrid}>
-          {TRACK_SPLIT.map((t) => (
-            <div key={t.track} className={styles.archCard}>
-              <div className={styles.archHeader}>
-                <h3 className={styles.archLayer}>{t.track}</h3>
-                <code className={styles.archTech}>{t.scope}</code>
-              </div>
-              <ul className={styles.phaseTasks}>
-                {t.items.map((x, i) => <li key={i}>{x}</li>)}
-              </ul>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* 로드맵 */}
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>개발 로드맵 (Phase 0 ~ 7)</h2>
         <div className={styles.timeline}>
-          {PHASES.map((p, i) => (
-            <div key={i} className={`${styles.phase} ${p.status === "in-progress" ? styles.phaseActive : ""}`}>
-              <div className={styles.phaseMarker}>
-                <div className={`${styles.phaseDot} ${p.status === "in-progress" ? styles.phaseDotActive : ""}`} />
-                {i < PHASES.length - 1 && <div className={styles.phaseLine} />}
+          {PHASES.map((phase, index) => (
+            <article key={phase.phase} className={`${styles.phase} ${phase.active ? styles.phaseActive : ""}`}>
+              <div className={styles.phaseMarker} aria-hidden="true">
+                <div className={`${styles.phaseDot} ${phase.active ? styles.phaseDotActive : ""}`} />
+                {index < PHASES.length - 1 && <div className={styles.phaseLine} />}
               </div>
               <div className={styles.phaseContent}>
                 <div className={styles.phaseMeta}>
-                  <span className={styles.phaseLabel}>{p.phase}</span>
-                  <span className={styles.phasePeriod}>{p.period}</span>
-                  {p.status === "in-progress" && <span className={styles.phaseStatus}>진행 중</span>}
+                  <span className={styles.phaseLabel}>{phase.phase}</span>
+                  <span className={styles.phasePeriod}>{phase.status}</span>
                 </div>
-                <h3 className={styles.phaseTitle}>{p.title}</h3>
+                <h3 className={styles.phaseTitle}>{phase.title}</h3>
                 <ul className={styles.phaseTasks}>
-                  {p.tasks.map((t, j) => (
-                    <li key={j}>{t}</li>
-                  ))}
+                  {phase.tasks.map((task) => <li key={task}>{task}</li>)}
                 </ul>
               </div>
-            </div>
+            </article>
           ))}
         </div>
       </section>
 
-      {/* 후속 Phase C 예고 */}
       <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>Phase C (후속)</h2>
+        <h2 className={styles.sectionTitle}>공개 전 확인할 품질 기준</h2>
+        <div className={styles.ueGrid}>
+          {QUALITY_GATES.map((gate) => (
+            <article key={gate.title} className={styles.ueCard}>
+              <h3 className={styles.ueTitle}>{gate.title}</h3>
+              <p className={styles.ueDesc}>{gate.desc}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>기술 선택과 현재 체험</h2>
         <p className={styles.sectionDesc}>
-          Phase B 완료 후: 멀티 테넌시 · 사용자별 격리 · 결제. 스키마에는 owner_user_id / tenant_id / pinned 필드가 이미 선예약돼 있어 Phase C 진입 시 스키마 변경 없이 정책만 추가됩니다.
+          프로젝트의 UE5 5.7.4 기반 구성은 공식 배포 버전과 호환성을 확인하며 관리합니다.
+          Epic은 엔진 버전에 맞는 스트리밍 서버·플레이어 버전 사용을 안내합니다.
+          최신 문서의 기능이 프로젝트에 모두 적용되었다는 의미는 아닙니다.{" "}
+          <a href="https://github.com/EpicGames/PixelStreamingInfrastructure" target="_blank" rel="noopener noreferrer">공식 Pixel Streaming Infrastructure</a>
+        </p>
+        <p className={styles.sectionDesc}>
+          <Link to="/twinversedesk/launch">현재 3D 실행 환경 확인</Link>{" · "}
+          <Link to="/twinversedesk/analysis">제품과 기술 분석</Link>{" · "}
+          <Link to="/twinversedesk/run">TVDesk 2D 오피스</Link>
         </p>
       </section>
     </div>

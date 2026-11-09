@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import styles from "./VisionPage.module.css";
+import { TechnologyReferences } from "../components/Introduction";
+import { CONTENT_REVIEWED_AT } from "../data/platformContent";
 
 /* ── Data ── */
 const PILLARS = [
@@ -8,53 +10,53 @@ const PILLARS = [
     num: "01",
     title: "Photorealistic Virtual Space",
     sub: "포토리얼리스틱 가상 공간",
-    desc: "Unreal Engine 5의 Nanite, Lumen, Ray Tracing으로 현실과 구별할 수 없는 가상 세계를 구현합니다. 4K~16K 해상도, 120fps의 극한 몰입 경험.",
+    desc: "Unreal Engine 기반의 몰입형 공간을 작업과 창작의 무대로 발전시킵니다. 고해상도 표현은 장기 지향점이며, 실제 스트리밍 품질은 콘텐츠·서버·연결 환경을 기준으로 검증합니다.",
     accent: "var(--neon-cyan)",
   },
   {
     num: "02",
     title: "AI-Powered 1-Person Enterprise",
     sub: "AI 1인 기업 시스템",
-    desc: "50명의 AI 전문가 에이전트가 당신의 가상 사무실에서 함께 일합니다. 기획, 개발, 디자인, 마케팅, 법률, 재무 — 혼자서도 세계적 기업을 운영하세요.",
+    desc: "기획, 개발, 디자인, 마케팅 등 역할별 에이전트가 협업하는 1인 기업 환경을 목표로 합니다. 현재의 관리자용 에이전트 콘솔을 기반으로, 50종 전문가 역할과 공간 안의 작업 연결을 장기적으로 확장합니다.",
     accent: "var(--neon-violet)",
   },
   {
     num: "03",
     title: "Pixel Streaming Desktop",
     sub: "브라우저 기반 가상 데스크탑",
-    desc: "TwinverseDesk는 브라우저만으로 접속하는 UE5 가상 데스크탑입니다. 설치 없이, 어디서든, 어떤 기기에서든 당신만의 디지털 세계에 접속하세요.",
+    desc: "TwinverseDesk는 Pixel Streaming을 활용한 가상 작업 공간입니다. 준비된 서버의 실행 화면을 브라우저에서 조작하며, 기기와 네트워크 조건에 맞는 접속 경험을 다듬어 갑니다.",
     accent: "var(--neon-green)",
   },
   {
     num: "04",
     title: "Digital Economy Ecosystem",
     sub: "디지털 경제 생태계",
-    desc: "크리에이터, 기업, AI가 함께 만드는 새로운 경제. 디지털 자산 마켓, AI 서비스 거래, 가상 부동산 — 무한한 기회의 플랫폼.",
+    desc: "크리에이터의 자산과 서비스가 새로운 가치로 이어지는 생태계를 구상합니다. 디지털 자산의 유통, AI 서비스 협업과 수익화는 신뢰할 수 있는 운영 기반 위에서 단계적으로 검토할 장기 목표입니다.",
     accent: "var(--gold-500)",
   },
 ];
 
 const STATS = [
-  { value: "25M", label: "목표 사용자", sub: "2034년 직접 사용자" },
-  { value: "100M", label: "간접 사용자", sub: "글로벌 영향 범위" },
-  { value: "50", label: "AI 전문가", sub: "1인 기업당 에이전트" },
-  { value: "4,770", label: "억원 매출", sub: "2034년 목표" },
+  { value: "25M", label: "직접 사용자 목표", sub: "2034년 장기 비전" },
+  { value: "100M", label: "간접 사용자 목표", sub: "2034년 장기 비전" },
+  { value: "50", label: "AI 전문가 역할 목표", sub: "현재 제공 수량이 아닙니다" },
+  { value: "4,770", label: "억원 매출 목표", sub: "2034년 장기 비전" },
 ];
 
 const TIMELINE = [
-  { phase: "Phase 1", year: "2026", title: "Foundation", desc: "웹 포탈 구축 + UE5 기반 TwinverseDesk 프로토타입", status: "active" },
-  { phase: "Phase 2", year: "2026–27", title: "Streaming", desc: "Pixel Streaming 연동 — 브라우저에서 UE5 가상 공간 접속", status: "next" },
-  { phase: "Phase 3", year: "2027–28", title: "AI Integration", desc: "TwinverseDesk 내 AI 비서 50종 에이전트 통합", status: "future" },
-  { phase: "Phase 4", year: "2028–30", title: "Metaverse", desc: "멀티유저 가상 공간, 아바타, 소셜 네트워크 구축", status: "future" },
-  { phase: "Phase 5", year: "2030–32", title: "AI Enterprise", desc: "AI 1인 기업 시스템 — 12만 기업, 평균 매출 3억원", status: "future" },
-  { phase: "Phase 6", year: "2032–34", title: "Platform Economy", desc: "디지털 자산 마켓, 크리에이터 수익화, 글로벌 확장", status: "future" },
+  { phase: "Phase 1", year: "현재 기반", title: "웹 포털과 운영 도구", desc: "소개·디자인·커뮤니티와 관리자용 AI 콘솔, 이메일 보고서를 연결한 웹 기반", status: "active" },
+  { phase: "Phase 2", year: "연동·검증 중", title: "브라우저 가상 공간", desc: "UE5 Solo 환경의 스트리밍 진입과 연결 경험을 검증하고 안정성 개선", status: "active" },
+  { phase: "Phase 3", year: "다음 확장", title: "공간과 AI의 연결", desc: "기존 AI 연동 코드를 바탕으로 공간 안의 대화·업무 연결과 사용자별 권한 검증", status: "next" },
+  { phase: "Phase 4", year: "계획", title: "함께 쓰는 가상 사무실", desc: "여러 사용자의 접속, 아바타, 소통과 공동 작업 경험을 단계별 검증", status: "future" },
+  { phase: "Phase 5", year: "장기 목표", title: "AI 1인 기업", desc: "50종 전문가 역할과 비즈니스 도구가 이어지는 작업 체계 구축", status: "future" },
+  { phase: "Phase 6", year: "장기 목표", title: "크리에이터 생태계", desc: "디지털 자산과 AI 서비스를 중심으로 협업·유통·수익화 모델 확장", status: "future" },
 ];
 
 const TECH_STACK = [
-  { category: "렌더링", items: ["UE5 Nanite", "Lumen GI", "Ray Tracing", "World Partition"] },
-  { category: "AI", items: ["GPT-4o", "Claude Opus", "Gemini", "DALL-E 3", "Veo 3"] },
-  { category: "스트리밍", items: ["Pixel Streaming 2", "WebRTC", "NVENC", "Edge CDN"] },
-  { category: "인프라", items: ["Docker GPU", "Kubernetes", "PostgreSQL", "Zero-Trust"] },
+  { category: "가상 공간", items: ["Unreal Engine", "Pixel Streaming 2", "WebRTC"] },
+  { category: "AI 운영", items: ["OpenClaw", "역할별 에이전트", "Ollama · 외부 모델 연결"] },
+  { category: "웹 애플리케이션", items: ["React", "FastAPI", "WebSocket"] },
+  { category: "서비스 기반", items: ["Docker", "PostgreSQL", "Orbitron 배포"] },
 ];
 
 /* ── Intersection Observer Hook ── */
@@ -82,6 +84,8 @@ function StarField() {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
     let animId;
     let stars = [];
 
@@ -119,7 +123,7 @@ function StarField() {
         ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
         ctx.fill();
       }
-      animId = requestAnimationFrame(draw);
+      if (!reducedMotion.matches) animId = requestAnimationFrame(draw);
     }
 
     resize();
@@ -127,7 +131,7 @@ function StarField() {
     window.addEventListener("resize", resize);
     return () => { cancelAnimationFrame(animId); window.removeEventListener("resize", resize); };
   }, []);
-  return <canvas ref={canvasRef} className={styles.starField} />;
+  return <canvas ref={canvasRef} className={styles.starField} aria-hidden="true" />;
 }
 
 function StatBlock({ value, label, sub, delay }) {
@@ -196,14 +200,14 @@ export default function VisionPage() {
         <StarField />
         <div className={styles.heroGlow} />
         <div className={styles.heroContent}>
-          <span className={styles.heroOverline}>THE FUTURE IS HERE</span>
+          <span className={styles.heroOverline}>THE WORLD WE ARE BUILDING</span>
           <h1 className={styles.heroTitle}>
             인간과 AI가<br />
             <span className={styles.heroGradient}>공존하는 세계</span>
           </h1>
           <p className={styles.heroDesc}>
-            Twinverse Platform은 포토리얼리스틱 가상 공간에서<br className={styles.brDesktop} />
-            50명의 AI 전문가와 함께 일하고, 창조하고, 성장하는 차세대 플랫폼입니다.
+            Twinverse Platform은 가상 공간과 AI 동료를 연결해<br className={styles.brDesktop} />
+            누구나 일하고, 창조하고, 성장할 수 있는 생태계를 만들어 갑니다.
           </p>
           <div className={styles.heroActions}>
             <a href="#pillars" className={styles.heroPrimary}>비전 탐색하기</a>
@@ -217,7 +221,8 @@ export default function VisionPage() {
       </section>
 
       {/* ━━━ Stats Bar ━━━ */}
-      <section ref={statsRef} className={`${styles.statsBar} ${statsVisible ? styles.statsBarVisible : ""}`}>
+      <p className={styles.goalNote}>아래 수치는 2034년을 향한 장기 목표이며 현재 실적이나 제공 기능을 의미하지 않습니다.</p>
+      <section ref={statsRef} aria-label="장기 비전 목표" className={`${styles.statsBar} ${statsVisible ? styles.statsBarVisible : ""}`}>
         {STATS.map((s, i) => (
           <StatBlock key={s.label} {...s} delay={i * 150} />
         ))}
@@ -230,7 +235,7 @@ export default function VisionPage() {
           <h2 className={styles.sectionTitle}>플랫폼의 4대 축</h2>
           <p className={styles.sectionDesc}>
             Twinverse Platform은 네 가지 핵심 기둥 위에 세워집니다.<br className={styles.brDesktop} />
-            각각이 독립적인 혁신이며, 함께 결합하면 전에 없던 생태계가 탄생합니다.
+            현재의 웹·스트리밍·AI 도구를 연결하며 이 방향으로 발전시킵니다.
           </p>
         </div>
         <div className={styles.pillarsGrid}>
@@ -249,15 +254,15 @@ export default function VisionPage() {
               TwinverseDesk
             </h2>
             <p className={styles.showcaseDesc}>
-              브라우저를 열면 당신만의 가상 사무실이 펼쳐집니다.
-              UE5 Pixel Streaming으로 구현된 포토리얼리스틱 데스크탑에서
-              50명의 AI 전문가가 대기하고 있습니다.
+              TwinverseDesk는 플랫폼의 핵심 진입점이자 미래의 작업 공간입니다.
+              지금은 브라우저에서 UE5 Solo 환경에 접속하는 흐름을 검증하고,
+              AI 동료와 협업하는 경험으로 확장하고 있습니다.
             </p>
             <ul className={styles.showcaseList}>
-              <li>설치 없음 — 브라우저만으로 접속</li>
-              <li>50종 AI 에이전트 — 기획부터 법률까지</li>
-              <li>4K 120fps — 현실과 구별 불가능한 품질</li>
-              <li>어디서든 — PC, 태블릿, 모바일</li>
+              <li>현재: 브라우저 스트리밍 실행 화면과 공간 선택</li>
+              <li>이용 조건: 서버 가동, 사용 가능한 세션과 호환 브라우저</li>
+              <li>다음 단계: 가상 공간과 AI 작업의 통합 검증</li>
+              <li>장기 방향: 멀티유저 사무실과 역할별 전문가 협업</li>
             </ul>
             <Link to="/twinversedesk/launch" className={styles.showcaseCta}>
               TwinverseDesk 시작하기
@@ -269,7 +274,7 @@ export default function VisionPage() {
               <div className={styles.deskScreen}>
                 <div className={styles.deskTopBar}>
                   <div className={styles.deskDots}><span /><span /><span /></div>
-                  <span className={styles.deskTitle}>TwinverseDesk v1.0</span>
+                  <span className={styles.deskTitle}>TwinverseDesk · 작업 공간 콘셉트</span>
                 </div>
                 <div className={styles.deskBody}>
                   <div className={styles.deskSidebar}>
@@ -299,10 +304,10 @@ export default function VisionPage() {
       <section className={styles.timelineSection}>
         <div className={styles.sectionIntro}>
           <span className={styles.overline}>ROADMAP</span>
-          <h2 className={styles.sectionTitle}>여정의 시작</h2>
+          <h2 className={styles.sectionTitle}>현재의 기반에서 다음 경험으로</h2>
           <p className={styles.sectionDesc}>
-            2026년 첫 발걸음부터 2034년 글로벌 플랫폼까지 —<br className={styles.brDesktop} />
-            매 단계가 새로운 가능성의 문을 엽니다.
+            공개된 기반과 진행 중인 검증, 장기 목표를 구분합니다.<br className={styles.brDesktop} />
+            이후 단계는 기술·운영 검증에 따라 구체화하며 출시 일정을 확약하지 않습니다.
           </p>
         </div>
         <div className={styles.timeline}>
@@ -317,7 +322,8 @@ export default function VisionPage() {
       <section ref={techRef} className={`${styles.techSection} ${techVisible ? styles.techVisible : ""}`}>
         <div className={styles.sectionIntro}>
           <span className={styles.overline}>TECHNOLOGY</span>
-          <h2 className={styles.sectionTitle}>최전선의 기술</h2>
+          <h2 className={styles.sectionTitle}>현재 제품을 이루는 기술</h2>
+          <p className={styles.sectionDesc}>특정 모델의 이름보다 작업 적합성, 연결 안정성, 사용 경험을 기준으로 발전시킵니다.</p>
         </div>
         <div className={styles.techGrid}>
           {TECH_STACK.map((cat) => (
@@ -334,12 +340,13 @@ export default function VisionPage() {
       </section>
 
       {/* ━━━ CTA ━━━ */}
+      <TechnologyReferences />
       <section ref={ctaRef} className={`${styles.cta} ${ctaVisible ? styles.ctaVisible : ""}`}>
         <div className={styles.ctaGlow} />
-        <h2 className={styles.ctaTitle}>미래는 기다려주지 않습니다</h2>
+        <h2 className={styles.ctaTitle}>다음 작업 방식을 함께 만드세요</h2>
         <p className={styles.ctaDesc}>
-          Twinverse Platform에서 당신의 AI 파트너 50명이 기다리고 있습니다.<br className={styles.brDesktop} />
-          지금 시작하세요.
+          지금 준비된 경험을 살펴보고, 앞으로 필요한 기능을 이야기해 주세요.<br className={styles.brDesktop} />
+          소개·개발 현황 확인: {CONTENT_REVIEWED_AT}
         </p>
         <div className={styles.ctaActions}>
           <Link to="/twinversedesk/launch" className={styles.ctaPrimary}>TwinverseDesk 시작</Link>

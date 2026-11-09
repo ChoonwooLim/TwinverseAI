@@ -5,6 +5,7 @@ import Sidebar from "./Sidebar";
 import Footer from "./Footer";
 import OpenClawConsoleSession from "./OpenClawConsoleSession";
 import RouteErrorBoundary from "../RouteErrorBoundary";
+import PageMetadata from "./PageMetadata";
 import { isOpenClawPath } from "./openClawNavigation";
 import styles from "./MainLayout.module.css";
 
@@ -21,6 +22,7 @@ export default function MainLayout() {
 
   return (
     <div className={styles.layout}>
+      <PageMetadata />
       <TopBar />
       <div className={styles.body}>
         {sidebarSection && <Sidebar section={sidebarSection} />}
