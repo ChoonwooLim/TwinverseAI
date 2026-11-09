@@ -44,7 +44,7 @@ export default function AdminOpenClawConsole() {
   }, []);
 
   return (
-    <div className={styles.page}>
+    <div className={`${styles.page} ${activeKey === "chat" ? styles.chatPage : ""}`}>
       <div className={styles.pageHeader}>
         <span className={styles.overline}>OpenClaw Console</span>
         <h1 className={styles.title}>OpenClaw 관리 콘솔</h1>

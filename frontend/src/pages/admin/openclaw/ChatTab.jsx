@@ -79,6 +79,41 @@ const readFileAsText = (file) => new Promise((resolve, reject) => {
 });
 
 const CONV_BASE = "/api/admin/openclaw/console/conversations";
+const SIDEBAR_STORAGE_KEY = "openclaw:chat-sidebars";
+
+function readSidebarPreferences() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(SIDEBAR_STORAGE_KEY));
+    return { agents: saved?.agents === true, conversations: saved?.conversations === true };
+  } catch {
+    return { agents: false, conversations: false };
+  }
+}
+
+function ChatSidebar({ id, title, collapsed, onToggle, className, children }) {
+  const action = `${title} ${collapsed ? "펼치기" : "접기"}`;
+  return (
+    <aside className={`${className} ${collapsed ? styles.sidebarCollapsed : ""}`} aria-label={title}>
+      <button
+        type="button"
+        className={styles.sidebarToggle}
+        onClick={onToggle}
+        aria-label={action}
+        aria-expanded={!collapsed}
+        aria-controls={id}
+        title={action}
+      >
+        <span className={styles.sidebarTitle}>{title}</span>
+        <svg className={styles.sidebarChevron} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="m14 6-6 6 6 6" />
+        </svg>
+      </button>
+      <div id={id} className={styles.sidebarContent} hidden={collapsed}>
+        {children}
+      </div>
+    </aside>
+  );
+}
 
 const truncateReplayText = (value, limit = REPLAY_MSG_CHAR_LIMIT) => {
   const text = String(value || "");
@@ -212,6 +247,19 @@ const MessageBubble = memo(function MessageBubble({ message, agentId }) {
 export default function ChatTab() {
   const [agents, setAgents] = useState([]);
   const [selectedAgent, setSelectedAgent] = useState(null);
+  const [collapsedSidebars, setCollapsedSidebars] = useState(readSidebarPreferences);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SIDEBAR_STORAGE_KEY, JSON.stringify(collapsedSidebars));
+    } catch {
+      // Panel controls still work when browser storage is unavailable.
+    }
+  }, [collapsedSidebars]);
+
+  const toggleSidebar = (panel) => {
+    setCollapsedSidebars((previous) => ({ ...previous, [panel]: !previous[panel] }));
+  };
 
   // Conversations per agent (sidebar column #2)
   const [convsByAgent, setConvsByAgent] = useState({}); // {agentId: Conv[]}
@@ -675,7 +723,7 @@ export default function ChatTab() {
   };
 
   return (
-    <div>
+    <div className={styles.chatWorkspace}>
       <div className={styles.toolbar}>
         {connState === "idle" || connState === "closed" ? (
           <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={connect}>연결</button>
@@ -685,12 +733,15 @@ export default function ChatTab() {
         {err && <span className={styles.errMsg}>{err}</span>}
       </div>
 
-      <div className={styles.chatLayout}>
+      <div className={`${styles.chatLayout} ${collapsedSidebars.agents ? styles.agentsCollapsed : ""} ${collapsedSidebars.conversations ? styles.conversationsCollapsed : ""}`}>
         {/* Column 1: Agents */}
-        <div className={styles.chatSidebar}>
-          <div style={{ fontSize: "0.72rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "#888", marginBottom: "0.5rem" }}>
-            에이전트
-          </div>
+        <ChatSidebar
+          id="openclaw-chat-agents"
+          title="에이전트"
+          className={styles.chatSidebar}
+          collapsed={collapsedSidebars.agents}
+          onToggle={() => toggleSidebar("agents")}
+        >
           {agents.length === 0 ? (
             <div className={styles.empty}>에이전트 없음</div>
           ) : agents.map((a) => {
@@ -722,13 +773,16 @@ export default function ChatTab() {
               </div>
             );
           })}
-        </div>
+        </ChatSidebar>
 
         {/* Column 2: Conversations for selected agent */}
-        <div className={styles.convSidebar}>
-          <div style={{ fontSize: "0.72rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "#888", marginBottom: "0.35rem" }}>
-            대화 목록
-          </div>
+        <ChatSidebar
+          id="openclaw-chat-conversations"
+          title="대화 목록"
+          className={styles.convSidebar}
+          collapsed={collapsedSidebars.conversations}
+          onToggle={() => toggleSidebar("conversations")}
+        >
           <button
             className={styles.convNewBtn}
             onClick={() => selectedAgent && createConversation(selectedAgent)}
@@ -789,7 +843,7 @@ export default function ChatTab() {
               </div>
             );
           })}
-        </div>
+        </ChatSidebar>
 
         {/* Column 3: Chat main */}
         <div className={styles.chatMain}>

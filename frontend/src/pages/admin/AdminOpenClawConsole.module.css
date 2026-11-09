@@ -1,4 +1,5 @@
 .page { max-width: 1400px; }
+.chatPage { max-width: none; min-width: 0; }
 
 .pageHeader {
   padding: var(--sp-8, 2.5rem) 0 var(--sp-5, 1.25rem);
@@ -236,23 +237,72 @@ select.input option {
 
 /* ---------- Chat-specific ---------- */
 
+.chatWorkspace {
+  container-type: inline-size;
+  min-width: 0;
+}
+
 .chatLayout {
+  --agents-width: 240px;
+  --conversations-width: 220px;
   display: grid;
-  grid-template-columns: 240px 220px 1fr;
+  grid-template-columns: var(--agents-width) var(--conversations-width) minmax(0, 1fr);
   gap: 1rem;
   height: 70vh;
   min-height: 500px;
 }
 
+.agentsCollapsed { --agents-width: 44px; }
+.conversationsCollapsed { --conversations-width: 44px; }
+
+.chatSidebar,
 .convSidebar {
   background: rgba(255,255,255,0.02);
   border: 1px solid rgba(255,255,255,0.08);
   border-radius: 8px;
-  padding: 0.5rem;
-  overflow-y: auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebarToggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  width: 100%;
+  min-height: 44px;
+  padding: 0.65rem 0.75rem;
+  border: 0;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  background: transparent;
+  color: #bbb;
+  font: inherit;
+  cursor: pointer;
+}
+.sidebarToggle:hover { background: rgba(168,85,247,0.12); color: #e9d5ff; }
+.sidebarToggle:focus-visible { outline: 2px solid #c4b5fd; outline-offset: -3px; }
+.sidebarTitle { font-size: 0.78rem; font-weight: 600; white-space: nowrap; }
+.sidebarChevron { flex-shrink: 0; transition: transform 0.18s ease-out; }
+.sidebarContent { flex: 1; min-height: 0; overflow-y: auto; padding: 0.75rem; }
+.sidebarContent[hidden] { display: none; }
+.convSidebar .sidebarContent {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  padding: 0.5rem;
+}
+.convSidebar .sidebarContent[hidden] { display: none; }
+.convSidebar .sidebarContent > * { flex-shrink: 0; }
+.sidebarCollapsed .sidebarToggle { flex-direction: column-reverse; justify-content: flex-end; gap: 0.75rem; padding: 0.75rem 0; border-bottom: 0; }
+.sidebarCollapsed .sidebarTitle { writing-mode: vertical-rl; letter-spacing: 0.12em; }
+.sidebarCollapsed .sidebarChevron { transform: rotate(180deg); }
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebarChevron { transition: none; }
 }
 
 .convNewBtn {
@@ -331,16 +381,11 @@ select.input option {
   text-align: center;
   line-height: 1.4;
 }
-.chatSidebar {
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 8px;
-  padding: 0.75rem;
-  overflow-y: auto;
-}
 .chatMain {
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  min-height: 0;
   background: rgba(255,255,255,0.02);
   border: 1px solid rgba(255,255,255,0.08);
   border-radius: 8px;
@@ -348,6 +393,8 @@ select.input option {
 }
 .chatMessages {
   flex: 1;
+  min-width: 0;
+  min-height: 0;
   overflow-y: auto;
   padding: 1rem;
   display: flex;
@@ -355,6 +402,7 @@ select.input option {
   gap: 0.75rem;
 }
 .msg {
+  min-width: 0;
   padding: 0.75rem 1rem;
   border-radius: 10px;
   max-width: 80%;
@@ -366,7 +414,10 @@ select.input option {
 .msgText {
   white-space: pre-wrap;
   word-break: break-word;
+  overflow-wrap: anywhere;
 }
+.msgText pre { max-width: 100%; overflow-x: auto; }
+.msgText img { max-width: 100%; height: auto; }
 .msgImages {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -476,6 +527,7 @@ select.input option {
 }
 .chatInput {
   flex: 1;
+  min-width: 0;
   background: rgba(255,255,255,0.05);
   border: 1px solid rgba(255,255,255,0.12);
   color: #fff;
@@ -487,6 +539,21 @@ select.input option {
   outline: none;
 }
 .chatInput:focus { border-color: #a855f7; }
+
+@container (max-width: 720px) {
+  .chatLayout {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+    height: auto;
+    gap: 0.5rem;
+  }
+  .sidebarContent { max-height: 220px; }
+  .sidebarCollapsed .sidebarToggle { flex-direction: row; justify-content: space-between; gap: 0.5rem; padding: 0.65rem 0.75rem; }
+  .sidebarCollapsed .sidebarTitle { writing-mode: horizontal-tb; letter-spacing: normal; }
+  .chatMain { grid-column: 1 / -1; height: 70vh; min-height: 400px; }
+  .chatInputRow { padding: 0.5rem; }
+  .chatInputRow .btn { padding: 0.5rem; }
+}
 
 .attachStrip {
   display: flex;

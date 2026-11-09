@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { OPENCLAW_ITEMS, isOpenClawPath } from "./openClawNavigation";
 import styles from "./TopBar.module.css";
 
 const NAV_ITEMS = [
@@ -19,15 +20,57 @@ const DESK_ITEMS = [
   { label: "TVDesk 실행", path: "/twinversedesk/run" },
 ];
 
+function NavigationDropdown({ id, label, items, active, open, onToggle, onNavigate, pathname }) {
+  return (
+    <div className={styles.dropdown}>
+      <button
+        type="button"
+        className={`${styles.navLink} ${styles.dropdownTrigger} ${active ? styles.active : ""}`}
+        onClick={onToggle}
+        aria-expanded={open}
+        aria-controls={id}
+      >
+        {label}
+        <svg className={`${styles.chevron} ${open ? styles.chevronOpen : ""}`} width="10" height="6" viewBox="0 0 10 6" fill="none" aria-hidden="true">
+          <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      <div id={id} className={styles.dropdownMenu} hidden={!open}>
+        {items.map((item) => {
+          const current = pathname.replace(/\/$/, "") === item.path;
+          return (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={`${styles.dropdownItem} ${current ? styles.dropdownItemActive : ""}`}
+              aria-current={current ? "page" : undefined}
+              onClick={onNavigate}
+            >
+              {item.label}
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function TopBar() {
   const location = useLocation();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [deskOpen, setDeskOpen] = useState(false);
-  const deskRef = useRef(null);
+  const [openDropdown, setOpenDropdown] = useState(null);
+  const navRef = useRef(null);
+  const menuButtonRef = useRef(null);
   const token = localStorage.getItem("token");
   const user = JSON.parse(localStorage.getItem("user") || "null");
   const isAdmin = user?.role === "admin" || user?.role === "superadmin";
+  const isOpenClawPage = isOpenClawPath(location.pathname);
+
+  const closeMenus = () => {
+    setOpenDropdown(null);
+    setMenuOpen(false);
+  };
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -42,22 +85,46 @@ function TopBar() {
 
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (deskRef.current && !deskRef.current.contains(e.target)) {
-        setDeskOpen(false);
+      if (!navRef.current?.contains(e.target) && !menuButtonRef.current?.contains(e.target)) {
+        setOpenDropdown(null);
+        setMenuOpen(false);
       }
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    const handleEscape = (e) => {
+      if (e.key !== "Escape") return;
+      const trigger = navRef.current?.querySelector('button[aria-expanded="true"]');
+      if (trigger) {
+        setOpenDropdown(null);
+        trigger.focus();
+      } else if (menuButtonRef.current?.getAttribute("aria-expanded") === "true") {
+        setMenuOpen(false);
+        menuButtonRef.current.focus();
+      }
+    };
+    document.addEventListener("pointerdown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("pointerdown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
   }, []);
 
   return (
     <header className={styles.topbar}>
       <div className={styles.inner}>
         <Link to="/" className={styles.logo}>TwinverseAI</Link>
-        <button className={styles.hamburger} onClick={() => setMenuOpen(!menuOpen)} aria-label="메뉴 열기">
+        <button
+          ref={menuButtonRef}
+          type="button"
+          className={styles.hamburger}
+          onClick={() => { setMenuOpen(!menuOpen); setOpenDropdown(null); }}
+          aria-label={menuOpen ? "메뉴 닫기" : "메뉴 열기"}
+          aria-expanded={menuOpen}
+          aria-controls="main-navigation"
+        >
           <span /><span /><span />
         </button>
-        <nav className={`${styles.nav} ${menuOpen ? styles.navOpen : ""}`}>
+        <nav id="main-navigation" ref={navRef} aria-label="메인 메뉴" className={`${styles.nav} ${menuOpen ? styles.navOpen : ""}`}>
           {NAV_ITEMS.map((item) =>
             item.external ? (
               <a
@@ -66,7 +133,7 @@ function TopBar() {
                 target={item.newTab ? "_blank" : undefined}
                 rel={item.newTab ? "noopener noreferrer" : undefined}
                 className={styles.navLink}
-                onClick={() => setMenuOpen(false)}
+                onClick={closeMenus}
               >
                 {item.label}
               </a>
@@ -75,41 +142,38 @@ function TopBar() {
                 key={item.path}
                 to={item.path}
                 className={`${styles.navLink} ${isActive(item.path) ? styles.active : ""}`}
-                onClick={() => setMenuOpen(false)}
+                onClick={closeMenus}
               >
                 {item.label}
               </Link>
             )
           )}
-          <div className={styles.dropdown} ref={deskRef}>
-            <button
-              className={`${styles.navLink} ${styles.dropdownTrigger} ${isActive("/twinversedesk") ? styles.active : ""}`}
-              onClick={() => setDeskOpen((v) => !v)}
-            >
-              TwinverseDesk
-              <svg className={`${styles.chevron} ${deskOpen ? styles.chevronOpen : ""}`} width="10" height="6" viewBox="0 0 10 6" fill="none">
-                <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
-            {deskOpen && (
-              <div className={styles.dropdownMenu}>
-                {DESK_ITEMS.map((item) => (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    className={`${styles.dropdownItem} ${location.pathname === item.path ? styles.dropdownItemActive : ""}`}
-                    onClick={() => { setDeskOpen(false); setMenuOpen(false); }}
-                  >
-                    {item.label}
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
+          <NavigationDropdown
+            id="desk-navigation"
+            label="TwinverseDesk"
+            items={DESK_ITEMS}
+            active={isActive("/twinversedesk")}
+            open={openDropdown === "desk"}
+            onToggle={() => setOpenDropdown((current) => current === "desk" ? null : "desk")}
+            onNavigate={closeMenus}
+            pathname={location.pathname}
+          />
           {isAdmin && (
-            <Link to="/admin" className={`${styles.navLink} ${isActive("/admin") ? styles.active : ""}`} onClick={() => setMenuOpen(false)}>
-              관리자
-            </Link>
+            <>
+              <NavigationDropdown
+                id="openclaw-navigation"
+                label="OpenClaw"
+                items={OPENCLAW_ITEMS}
+                active={isOpenClawPage}
+                open={openDropdown === "openclaw"}
+                onToggle={() => setOpenDropdown((current) => current === "openclaw" ? null : "openclaw")}
+                onNavigate={closeMenus}
+                pathname={location.pathname}
+              />
+              <Link to="/admin" className={`${styles.navLink} ${isActive("/admin") && !isOpenClawPage ? styles.active : ""}`} onClick={closeMenus}>
+                관리자
+              </Link>
+            </>
           )}
         </nav>
         <div className={styles.auth}>
