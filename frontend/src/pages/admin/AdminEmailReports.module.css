@@ -12,6 +12,9 @@
 .panelHeader h2 { font-size: .95rem; letter-spacing: 0; }
 .panelHeader span { color: var(--text-tertiary); font-size: .72rem; }
 .reportList { overflow-y: auto; }
+.yearGroup > h3 { position: sticky; top: 0; z-index: 2; margin: 0; padding: .65rem 1.1rem .45rem; border-bottom: 1px solid var(--border-subtle); background: rgba(8,12,23,.96); color: #dbeafe; font-size: .8rem; letter-spacing: .02em; }
+.monthGroup > h4 { display: flex; justify-content: space-between; align-items: center; margin: 0; padding: .5rem 1.1rem; background: rgba(255,255,255,.025); color: var(--text-tertiary); font-size: .7rem; letter-spacing: 0; }
+.monthGroup > h4 span { color: var(--text-muted); font-size: .62rem; font-weight: 500; }
 .reportRow { width: 100%; display: block; text-align: left; padding: 1rem 1.1rem; border: 0; border-bottom: 1px solid var(--border-subtle); background: transparent; transition: background var(--dur-fast), box-shadow var(--dur-fast); cursor: pointer; }
 .reportRow:hover, .reportRow:focus-visible { background: rgba(255,255,255,.045); outline: none; }
 .reportRow:focus-visible { box-shadow: inset 0 0 0 2px rgba(0,212,255,.55); }
@@ -46,7 +49,34 @@
 .detailPlaceholder p { max-width: 340px; margin-top: .6rem; color: var(--text-tertiary); font-size: .8rem; }
 .detailContent { padding: 1.5rem; }
 .mobileBack { display: none; margin-bottom: 1rem; }
-.detailHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding-bottom: 1.2rem; border-bottom: 1px solid var(--border-subtle); }
+.reviewDocument { max-width: 820px; margin: 0 auto 1.5rem; padding: clamp(1.25rem, 4vw, 2.7rem); border: 1px solid #d6d3cc; border-radius: 3px; background: #fbfaf7; color: #20242c; box-shadow: 0 14px 35px rgba(0,0,0,.3); font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif; }
+.documentHeader { padding-bottom: 1.15rem; border-bottom: 2px solid #252b35; text-align: center; }
+.documentKicker { margin: 0 0 .45rem; color: #596273; font-size: .72rem; font-weight: 700; letter-spacing: .12em; }
+.reviewDocument .documentHeader h2 { margin: 0; color: #171b22; font-size: clamp(1.4rem, 3vw, 2rem); line-height: 1.35; letter-spacing: -.03em; }
+.documentMeta { display: flex; justify-content: center; flex-wrap: wrap; gap: .4rem 1.2rem; margin: .9rem 0 0; color: #596273; font-size: .72rem; }
+.documentMeta div { display: flex; gap: .35rem; min-width: 0; }
+.documentMeta dt { font-weight: 700; }
+.documentMeta dd { min-width: 0; margin: 0; overflow-wrap: anywhere; }
+.documentConclusion { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .5rem 1rem; align-items: center; margin: 1.35rem 0; padding: 1rem 1.1rem; border-left: 4px solid #b4232d; background: #f3eee9; }
+.documentConclusion h3 { grid-column: 1 / -1; margin: 0; color: #242a33; font-size: .82rem; letter-spacing: .04em; }
+.documentConclusion p { margin: 0; color: #343b46; font-size: .86rem; line-height: 1.7; overflow-wrap: anywhere; }
+.documentConclusion strong { padding: .35rem .6rem; border: 1px solid #b4232d; border-radius: 3px; color: #951e27; font-size: .74rem; white-space: nowrap; }
+.documentBody > h3 { margin: 0 0 .8rem; color: #242a33; font-size: 1rem; }
+.documentEmpty { margin: 0; padding: 1rem; border: 1px dashed #bbb7ae; color: #596273; font-size: .82rem; line-height: 1.7; text-align: center; }
+.reviewList { margin: 0; padding: 0; list-style: none; counter-reset: review-item; }
+.reviewList > li { counter-increment: review-item; }
+.reviewEntry { position: relative; padding: 1.15rem 0 1.15rem 2rem; border-top: 1px solid #dcd9d2; }
+.reviewEntry::before { content: counter(review-item) '.'; position: absolute; top: 1.15rem; left: .15rem; color: #303743; font-weight: 800; }
+.reviewEntryHeading { display: flex; align-items: flex-start; gap: .5rem; min-width: 0; }
+.reviewEntryHeading h4 { min-width: 0; margin: -.05rem 0 .65rem; color: #171b22; font-size: .96rem; line-height: 1.5; letter-spacing: 0; overflow-wrap: anywhere; }
+.reviewEntryMeta { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .35rem 1rem; margin: 0 0 .85rem; padding: .65rem .75rem; background: #f1f2f3; }
+.reviewEntryMeta div, .reviewEntryFacts div { min-width: 0; }
+.reviewEntryMeta dt, .reviewEntryFacts dt { color: #687180; font-size: .66rem; font-weight: 700; }
+.reviewEntryMeta dd { margin: .15rem 0 0; color: #343b46; font-size: .72rem; line-height: 1.45; overflow-wrap: anywhere; }
+.reviewEntryFacts { display: grid; grid-template-columns: 1fr 1fr; gap: .7rem 1.1rem; margin: 0; }
+.reviewEntryFacts dd { margin: .18rem 0 0; color: #343b46; font-size: .8rem; line-height: 1.65; overflow-wrap: anywhere; }
+.documentFootnote { margin: .8rem 0 0; padding-top: .75rem; border-top: 1px solid #dcd9d2; color: #687180; font-size: .72rem; line-height: 1.6; }
+.detailHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: 1.2rem 0; border-top: 1px solid var(--border-subtle); border-bottom: 1px solid var(--border-subtle); }
 .detailHeader h2 { font-size: clamp(1.25rem, 2vw, 1.6rem); letter-spacing: -.02em; }
 .detailHeader p { color: var(--text-tertiary); margin-top: .45rem; font-size: .72rem; }
 .safeBadge { flex: 0 0 auto; padding: .35rem .6rem; border: 1px solid rgba(6,255,165,.25); border-radius: 999px; color: #6ee7b7; background: rgba(6,255,165,.06); font-size: .65rem; }
@@ -194,6 +224,12 @@
   .mobileBack { display: inline-flex; }
   .detailContent { padding: 1rem; }
   .detailHeader { flex-direction: column; }
+  .reviewDocument { margin-left: -.25rem; margin-right: -.25rem; padding: 1.15rem; }
+  .documentConclusion { grid-template-columns: 1fr; }
+  .documentConclusion strong { width: fit-content; white-space: normal; }
+  .reviewEntry { padding-left: 1.4rem; }
+  .reviewEntry::before { left: 0; }
+  .reviewEntryMeta, .reviewEntryFacts { grid-template-columns: 1fr; }
   .accountGrid { grid-template-columns: 1fr; }
   .summaryStrip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -204,4 +240,12 @@
   .selectLabel { width: 44px; height: 44px; margin: -.5rem -.75rem 0; }
   .sourceLink { min-height: 44px; padding: .55rem .75rem; }
   .detailErrorState { min-height: 360px; }
+}
+
+@media print {
+  .pageHeader, .reportPanel, .mobileBack, .detailHeader, .digestStrip, .metrics, .summaryStrip,
+  .section, .cleanupCard, .modalBackdrop { display: none !important; }
+  .workspace, .detailPanel, .detailContent { display: block !important; max-height: none; overflow: visible; padding: 0; border: 0; box-shadow: none; background: white; }
+  .reviewDocument { max-width: none; margin: 0; padding: 12mm 15mm; border: 0; box-shadow: none; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  .reviewEntry { break-inside: avoid; }
 }

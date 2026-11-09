@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../../services/api";
+import { buildEmailReviewDigest, groupEmailReportsByMonth } from "../../utils/emailReviewReport";
 import { buildEmailSourceLink } from "../../utils/emailSourceLink";
 import styles from "./AdminEmailReports.module.css";
 
@@ -85,6 +86,72 @@ function PriorityBadge({ priority }) {
 function RiskTag({ tag }) {
   if (!RISK_TAG_LABELS[tag]) return null;
   return <span className={`${styles.riskTag} ${styles[`risk_${tag}`]}`}>{RISK_TAG_LABELS[tag]}</span>;
+}
+
+function ReviewDocument({ report, digest }) {
+  const count = digest.reviewItems.length;
+  const conclusion = count === 0
+    ? "오늘 새로 수신된 메일 중 반드시 검토할 긴급·중요 항목은 없습니다."
+    : `오늘 새로 수신된 메일 가운데 ${count}건은 사용자의 검토가 필요하며, 이 중 ${digest.immediateCount}건은 즉시 확인이 권장됩니다.`;
+
+  return (
+    <section className={styles.reviewDocument} aria-labelledby="new-mail-review-title">
+      <header className={styles.documentHeader}>
+        <p className={styles.documentKicker}>일일 신규 메일 검토 보고서</p>
+        <h2 id="new-mail-review-title">반드시 확인할 새 메일 요약</h2>
+        <dl className={styles.documentMeta}>
+          <div><dt>작성일</dt><dd><time dateTime={digest.reportDate}>{formatDate(digest.reportDate)}</time></dd></div>
+          <div><dt>보고서</dt><dd>{report.reportKey || "일일 보고서"}</dd></div>
+        </dl>
+      </header>
+
+      <div className={styles.documentConclusion}>
+        <h3>전체 결론</h3>
+        <p>{conclusion}</p>
+        <strong aria-label={`즉시 확인 ${digest.immediateCount}건`}>즉시 확인 {digest.immediateCount}건</strong>
+      </div>
+
+      <div className={styles.documentBody}>
+        <h3>핵심 검토 목록</h3>
+        {count === 0 ? (
+          <p className={styles.documentEmpty}>현재 기준으로 검토할 새 긴급·중요 메일이 없습니다. 아래 상세 목록에서 이전 항목과 처리 기록을 확인할 수 있습니다.</p>
+        ) : (
+          <ol className={styles.reviewList}>
+            {digest.reviewItems.map((item) => (
+              <li key={item.id || `${item.account}-${item.subject}-${item.receivedAt || "legacy"}`}>
+                <article className={styles.reviewEntry}>
+                  <div className={styles.reviewEntryHeading}>
+                    <PriorityBadge priority={item.priority} />
+                    <h4>{item.subject || "제목 없음"}</h4>
+                  </div>
+                  <dl className={styles.reviewEntryMeta}>
+                    <div><dt>계정</dt><dd>{item.account || "정보 없음"}</dd></div>
+                    <div><dt>보낸사람</dt><dd>{item.sender || "정보 없음"}</dd></div>
+                    <div>
+                      <dt>수신시각</dt>
+                      <dd>{item.receivedTimeUnknown ? "수신시각 확인 필요" : <time dateTime={item.receivedAt}>{formatDate(item.receivedAt, true)}</time>}</dd>
+                    </div>
+                  </dl>
+                  <dl className={styles.reviewEntryFacts}>
+                    <div><dt>요약</dt><dd>{item.summary || "제공된 요약이 없어 제목과 발신 정보를 먼저 확인해야 합니다."}</dd></div>
+                    <div><dt>중요 이유</dt><dd>{item.reason || item.classificationBasis || "중요 항목으로 분류되어 사용자 확인이 필요합니다."}</dd></div>
+                    <div><dt>시급성</dt><dd>{item.urgency || (item.priority === "urgent" ? "가능한 한 즉시 확인" : "오늘 중 확인 권장")}</dd></div>
+                    <div><dt>권장 조치</dt><dd>{item.recommendedAction || "메일 상세를 확인한 뒤 아래 의사결정 카드에서 처리 방침을 기록하세요."}</dd></div>
+                  </dl>
+                </article>
+              </li>
+            ))}
+          </ol>
+        )}
+        {(digest.excludedCount > 0 || digest.olderCount > 0) && (
+          <p className={styles.documentFootnote}>
+            참고·광고·자동 삭제 후보 {digest.excludedCount}건은 핵심 본문에서 제외했습니다.
+            {digest.olderCount > 0 && ` 보고일보다 이전에 수신된 ${digest.olderCount}건은 아래 상세 목록에서 확인할 수 있습니다.`}
+          </p>
+        )}
+      </div>
+    </section>
+  );
 }
 
 function DecisionItem({
@@ -295,6 +362,8 @@ function ReportDetail({ report, loading, error, onBack, onRefresh }) {
     return Array.from(byId.values());
   }, [report]);
 
+  const reviewDigest = useMemo(() => buildEmailReviewDigest(report), [report]);
+
   const decisionsByItem = useMemo(() => {
     const map = new Map();
     for (const row of report?.decisions || []) {
@@ -459,6 +528,7 @@ function ReportDetail({ report, loading, error, onBack, onRefresh }) {
   return (
     <div className={styles.detailContent}>
       <button className={styles.mobileBack} type="button" onClick={onBack}>← 목록으로</button>
+      <ReviewDocument report={report} digest={reviewDigest} />
       <header className={styles.detailHeader}>
         <div>
           <span className={styles.eyebrow}>{report.reportKey}</span>
@@ -693,6 +763,7 @@ export default function AdminEmailReports() {
     const end = Math.min(page * PAGE_SIZE, list.total);
     return `${start}-${end} / ${list.total}건`;
   }, [list.total, page]);
+  const groupedReports = useMemo(() => groupEmailReportsByMonth(list.items), [list.items]);
 
   return (
     <div className={styles.page}>
@@ -718,30 +789,39 @@ export default function AdminEmailReports() {
           ) : list.items.length === 0 ? (
             <div className={styles.listState}>아직 수집된 보고서가 없습니다.</div>
           ) : (
-            <div className={styles.reportList}>
-              {list.items.map((item) => (
-                <button
-                  type="button"
-                  key={item.id}
-                  className={`${styles.reportRow} ${Number(reportId) === item.id ? styles.active : ""}`}
-                  onClick={() => {
-                    navigate(`/admin/email-reports/${item.id}`);
-                  }}
-                  aria-current={Number(reportId) === item.id ? "page" : undefined}
-                >
-                  <div className={styles.rowTop}><strong>{formatDate(item.reportDate)}</strong><span>{item.reportKey}</span></div>
-                  <div className={styles.rowMetrics}>
-                    <span>전체 <b>{Number(item.totalCounts?.total || 0).toLocaleString("ko-KR")}</b></span>
-                    <span>중요 <b>{Number(item.totalCounts?.important || 0).toLocaleString("ko-KR")}</b></span>
-                    <span className={styles.actionMetric}>조치 <b>{Number(item.totalCounts?.actionRequired || 0).toLocaleString("ko-KR")}</b></span>
-                  </div>
-                  <div className={styles.rowSummary}>
-                    <span>즉시 {Number(item.summaryCounts?.immediate ?? item.summaryCounts?.todayActionable ?? 0).toLocaleString("ko-KR")}</span>
-                    <span>검토 {Number(item.summaryCounts?.review || 0).toLocaleString("ko-KR")}</span>
-                    <span>자동화 {Number(item.summaryCounts?.automation ?? item.summaryCounts?.automationSuggested ?? 0).toLocaleString("ko-KR")}</span>
-                  </div>
-                  <small>{item.accountCount}개 계정 · {formatDate(item.generatedAt, true)}</small>
-                </button>
+            <div className={styles.reportList} aria-label="연도와 월별 일일 보고서">
+              {groupedReports.map((yearGroup) => (
+                <section className={styles.yearGroup} key={yearGroup.year} aria-labelledby={`report-year-${yearGroup.year}`}>
+                  <h3 id={`report-year-${yearGroup.year}`}>{yearGroup.year}년</h3>
+                  {yearGroup.months.map((monthGroup) => (
+                    <section className={styles.monthGroup} key={`${yearGroup.year}-${monthGroup.month}`} aria-labelledby={`report-month-${yearGroup.year}-${monthGroup.month}`}>
+                      <h4 id={`report-month-${yearGroup.year}-${monthGroup.month}`}>{Number(monthGroup.month)}월 <span>{monthGroup.reports.length}건</span></h4>
+                      {monthGroup.reports.map((item) => (
+                        <button
+                          type="button"
+                          key={item.id}
+                          className={`${styles.reportRow} ${Number(reportId) === item.id ? styles.active : ""}`}
+                          onClick={() => navigate(`/admin/email-reports/${item.id}`)}
+                          aria-current={Number(reportId) === item.id ? "page" : undefined}
+                          aria-label={`${formatDate(item.reportDate)} ${item.reportKey} 일일 보고서`}
+                        >
+                          <div className={styles.rowTop}><strong>{formatDate(item.reportDate)}</strong><span>{item.reportKey}</span></div>
+                          <div className={styles.rowMetrics}>
+                            <span>전체 <b>{Number(item.totalCounts?.total || 0).toLocaleString("ko-KR")}</b></span>
+                            <span>중요 <b>{Number(item.totalCounts?.important || 0).toLocaleString("ko-KR")}</b></span>
+                            <span className={styles.actionMetric}>조치 <b>{Number(item.totalCounts?.actionRequired || 0).toLocaleString("ko-KR")}</b></span>
+                          </div>
+                          <div className={styles.rowSummary}>
+                            <span>즉시 {Number(item.summaryCounts?.immediate ?? item.summaryCounts?.todayActionable ?? 0).toLocaleString("ko-KR")}</span>
+                            <span>검토 {Number(item.summaryCounts?.review || 0).toLocaleString("ko-KR")}</span>
+                            <span>자동화 {Number(item.summaryCounts?.automation ?? item.summaryCounts?.automationSuggested ?? 0).toLocaleString("ko-KR")}</span>
+                          </div>
+                          <small>{item.accountCount}개 계정 · {formatDate(item.generatedAt, true)}</small>
+                        </button>
+                      ))}
+                    </section>
+                  ))}
+                </section>
               ))}
             </div>
           )}

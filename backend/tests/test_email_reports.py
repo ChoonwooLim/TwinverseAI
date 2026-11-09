@@ -198,6 +198,27 @@ def test_ingestion_is_idempotent_by_report_date_and_key():
     assert stored.total_counts["cleaned"] == 10
 
 
+def test_ingestion_keeps_same_key_reports_for_different_dates_independent():
+    engine = _memory_engine()
+    first_data = payload()
+    next_day_data = payload()
+    next_day_data["reportDate"] = "2026-11-10"
+    next_day_data["totalCounts"]["cleaned"] = 7
+
+    with Session(engine) as session:
+        first_result = ingest_email_report(EmailReportIngest.model_validate(first_data), None, session)
+        next_result = ingest_email_report(EmailReportIngest.model_validate(next_day_data), None, session)
+        reports = session.exec(
+            select(EmailReport).order_by(EmailReport.report_date)
+        ).all()
+
+    assert first_result["created"] is True
+    assert next_result["created"] is True
+    assert first_result["id"] != next_result["id"]
+    assert [str(report.report_date) for report in reports] == ["2026-11-09", "2026-11-10"]
+    assert [report.total_counts["cleaned"] for report in reports] == [first_data["totalCounts"]["cleaned"], 7]
+
+
 # ---------- new: backward-compat & schema extensions ----------
 
 
