@@ -26,7 +26,6 @@ const AdminClaudeCodeRepo = lazy(() => import("./pages/admin/AdminClaudeCodeRepo
 const AdminDesignMd = lazy(() => import("./pages/admin/AdminDesignMd"));
 const AdminDesignMdDetail = lazy(() => import("./pages/admin/AdminDesignMdDetail"));
 const AdminOpenClawDevices = lazy(() => import("./pages/admin/AdminOpenClawDevices"));
-const AdminOpenClawConsole = lazy(() => import("./pages/admin/AdminOpenClawConsole"));
 const AdminOpenClawOverview = lazy(() => import("./pages/admin/AdminOpenClawOverview"));
 const DeskAnalysis = lazy(() => import("./pages/twinversedesk/DeskAnalysis"));
 const DeskPlan = lazy(() => import("./pages/twinversedesk/DeskPlan"));
@@ -83,8 +82,9 @@ export default function App() {
             <Route path="/admin/design-md/:slug" element={<ProtectedRoute requiredRole="admin"><AdminDesignMdDetail /></ProtectedRoute>} />
             <Route path="/admin/openclaw" element={<ProtectedRoute requiredRole="admin"><AdminOpenClawOverview /></ProtectedRoute>} />
             <Route path="/admin/openclaw-devices" element={<ProtectedRoute requiredRole="admin"><AdminOpenClawDevices /></ProtectedRoute>} />
-            <Route path="/admin/openclaw-console" element={<ProtectedRoute requiredRole="admin"><AdminOpenClawConsole /></ProtectedRoute>} />
-            <Route path="/admin/openclaw-console/:tab" element={<ProtectedRoute requiredRole="admin"><AdminOpenClawConsole /></ProtectedRoute>} />
+            {/* The console lives in MainLayout so navigation preserves its chat session. */}
+            <Route path="/admin/openclaw-console" element={<ProtectedRoute requiredRole="admin">{null}</ProtectedRoute>} />
+            <Route path="/admin/openclaw-console/:tab" element={<ProtectedRoute requiredRole="admin">{null}</ProtectedRoute>} />
           </Route>
         </Routes>
     </BrowserRouter>

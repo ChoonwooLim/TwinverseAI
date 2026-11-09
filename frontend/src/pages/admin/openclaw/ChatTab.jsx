@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import api from "../../../services/api";
 import styles from "../AdminOpenClawConsole.module.css";
@@ -80,6 +80,7 @@ const readFileAsText = (file) => new Promise((resolve, reject) => {
 
 const CONV_BASE = "/api/admin/openclaw/console/conversations";
 const SIDEBAR_STORAGE_KEY = "openclaw:chat-sidebars";
+const EMPTY_MESSAGES = [];
 
 function readSidebarPreferences() {
   try {
@@ -244,7 +245,7 @@ const MessageBubble = memo(function MessageBubble({ message, agentId }) {
   );
 });
 
-export default function ChatTab() {
+export default function ChatTab({ active = true }) {
   const [agents, setAgents] = useState([]);
   const [selectedAgent, setSelectedAgent] = useState(null);
   const [collapsedSidebars, setCollapsedSidebars] = useState(readSidebarPreferences);
@@ -282,14 +283,14 @@ export default function ChatTab() {
   const rpcId = useRef(1);
   const pendingResolvers = useRef({});
   const scrollRef = useRef(null);
+  const visibleScroll = useRef({ messages: null, pending: false, convId: null, top: 0 });
   const fileInputRef = useRef(null);
   const lastErrorRef = useRef(0);
   // sessionKey → convId (reverse) so gateway events can be routed
   const convBySessionKey = useRef({});
 
   const activeConvId = selectedAgent ? activeConvByAgent[selectedAgent] || null : null;
-  const sessionKey = activeConvId ? sessionKeyByConv[activeConvId] || null : null;
-  const messages = activeConvId ? (messagesByConv[activeConvId] || []) : [];
+  const messages = (activeConvId && messagesByConv[activeConvId]) || EMPTY_MESSAGES;
   const conversations = selectedAgent ? (convsByAgent[selectedAgent] || []) : [];
   const isAwaitingAssistant = activeConvId ? Boolean(pendingByConv[activeConvId]) : false;
 
@@ -304,7 +305,9 @@ export default function ChatTab() {
   const loadAgents = useCallback(async () => {
     try {
       const r = await api.get("/api/admin/openclaw/console/agents");
-      setAgents(r.data.agents || []);
+      const nextAgents = r.data.agents || [];
+      setAgents(nextAgents);
+      setSelectedAgent((current) => nextAgents.some((agent) => agent.id === current) ? current : null);
     } catch (e) {
       setErr(e?.response?.data?.detail || e.message || "failed");
     }
@@ -312,34 +315,35 @@ export default function ChatTab() {
 
   useEffect(() => { loadAgents(); }, [loadAgents]);
 
-  // When the admin changes an agent's model in the edit panel, the gateway
-  // sessions.create we had already cached is bound to the OLD model's
-  // snapshot — keep using it and the chat never reflects the new model.
-  // Clear cached gateway session keys for that agent (old sessions go orphan
-  // on the gateway; next send triggers a fresh sessions.create with new model)
-  // and refresh the sidebar so the new model chip is correct.
+  // The retained sidebar refreshes only after an explicit agent mutation.
+  // Model changes/deletion invalidate sessions bound to the old agent config.
   useEffect(() => {
     const handler = (e) => {
       const agentId = e?.detail?.agentId;
       if (!agentId) return;
       const convs = convsByAgent[agentId] || [];
-      if (convs.length) {
+      if (e.detail.resetSession && convs.length) {
         const idsToClear = new Set(convs.map((c) => c.id));
+        for (const id of idsToClear) needsReplayByConv.current[id] = true;
         setSessionKeyByConv((prev) => {
           const next = { ...prev };
           for (const id of idsToClear) delete next[id];
           return next;
         });
-        for (const k of Object.keys(convBySessionKey.current)) {
-          if (idsToClear.has(convBySessionKey.current[k])) {
-            delete convBySessionKey.current[k];
+        // A model edit affects the next send, but an in-flight reply from the
+        // previous session must still reach its conversation while we're away.
+        if (e.detail.deleted) {
+          for (const k of Object.keys(convBySessionKey.current)) {
+            if (idsToClear.has(convBySessionKey.current[k])) {
+              delete convBySessionKey.current[k];
+            }
           }
         }
       }
       loadAgents();
     };
-    window.addEventListener("openclaw:agent-model-changed", handler);
-    return () => window.removeEventListener("openclaw:agent-model-changed", handler);
+    window.addEventListener("openclaw:agents-changed", handler);
+    return () => window.removeEventListener("openclaw:agents-changed", handler);
   }, [convsByAgent, loadAgents]);
 
   const loadConversations = useCallback(async (agentId) => {
@@ -714,9 +718,14 @@ export default function ChatTab() {
     }
   };
 
-  useEffect(() => {
-    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [messages, isAwaitingAssistant]);
+  useLayoutEffect(() => {
+    if (!active || !scrollRef.current) return;
+    const node = scrollRef.current;
+    const previous = visibleScroll.current;
+    const changed = previous.messages !== messages || previous.pending !== isAwaitingAssistant || previous.convId !== activeConvId;
+    node.scrollTop = changed ? node.scrollHeight : previous.top;
+    visibleScroll.current = { messages, pending: isAwaitingAssistant, convId: activeConvId, top: node.scrollTop };
+  }, [active, messages, isAwaitingAssistant, activeConvId]);
 
   const handleKey = (e) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
@@ -847,7 +856,13 @@ export default function ChatTab() {
 
         {/* Column 3: Chat main */}
         <div className={styles.chatMain}>
-          <div ref={scrollRef} className={styles.chatMessages}>
+          <div
+            ref={scrollRef}
+            className={styles.chatMessages}
+            onScroll={(event) => {
+              if (active && event.currentTarget.clientHeight > 0) visibleScroll.current.top = event.currentTarget.scrollTop;
+            }}
+          >
             {messages.length === 0 ? (
               <div className={styles.empty}>
                 {selectedAgent ? "메시지를 입력해 대화를 시작하세요." : "좌측에서 에이전트를 선택하세요."}

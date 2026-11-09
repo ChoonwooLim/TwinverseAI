@@ -18,6 +18,8 @@ yarn-error.log*
 
 # Vite / React
 frontend/dist/
+frontend/test-results/
+frontend/playwright-report/
 
 # Environment
 .env

@@ -1,5 +1,5 @@
 import { useEffect, useState, Suspense, lazy } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
 import styles from "./AdminOpenClawConsole.module.css";
 
@@ -19,16 +19,18 @@ const TABS = [
   { key: "logs", label: "로그", Comp: LogsTab },
 ];
 
-export default function AdminOpenClawConsole() {
-  const { tab } = useParams();
+export default function AdminOpenClawConsole({ tab, active = true }) {
   const navigate = useNavigate();
   const activeKey = TABS.find((t) => t.key === tab)?.key || "agents";
   const Active = TABS.find((t) => t.key === activeKey).Comp;
+  const [chatOpened, setChatOpened] = useState(activeKey === "chat");
+  if (activeKey === "chat" && !chatOpened) setChatOpened(true);
 
   const [health, setHealth] = useState(null);
   const [healthErr, setHealthErr] = useState("");
 
   useEffect(() => {
+    if (!active) return;
     let alive = true;
     const poll = async () => {
       try {
@@ -41,7 +43,7 @@ export default function AdminOpenClawConsole() {
     poll();
     const t = setInterval(poll, 10_000);
     return () => { alive = false; clearInterval(t); };
-  }, []);
+  }, [active]);
 
   return (
     <div className={`${styles.page} ${activeKey === "chat" ? styles.chatPage : ""}`}>
@@ -82,9 +84,18 @@ export default function AdminOpenClawConsole() {
       </nav>
 
       <div className={styles.tabBody}>
-        <Suspense fallback={<div className={styles.loading}>로딩 중…</div>}>
-          <Active />
-        </Suspense>
+        {chatOpened && (
+          <div hidden={activeKey !== "chat"}>
+            <Suspense fallback={<div className={styles.loading}>로딩 중…</div>}>
+              <ChatTab active={active && activeKey === "chat"} />
+            </Suspense>
+          </div>
+        )}
+        {active && activeKey !== "chat" && (
+          <Suspense fallback={<div className={styles.loading}>로딩 중…</div>}>
+            <Active />
+          </Suspense>
+        )}
       </div>
     </div>
   );

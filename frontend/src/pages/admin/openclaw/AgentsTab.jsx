@@ -47,6 +47,7 @@ export default function AgentsTab() {
     setDeleting(id); setErr(""); setOk("");
     try {
       await api.delete(`/api/admin/openclaw/console/agents/${encodeURIComponent(id)}`);
+      window.dispatchEvent(new CustomEvent("openclaw:agents-changed", { detail: { agentId: id, resetSession: true, deleted: true } }));
       setOk(`deleted: ${id}`);
       await load();
     } catch (e) {
@@ -193,6 +194,7 @@ function AgentCreateModal({ models, onClose, onSaved, onError }) {
     setSaving(true);
     try {
       await api.post("/api/admin/openclaw/console/agents", { id, displayName, model, systemPrompt });
+      window.dispatchEvent(new CustomEvent("openclaw:agents-changed", { detail: { agentId: id } }));
       onSaved();
     } catch (e) {
       onError(e?.response?.data?.detail || e.message || "create failed");
@@ -263,11 +265,9 @@ function AgentEditModal({ agent, models, onClose, onSaved, onError }) {
       if (modelChanged) body.model = model;
       body.systemPrompt = systemPrompt;
       await api.patch(`/api/admin/openclaw/console/agents/${encodeURIComponent(agent.id)}`, body);
-      if (modelChanged && typeof window !== "undefined") {
-        window.dispatchEvent(
-          new CustomEvent("openclaw:agent-model-changed", { detail: { agentId: agent.id } })
-        );
-      }
+      window.dispatchEvent(new CustomEvent("openclaw:agents-changed", {
+        detail: { agentId: agent.id, resetSession: modelChanged },
+      }));
       onSaved();
     } catch (e) {
       onError(e?.response?.data?.detail || e.message || "save failed");
