@@ -4,6 +4,17 @@ import { Buffer } from "node:buffer";
 const CHAT_PATH = "/admin/openclaw-console/chat";
 const API = "/api/admin/openclaw/console";
 const tokenFor = (username) => `fixture.${Buffer.from(JSON.stringify({ exp: 9999999999, sub: username })).toString("base64")}.fixture`;
+const browserErrors = new WeakMap();
+
+test.beforeEach(({ context }) => {
+  const errors = [];
+  browserErrors.set(context, errors);
+  context.on("weberror", (event) => errors.push(event.error().message));
+});
+
+test.afterEach(({ context }) => {
+  expect(browserErrors.get(context), "Unexpected browser errors").toEqual([]);
+});
 
 async function fixture(page, role = "admin") {
   const state = { sockets: [], closed: 0, requests: [], rpc: [], agents: [{ id: "main", displayName: "Session Agent", model: "test/model" }] };
@@ -15,6 +26,7 @@ async function fixture(page, role = "admin") {
     const { pathname } = new URL(route.request().url());
     state.requests.push(pathname);
     let data = {};
+    if (pathname.startsWith("/api/boards/")) data = { items: [] };
     if (pathname === "/api/auth/me") data = { username: "admin", role };
     if (pathname === "/api/auth/login") {
       data = { access_token: tokenFor("second-admin"), user: { username: "second-admin", role: "admin" } };
@@ -202,6 +214,7 @@ test("a non-administrator cannot initialize the retained console", async ({ page
   const state = await fixture(page, "user");
   await page.goto(CHAT_PATH);
   await expect(page).toHaveURL("/");
+  await expect(page.getByRole("heading", { name: "TwinverseAI", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "OpenClaw 관리 콘솔" })).toHaveCount(0);
   expect(state.requests.filter((path) => path.startsWith(API))).toHaveLength(0);
 });
