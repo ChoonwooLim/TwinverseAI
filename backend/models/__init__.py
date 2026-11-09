@@ -5,4 +5,4 @@ from .file import FileRecord
 from .document import Document
 from .ps2_session import PS2Session
 from .openclaw_chat import OpenClawConversation, OpenClawMessage
-from .email_report import EmailReport
+from .email_report import EmailReport, EmailReportDecision
