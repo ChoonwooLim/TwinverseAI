@@ -65,7 +65,7 @@ function errorMessage(error, fallback) {
 
 function Metric({ label, value, tone = "cyan", title }) {
   return (
-    <div className={`${styles.metric} ${styles[tone]}`} title={title || label}>
+    <div className={`${styles.metric} ${styles[tone]}`} title={title || label} role="listitem">
       <span>{label}</span>
       <strong>{Number(value || 0).toLocaleString("ko-KR")}</strong>
     </div>
@@ -199,7 +199,7 @@ function ConfirmModal({ open, title, body, confirmLabel = "적용", onConfirm, o
     const onKey = (event) => {
       if (event.key === "Escape") {
         event.preventDefault();
-        onCancel?.();
+        if (!busy) onCancel?.();
         return;
       }
       if (event.key !== "Tab") return;
@@ -224,11 +224,17 @@ function ConfirmModal({ open, title, body, confirmLabel = "적용", onConfirm, o
       document.removeEventListener("keydown", onKey);
       previous && previous.focus && previous.focus();
     };
-  }, [open, onCancel]);
+  }, [busy, open, onCancel]);
 
   if (!open) return null;
   return (
-    <div className={styles.modalBackdrop} role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) onCancel?.(); }}>
+    <div
+      className={styles.modalBackdrop}
+      role="presentation"
+      onMouseDown={(event) => {
+        if (!busy && event.target === event.currentTarget) onCancel?.();
+      }}
+    >
       <div
         className={styles.modal}
         role="alertdialog"
@@ -410,7 +416,17 @@ function ReportDetail({ report, loading, error, onBack, onRefresh }) {
   }, [report?.id, onRefresh]);
 
   if (loading) return <div className={styles.detailState}><span className={styles.spinner} />보고서를 불러오는 중입니다.</div>;
-  if (error) return <div className={`${styles.detailState} ${styles.error}`}>{error}</div>;
+  if (error) {
+    return (
+      <div className={styles.detailErrorState} role="alert">
+        <p>{error}</p>
+        <div>
+          <button type="button" onClick={onBack}>목록으로</button>
+          <button type="button" onClick={onRefresh}>다시 시도</button>
+        </div>
+      </div>
+    );
+  }
   if (!report) {
     return (
       <div className={styles.detailPlaceholder}>

@@ -28,6 +28,10 @@
 .listState, .detailState { display: flex; justify-content: center; align-items: center; gap: .65rem; min-height: 180px; padding: 2rem 1rem; color: var(--text-tertiary); text-align: center; font-size: .8rem; }
 .detailState { min-height: 500px; }
 .error { color: #fca5a5; }
+.detailErrorState { min-height: 500px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; padding: 2rem 1rem; color: #fca5a5; text-align: center; font-size: .8rem; }
+.detailErrorState > div { display: flex; gap: .6rem; }
+.detailErrorState button { min-height: 40px; padding: .5rem .8rem; border: 1px solid var(--border-default); border-radius: var(--radius-sm); background: rgba(255,255,255,.04); color: var(--text-secondary); cursor: pointer; }
+.detailErrorState button:hover, .detailErrorState button:focus-visible { border-color: rgba(0,212,255,.45); color: var(--neon-cyan); outline: 2px solid rgba(0,212,255,.3); outline-offset: 2px; }
 .spinner { width: 16px; height: 16px; flex: 0 0 auto; border: 2px solid rgba(255,255,255,.14); border-top-color: var(--neon-cyan); border-radius: 50%; animation: spin .7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .pagination { margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: .75rem 1rem; border-top: 1px solid var(--border-subtle); color: var(--text-tertiary); font-size: .7rem; }
@@ -108,7 +112,7 @@
 .itemMeta { display: flex; flex-wrap: wrap; gap: .25rem .65rem; color: var(--text-tertiary); font-size: .65rem; }
 .itemBadges { display: flex; flex-wrap: wrap; gap: .3rem; align-items: center; }
 
-.selectLabel { position: relative; display: inline-flex; width: 20px; height: 20px; flex: 0 0 auto; margin-top: .25rem; cursor: pointer; }
+.selectLabel { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; flex: 0 0 auto; margin: -.25rem -.5rem 0; cursor: pointer; }
 .selectLabel input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
 .selectLabel span { display: block; width: 20px; height: 20px; border: 1.5px solid var(--border-default); border-radius: 5px; background: rgba(255,255,255,.04); transition: border-color var(--dur-fast), background var(--dur-fast); }
 .selectLabel input:checked + span { border-color: var(--neon-cyan); background: linear-gradient(135deg, rgba(0,212,255,.6), rgba(102,126,234,.5)); box-shadow: inset 0 0 0 2px rgba(5,8,16,.65); }
@@ -192,5 +196,7 @@
   .cleanupCard { grid-template-columns: 1fr; text-align: left; }
   .itemFacts { grid-template-columns: 1fr; }
   .decisionRow { gap: .35rem; }
-  .decisionButton, .decisionReset { flex: 1 1 calc(50% - .35rem); }
+  .decisionButton, .decisionReset { flex: 1 1 calc(50% - .35rem); min-height: 44px; }
+  .selectLabel { width: 44px; height: 44px; margin: -.5rem -.75rem 0; }
+  .detailErrorState { min-height: 360px; }
 }

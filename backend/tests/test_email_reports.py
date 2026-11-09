@@ -18,6 +18,7 @@ from routers.email_reports import (
     list_email_reports,
     require_ingest_token,
     reset_email_report_decision,
+    reset_email_report_decision_query,
     save_email_report_decisions,
 )
 
@@ -388,6 +389,32 @@ def test_reset_decision_removes_row_and_404s_when_absent():
         assert info.value.status_code == 404
 
 
+def test_query_reset_supports_item_ids_containing_slashes():
+    engine = _memory_engine()
+    data = payload()
+    data["actionRequiredItems"][0]["id"] = "folder/message/42"
+    model = EmailReportIngest.model_validate(data)
+
+    with Session(engine) as session:
+        ingest_email_report(model, None, session)
+        report = session.exec(select(EmailReport)).one()
+        save_email_report_decisions(
+            report.id,
+            DecisionBatch.model_validate(
+                {"decisions": [{"itemId": "folder/message/42", "decision": "keep"}]}
+            ),
+            _FakeUser(),
+            session,
+        )
+        result = reset_email_report_decision_query(
+            report.id, "folder/message/42", _FakeUser(), session
+        )
+        remaining = session.exec(select(func.count(EmailReportDecision.id))).one()
+
+    assert result == {"ok": True}
+    assert remaining == 0
+
+
 def test_detail_endpoint_embeds_decisions_and_summary_counts():
     engine = _memory_engine()
     model = EmailReportIngest.model_validate(payload_v2())
@@ -429,6 +456,37 @@ def test_list_endpoint_exposes_summary_counts():
     assert page["total"] == 1
     assert "summaryCounts" in page["items"][0]
     assert page["items"][0]["summaryCounts"]["paymentOrSecurityRisk"] == 3
+
+
+def test_list_endpoint_rejects_reversed_date_range():
+    engine = _memory_engine()
+    with Session(engine) as session, pytest.raises(HTTPException) as info:
+        list_email_reports(
+            page=1,
+            size=20,
+            report_key=None,
+            date_from=datetime(2026, 11, 10).date(),
+            date_to=datetime(2026, 11, 9).date(),
+            _=_FakeUser(),
+            session=session,
+        )
+    assert info.value.status_code == 400
+
+
+def test_naive_legacy_deadline_is_treated_as_utc_without_crashing():
+    engine = _memory_engine()
+    legacy = payload_v2()
+    legacy["importantItems"][0]["deadline"] = (
+        datetime.now(timezone.utc) + timedelta(hours=2)
+    ).replace(tzinfo=None).isoformat()
+    model = EmailReportIngest.model_validate(legacy)
+
+    with Session(engine) as session:
+        ingest_email_report(model, None, session)
+        report = session.exec(select(EmailReport)).one()
+        counts = _summary_counts(report)
+
+    assert counts["deadlineSoon"] == 1
 
 
 def test_legacy_items_without_ids_remain_visible_and_decidable():

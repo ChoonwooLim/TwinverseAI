@@ -16,7 +16,7 @@
 ## 판단 저장 API
 
 - `POST /api/admin/email-reports/{id}/decisions`: 항목별 판단을 일괄 저장하거나 갱신한다.
-- `DELETE /api/admin/email-reports/{id}/decisions/{itemId}`: 저장된 판단을 취소한다.
+- `DELETE /api/admin/email-reports/{id}/decisions?itemId=...`: 저장된 판단을 취소한다. 슬래시가 없는 식별자를 쓰는 기존 클라이언트를 위해 경로 매개변수 형식도 계속 지원한다.
 - 판단 값: 보존, 삭제함 이동, 같은 유형 자동 삭제, 같은 유형 항상 보존, 자동 보관, 나중 결정.
 
 판단 요청은 정해진 항목 식별자와 판단 값만 허용하며 자유 입력 메모는 받지 않는다. 이 API는 관리자 의사결정 데이터만 기록한다. 메일 서버에 연결하거나 메일을 이동, 삭제, 보관하는 작업은 절대 실행하지 않는다.
