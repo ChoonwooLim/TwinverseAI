@@ -1766,3 +1766,38 @@ reply 도구가 자동 거부되는 2차 문제를 발견 — 세션 스스로 �
 - LLM Wiki 동기화 후보(텔레그램/--channels 발견)는 later 처리 — 다음 /end에서 재제안됨.
 
 ---
+
+## 2026-10-25
+
+### 작업 요약
+
+| 카테고리 | 작업 내용 | 상태 |
+|----------|----------|------|
+| fix | OpenClaw LAN 로이(main 에이전트) 텔레그램 무응답 — 모델 거부 원인 진단 및 복구 | 완료 |
+
+### 세부 내용
+
+**로이(OpenClaw `main` 에이전트) 침묵 진단.** 지니는 되는데 로이만 안 된다는 보고로 시작.
+systematic-debugging 으로 컨테이너 상태 → 모델/토큰/채널 설정 → 로그 순으로 증거를 쌓아
+원인을 좁혔다. 결론: 2026-10-08 08:57 UTC 에 `agents.list[0]`(main)의 모델이
+`openai-codex/gpt-5.6-sol` → `openai-codex/gpt-5.3-codex-spark` 로 바뀌어 있었고, 카탈로그엔
+존재하는 모델이지만 ChatGPT Plus 계정 Codex 백엔드가 이를 거부
+(`not supported when using Codex with a ChatGPT account`) — 이후 모든 실행(하트비트 포함
+하루 48건)이 같은 에러로 실패. 텔레그램 채널(roy/jini 폴링)·토큰 파일·OAuth·멘션 패턴은
+전부 정상이라 혼선 요인이 많았음. `codex-pro`(`gpt-5.6-sol`)로 핑 → `pong` 확인해 인증
+문제가 아님을 먼저 배제한 뒤 모델 자체를 의심.
+
+**복구.** 설정 백업(`openclaw.json.bak-codexspark-20261025`) 후
+`openclaw config set 'agents.list[0].model' 'openai-codex/gpt-5.6-sol'`. CLI는 "재시작 필요"
+문구를 출력하지만 실측상 `[reload] config hot reload applied (agents.list)` 로 핫리로드만으로
+반영됨 — `docker restart` 불필요, 지니 쪽 끊김 없음. `main` 에이전트 직접 핑으로 `pong` 재확인.
+감독님께는 텔레그램에서 "로이" 호출 왕복 확인만 요청. 함정과 복구 명령은 메모리
+`reference_openclaw_codex_spark_unsupported.md`와 `Z:\Lucifer\TwinverseAI\handoff\` 에 기록.
+
+### 다음 세션 참고
+
+- 계획 4 (Lucifer 전역 스킬) 여전히 미착수.
+- Codex 모델을 바꿀 때는 카탈로그 등재 여부와 무관하게 `openclaw agent --agent <id> --message ping`
+  으로 실제 응답을 받은 뒤 확정할 것 — 카탈로그 존재가 계정 사용 가능을 보장하지 않음.
+
+---
