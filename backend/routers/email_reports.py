@@ -132,6 +132,12 @@ class ReportItem(StrictPayload):
     recommended_action: Annotated[str, Field(default="", max_length=500, alias="recommendedAction")]
     classification_basis: Annotated[str, Field(default="", max_length=500, alias="classificationBasis")]
     risk_tags: Annotated[list[str], Field(default_factory=list, max_length=8, alias="riskTags")]
+    # Gmail's immutable thread identifier is safe routing metadata. The report
+    # never accepts arbitrary source URLs, message bodies, or mailbox tokens.
+    source_thread_id: Annotated[
+        str,
+        Field(default="", alias="sourceThreadId", pattern=r"^[0-9]{0,20}$"),
+    ]
 
     @model_validator(mode="after")
     def validate_enums(self) -> "ReportItem":

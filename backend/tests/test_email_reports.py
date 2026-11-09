@@ -96,6 +96,7 @@ def payload_v2():
                 "recommendedAction": "결제 승인 또는 거부",
                 "classificationBasis": "제목 키워드 + 발신자 도메인",
                 "riskTags": ["payment", "security"],
+                "sourceThreadId": "1847352912345678901",
             },
             {
                 "id": "i2",
@@ -226,6 +227,21 @@ def test_schema_rejects_unknown_priority_and_risk_tags():
     dup_tags["importantItems"][0]["riskTags"] = ["payment", "payment"]
     with pytest.raises(ValidationError, match="중복"):
         EmailReportIngest.model_validate(dup_tags)
+
+
+def test_source_thread_id_accepts_only_bounded_decimal_gmail_ids():
+    valid = EmailReportIngest.model_validate(payload_v2())
+    assert valid.important_items[0].source_thread_id == "1847352912345678901"
+
+    non_decimal = payload_v2()
+    non_decimal["importantItems"][0]["sourceThreadId"] = "https://evil.example/mail"
+    with pytest.raises(ValidationError, match="sourceThreadId"):
+        EmailReportIngest.model_validate(non_decimal)
+
+    too_long = payload_v2()
+    too_long["importantItems"][0]["sourceThreadId"] = "1" * 21
+    with pytest.raises(ValidationError, match="sourceThreadId"):
+        EmailReportIngest.model_validate(too_long)
 
 
 def test_schema_enforces_item_count_limit_for_action_required():
@@ -437,6 +453,7 @@ def test_detail_endpoint_embeds_decisions_and_summary_counts():
     assert detail["decisions"][0]["itemId"] == "i2"
     assert detail["decisions"][0]["decision"] == "trash"
     assert detail["decisions"][0]["decidedByUsername"] == user.username
+    assert detail["importantItems"][0]["sourceThreadId"] == "1847352912345678901"
 
 
 def test_list_endpoint_exposes_summary_counts():

@@ -111,6 +111,10 @@
 .itemHeadMain h4 { color: #f2f4ff; font-size: .9rem; line-height: 1.4; letter-spacing: 0; overflow-wrap: anywhere; margin: .35rem 0; }
 .itemMeta { display: flex; flex-wrap: wrap; gap: .25rem .65rem; color: var(--text-tertiary); font-size: .65rem; }
 .itemBadges { display: flex; flex-wrap: wrap; gap: .3rem; align-items: center; }
+.sourceLink { display: inline-flex; align-items: center; gap: .3rem; width: fit-content; margin-top: .55rem; padding: .4rem .65rem; min-height: 34px; border: 1px solid rgba(0,212,255,.38); border-radius: var(--radius-sm); color: #bae6fd; background: rgba(0,212,255,.07); font-size: .7rem; font-weight: 650; text-decoration: none; transition: border-color var(--dur-fast), background var(--dur-fast), color var(--dur-fast); }
+.sourceLink:hover, .sourceLink:focus-visible { border-color: var(--neon-cyan); color: white; background: rgba(0,212,255,.14); outline: 2px solid rgba(0,212,255,.25); outline-offset: 2px; }
+.sourceLinkExact { box-shadow: inset 0 0 16px rgba(0,212,255,.035); }
+.sourceLinkSearch { border-style: dashed; color: var(--text-secondary); }
 
 .selectLabel { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; flex: 0 0 auto; margin: -.25rem -.5rem 0; cursor: pointer; }
 .selectLabel input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
@@ -198,5 +202,6 @@
   .decisionRow { gap: .35rem; }
   .decisionButton, .decisionReset { flex: 1 1 calc(50% - .35rem); min-height: 44px; }
   .selectLabel { width: 44px; height: 44px; margin: -.5rem -.75rem 0; }
+  .sourceLink { min-height: 44px; padding: .55rem .75rem; }
   .detailErrorState { min-height: 360px; }
 }
