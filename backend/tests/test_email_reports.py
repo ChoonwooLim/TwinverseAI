@@ -244,6 +244,14 @@ def test_source_thread_id_accepts_only_bounded_decimal_gmail_ids():
         EmailReportIngest.model_validate(too_long)
 
 
+def test_schema_rejects_arbitrary_source_url_fields():
+    with_source_url = payload_v2()
+    with_source_url["importantItems"][0]["sourceUrl"] = "https://evil.example/mail"
+
+    with pytest.raises(ValidationError, match="sourceUrl"):
+        EmailReportIngest.model_validate(with_source_url)
+
+
 def test_schema_enforces_item_count_limit_for_action_required():
     big = payload()
     big["totalCounts"]["actionRequired"] = 201

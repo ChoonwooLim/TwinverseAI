@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../../services/api";
+import { buildEmailSourceLink } from "../../utils/emailSourceLink";
 import styles from "./AdminEmailReports.module.css";
 
 const PAGE_SIZE = 20;
@@ -63,36 +64,6 @@ function errorMessage(error, fallback) {
   return fallback;
 }
 
-function gmailSourceLink(item) {
-  const account = String(item?.account || "").trim();
-  if (!account) return null;
-  const base = `https://mail.google.com/mail/u/?authuser=${encodeURIComponent(account)}`;
-  const threadId = String(item?.sourceThreadId || "").trim();
-  if (/^\d{1,20}$/.test(threadId)) {
-    try {
-      return {
-        href: `${base}#all/${BigInt(threadId).toString(16)}`,
-        label: "원본 메일 열기",
-        title: "이 계정의 Gmail에서 원본 메일을 새 창으로 엽니다.",
-        exact: true,
-      };
-    } catch {
-      // Fall through to a bounded Gmail search for malformed legacy values.
-    }
-  }
-
-  const subject = String(item?.subject || "").trim().replace(/["\\]/g, " ");
-  const sender = String(item?.sender || "").match(/[\w.+-]+@[\w.-]+/)?.[0] || "";
-  const terms = [subject && `subject:"${subject}"`, sender && `from:${sender}`].filter(Boolean);
-  if (!terms.length) return null;
-  return {
-    href: `${base}#search/${encodeURIComponent(terms.join(" "))}`,
-    label: "Gmail에서 원본 찾기",
-    title: "구형 보고서 항목입니다. 제목과 발신자로 Gmail 검색 결과를 엽니다.",
-    exact: false,
-  };
-}
-
 function Metric({ label, value, tone = "cyan", title }) {
   return (
     <div className={`${styles.metric} ${styles[tone]}`} title={title || label} role="listitem">
@@ -131,7 +102,7 @@ function DecisionItem({
   const itemId = item.id || "";
   const reactId = useId();
   const checkboxId = `email-item-${reactId.replace(/:/g, "")}`;
-  const sourceLink = gmailSourceLink(item);
+  const sourceLink = buildEmailSourceLink(item);
 
   return (
     <article className={`${styles.itemCard} ${selected ? styles.selected : ""}`} aria-labelledby={`${checkboxId}-subject`}>
