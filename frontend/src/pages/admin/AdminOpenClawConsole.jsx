@@ -19,12 +19,24 @@ const TABS = [
   { key: "logs", label: "로그", Comp: LogsTab },
 ];
 
+function ConsoleTab({ tab, active }) {
+  const [opened, setOpened] = useState(active);
+  if (active && !opened) setOpened(true);
+  if (!opened) return null;
+
+  const Component = tab.Comp;
+  return (
+    <section role="tabpanel" aria-label={tab.label} hidden={!active}>
+      <Suspense fallback={<div className={styles.loading}>로딩 중…</div>}>
+        <Component active={active} />
+      </Suspense>
+    </section>
+  );
+}
+
 export default function AdminOpenClawConsole({ tab, active = true }) {
   const navigate = useNavigate();
   const activeKey = TABS.find((t) => t.key === tab)?.key || "agents";
-  const Active = TABS.find((t) => t.key === activeKey).Comp;
-  const [chatOpened, setChatOpened] = useState(activeKey === "chat");
-  if (activeKey === "chat" && !chatOpened) setChatOpened(true);
 
   const [health, setHealth] = useState(null);
   const [healthErr, setHealthErr] = useState("");
@@ -84,18 +96,9 @@ export default function AdminOpenClawConsole({ tab, active = true }) {
       </nav>
 
       <div className={styles.tabBody}>
-        {chatOpened && (
-          <div hidden={activeKey !== "chat"}>
-            <Suspense fallback={<div className={styles.loading}>로딩 중…</div>}>
-              <ChatTab active={active && activeKey === "chat"} />
-            </Suspense>
-          </div>
-        )}
-        {active && activeKey !== "chat" && (
-          <Suspense fallback={<div className={styles.loading}>로딩 중…</div>}>
-            <Active />
-          </Suspense>
-        )}
+        {TABS.map((tab) => (
+          <ConsoleTab key={tab.key} tab={tab} active={active && activeKey === tab.key} />
+        ))}
       </div>
     </div>
   );

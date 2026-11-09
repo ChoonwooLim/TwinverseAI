@@ -17,7 +17,11 @@ test.afterEach(({ context }) => {
 });
 
 async function fixture(page, role = "admin") {
-  const state = { sockets: [], closed: 0, requests: [], rpc: [], agents: [{ id: "main", displayName: "Session Agent", model: "test/model" }] };
+  const state = {
+    sockets: [], closed: 0, logSockets: [], logsClosed: 0, requests: [], rpc: [],
+    agents: [{ id: "main", displayName: "Session Agent", model: "test/model" }],
+    models: [{ id: "test/model", supportsTools: true }, { id: "test/next-model", supportsTools: true }],
+  };
   await page.addInitScript(({ token, role }) => {
     localStorage.setItem("token", token);
     localStorage.setItem("user", JSON.stringify({ username: "admin", role }));
@@ -37,7 +41,11 @@ async function fixture(page, role = "admin") {
     }
     if (pathname === `${API}/agents/main` && route.request().method() === "DELETE") state.agents = [];
     if (pathname === `${API}/agents`) data = { agents: state.agents };
-    if (pathname === `${API}/models`) data = { models: [{ id: "test/model", supportsTools: true }, { id: "test/next-model", supportsTools: true }] };
+    if (pathname === `${API}/models`) data = { models: state.models };
+    if (pathname === `${API}/plugins`) data = { plugins: [{ id: "fixture-plugin", enabled: true }] };
+    if (pathname === `${API}/plugins/fixture-plugin/config`) data = { config: { enabled: true } };
+    if (pathname === `${API}/config`) data = { value: { fixture: true } };
+    if (pathname === `${API}/gateway/token`) data = { token: "fixture-token-for-browser-tests", backendSynced: true };
     if (pathname === `${API}/conversations`) data = { conversations: [{ id: 41, title: "Saved conversation" }] };
     if (pathname === `${API}/conversations/41`) {
       data = { messages: Array.from({ length: 24 }, (_, i) => ({ role: "assistant", content: `History message ${i + 1}` })) };
@@ -54,6 +62,13 @@ async function fixture(page, role = "admin") {
         state.rpc.push(message);
         socket.send(JSON.stringify({ id: message.id, result: message.method === "sessions.create" ? { key: "test-session" } : {} }));
       }
+    });
+  });
+  await page.routeWebSocket(`**${API}/logs`, (socket) => {
+    state.logSockets.push(socket);
+    socket.onClose(() => { state.logsClosed += 1; });
+    socket.onMessage((raw) => {
+      if (JSON.parse(raw).op === "auth") socket.send(JSON.stringify({ op: "log.ready" }));
     });
   });
   return state;
@@ -217,4 +232,96 @@ test("a non-administrator cannot initialize the retained console", async ({ page
   await expect(page.getByRole("heading", { name: "TwinverseAI", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "OpenClaw 관리 콘솔" })).toHaveCount(0);
   expect(state.requests.filter((path) => path.startsWith(API))).toHaveLength(0);
+});
+
+test("agent list and model choices are cached across console aliases and site navigation until explicit refresh", async ({ page }) => {
+  const state = await fixture(page);
+  await page.goto("/admin/openclaw-console/agents");
+  await expect(page.getByRole("cell", { name: "Session Agent", exact: true })).toBeVisible();
+  const sidebar = page.getByRole("complementary", { name: "OpenClaw", exact: true });
+  const reads = () => state.requests.filter((path) => path === `${API}/agents` || path === `${API}/models`).length;
+  const initialReads = reads();
+  await sidebar.getByRole("link", { name: "플러그인", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "플러그인 (1)" })).toBeVisible();
+  await sidebar.getByRole("link", { name: "콘솔", exact: true }).click();
+  await expect(page.getByRole("cell", { name: "Session Agent", exact: true })).toBeVisible();
+  expect(reads()).toBe(initialReads);
+  await page.locator("header").getByRole("link", { name: "관리자", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "관리자 대시보드" })).toBeVisible();
+  await page.locator("header").getByRole("link", { name: "OpenClaw", exact: true }).click();
+  await sidebar.getByRole("link", { name: "에이전트", exact: true }).click();
+  await expect(page.getByRole("cell", { name: "Session Agent", exact: true })).toBeVisible();
+  expect(reads()).toBe(initialReads);
+  state.agents[0].displayName = "Updated after explicit refresh";
+  state.models.push({ id: "test/new-model", supportsTools: true });
+  await page.getByRole("button", { name: "새로고침", exact: true }).click();
+  await expect(page.getByRole("cell", { name: "Updated after explicit refresh", exact: true })).toBeVisible();
+  expect(reads()).toBe(initialReads + 2);
+  await page.getByRole("button", { name: "편집", exact: true }).click();
+  await expect(page.getByRole("combobox").locator('option[value="test/new-model"]')).toHaveCount(1);
+});
+
+for (const mode of ["edit", "create"]) {
+  test(`agent ${mode} form survives back/forward navigation and is discarded on logout`, async ({ page }) => {
+    const state = await fixture(page);
+    await page.goto("/admin");
+    await page.locator("header").getByRole("link", { name: "OpenClaw", exact: true }).click();
+    await page.getByRole("complementary", { name: "OpenClaw", exact: true }).getByRole("link", { name: "에이전트", exact: true }).click();
+    await page.getByRole("button", { name: mode === "edit" ? "편집" : "+ 에이전트 생성", exact: true }).click();
+    const modal = page.locator('[class*="modalBody"]');
+    await modal.locator("input").first().fill(mode === "edit" ? "Unsaved display name" : "unsaved-agent");
+    await modal.locator("textarea").fill("Unsaved system prompt");
+    const reads = state.requests.filter((path) => path.startsWith(`${API}/agents`) || path === `${API}/models`).length;
+    await page.goBack();
+    await expect(modal).toBeHidden();
+    await page.goForward();
+    await expect(modal.locator("input").first()).toHaveValue(mode === "edit" ? "Unsaved display name" : "unsaved-agent");
+    await expect(modal.locator("textarea")).toHaveValue("Unsaved system prompt");
+    expect(state.requests.filter((path) => path.startsWith(`${API}/agents`) || path === `${API}/models`)).toHaveLength(reads);
+    await page.goBack();
+    await expect(modal).toBeHidden();
+    await page.locator("header").getByRole("button", { name: "로그아웃" }).click();
+    await expect(modal).toHaveCount(0);
+  });
+}
+
+test("all console tabs retain their data, drafts and log stream across site navigation", async ({ page }) => {
+  const state = await fixture(page);
+  await page.goto("/admin/openclaw-console/plugins");
+  await page.getByText("fixture-plugin", { exact: true }).click();
+  const pluginDraft = '{"enabled":false,"note":"unsaved"}';
+  await expect(page.getByRole("textbox")).toHaveValue(JSON.stringify({ enabled: true }, null, 2));
+  await page.getByRole("textbox").fill(pluginDraft);
+  const sidebar = page.getByRole("complementary", { name: "OpenClaw", exact: true });
+  await sidebar.getByRole("link", { name: "설정", exact: true }).click();
+  await page.getByPlaceholder("plugins.entries.ollama.enabled=true", { exact: true }).fill("fixture.enabled=false");
+  await sidebar.getByRole("link", { name: "토큰", exact: true }).click();
+  await expect(page.getByRole("tabpanel", { name: "토큰", exact: true }).getByRole("textbox")).not.toHaveValue("");
+  await sidebar.getByRole("link", { name: "로그", exact: true }).click();
+  await expect(page.getByText("● 연결됨", { exact: true })).toBeVisible();
+  await page.getByPlaceholder("필터 (대소문자 무시)").fill("retained");
+  state.logSockets.at(-1).send(JSON.stringify({ op: "log.line", line: "retained original log" }));
+  await expect(page.getByText("retained original log", { exact: true })).toBeVisible();
+  const reads = state.requests.filter((path) => path.startsWith(API) && !path.endsWith("/health")).length;
+  const logConnections = state.logSockets.length;
+  await page.locator("header").getByRole("link", { name: "관리자", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "관리자 대시보드" })).toBeVisible();
+  expect(state.logsClosed).toBe(0);
+  state.logSockets.at(-1).send(JSON.stringify({ op: "log.line", line: "retained background log" }));
+  await page.locator("header").getByRole("link", { name: "OpenClaw", exact: true }).click();
+  await sidebar.getByRole("link", { name: "로그", exact: true }).click();
+  await expect(page.getByPlaceholder("필터 (대소문자 무시)")).toHaveValue("retained");
+  await expect(page.getByText("retained original log", { exact: true })).toBeVisible();
+  await expect(page.getByText("retained background log", { exact: true })).toBeVisible();
+  await sidebar.getByRole("link", { name: "플러그인", exact: true }).click();
+  await expect(page.getByRole("tabpanel", { name: "플러그인", exact: true }).getByRole("textbox")).toHaveValue(pluginDraft);
+  await sidebar.getByRole("link", { name: "설정", exact: true }).click();
+  await expect(page.getByPlaceholder("plugins.entries.ollama.enabled=true", { exact: true })).toHaveValue("fixture.enabled=false");
+  await sidebar.getByRole("link", { name: "토큰", exact: true }).click();
+  await expect(page.getByRole("tabpanel", { name: "토큰", exact: true }).getByRole("textbox")).not.toHaveValue("");
+  expect(state.requests.filter((path) => path.startsWith(API) && !path.endsWith("/health"))).toHaveLength(reads);
+  expect(state.logSockets).toHaveLength(logConnections);
+  await page.locator("header").getByRole("button", { name: "로그아웃" }).click();
+  await expect.poll(() => state.logsClosed).toBe(logConnections);
+  await expect(page.getByPlaceholder("plugins.entries.ollama.enabled=true", { exact: true })).toHaveCount(0);
 });

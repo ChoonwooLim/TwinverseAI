@@ -18,29 +18,26 @@ export default function AgentsTab() {
   const [editing, setEditing] = useState(null);
   const [deleting, setDeleting] = useState(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (includeModels = false) => {
     setLoading(true); setErr("");
+    const modelsRequest = includeModels
+      ? api.get("/api/admin/openclaw/console/models").then((r) => {
+        const list = r.data.models || [];
+        if (list.length) setModels(list);
+      }).catch(() => { /* keep the current list or offline fallback */ })
+      : null;
     try {
       const r = await api.get("/api/admin/openclaw/console/agents");
       setAgents(r.data.agents || []);
     } catch (e) {
       setErr(e?.response?.data?.detail || e.message || "failed");
-    } finally { setLoading(false); }
+    } finally {
+      await modelsRequest;
+      setLoading(false);
+    }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
-
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        const r = await api.get("/api/admin/openclaw/console/models");
-        const list = r.data.models || [];
-        if (alive && list.length) setModels(list);
-      } catch { /* fall back to hardcoded */ }
-    })();
-    return () => { alive = false; };
-  }, []);
+  useEffect(() => { load(true); }, [load]);
 
   const handleDelete = async (id) => {
     if (!window.confirm(`에이전트 "${id}"를 삭제할까요? 세션/파일도 함께 제거됩니다.`)) return;
@@ -58,7 +55,7 @@ export default function AgentsTab() {
   return (
     <div>
       <div className={styles.toolbar}>
-        <button className={styles.btn} onClick={load} disabled={loading}>
+        <button className={styles.btn} onClick={() => load(true)} disabled={loading}>
           {loading ? "불러오는 중…" : "새로고침"}
         </button>
         <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => setCreating(true)}>

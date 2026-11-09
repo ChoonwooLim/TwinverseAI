@@ -8,6 +8,10 @@ export default function PluginsTab() {
   const [err, setErr] = useState("");
   const [ok, setOk] = useState("");
   const [selected, setSelected] = useState(null);
+  const onEditorMessage = useCallback((kind, message) => {
+    if (kind === "ok") setOk(message);
+    else setErr(message);
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true); setErr("");
@@ -71,9 +75,7 @@ export default function PluginsTab() {
 
         <div>
           {selected ? (
-            <PluginConfigEditor pluginId={selected} onMsg={(kind, m) => {
-              if (kind === "ok") setOk(m); else setErr(m);
-            }} />
+            <PluginConfigEditor pluginId={selected} onMsg={onEditorMessage} />
           ) : (
             <div className={styles.panel}>
               <div className={styles.empty}>좌측에서 플러그인을 선택하세요.</div>

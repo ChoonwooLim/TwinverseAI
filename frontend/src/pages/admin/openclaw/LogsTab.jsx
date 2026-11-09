@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useCallback } from "react";
 import styles from "../AdminOpenClawConsole.module.css";
 
-export default function LogsTab() {
+export default function LogsTab({ active = true }) {
   const [lines, setLines] = useState([]);
   const [filter, setFilter] = useState("");
   const [paused, setPaused] = useState(false);
@@ -11,6 +11,7 @@ export default function LogsTab() {
   const bufferRef = useRef([]);
   const scrollRef = useRef(null);
   const autoScrollRef = useRef(true);
+  const scrollTopRef = useRef(0);
 
   const wsUrl = () => {
     const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -43,18 +44,20 @@ export default function LogsTab() {
     ws.onerror = () => { setErr("WebSocket 오류"); };
   }, []);
 
-  // flush buffered lines periodically (30fps-ish)
+  // Keep receiving into the bounded buffer while hidden, without rendering it.
   useEffect(() => {
+    if (!active || paused) return;
     const t = setInterval(() => {
-      if (paused || bufferRef.current.length === 0) return;
+      if (bufferRef.current.length === 0) return;
+      const batch = bufferRef.current;
+      bufferRef.current = [];
       setLines((prev) => {
-        const merged = [...prev, ...bufferRef.current];
-        bufferRef.current = [];
+        const merged = [...prev, ...batch];
         return merged.length > 2000 ? merged.slice(-2000) : merged;
       });
     }, 250);
     return () => clearInterval(t);
-  }, [paused]);
+  }, [active, paused]);
 
   useEffect(() => {
     const id = setTimeout(() => connect(), 0);
@@ -65,15 +68,17 @@ export default function LogsTab() {
     };
   }, [connect]);
 
-  useEffect(() => {
-    if (autoScrollRef.current && scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [lines]);
+  useLayoutEffect(() => {
+    if (!active || !scrollRef.current) return;
+    const el = scrollRef.current;
+    el.scrollTop = autoScrollRef.current ? el.scrollHeight : scrollTopRef.current;
+    scrollTopRef.current = el.scrollTop;
+  }, [active, lines, filter]);
 
   const onScroll = () => {
-    if (!scrollRef.current) return;
+    if (!active || !scrollRef.current || !scrollRef.current.clientHeight) return;
     const el = scrollRef.current;
+    scrollTopRef.current = el.scrollTop;
     autoScrollRef.current = el.scrollTop + el.clientHeight >= el.scrollHeight - 50;
   };
 
