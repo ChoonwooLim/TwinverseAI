@@ -15,7 +15,7 @@ function getSidebarSection(pathname) {
 export default function MainLayout() {
   const location = useLocation();
   const isOpenClawPage = isOpenClawPath(location.pathname);
-  const sidebarSection = isOpenClawPage ? null : getSidebarSection(location.pathname);
+  const sidebarSection = getSidebarSection(location.pathname);
 
   return (
     <div className={styles.layout}>
