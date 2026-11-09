@@ -121,6 +121,12 @@ env:
     value: "openclaw"
     sync: true
 
+  # ── 이메일 보고서 수집 ──
+  - key: EMAIL_REPORT_INGEST_TOKEN
+    description: "이메일 보고서 수집 전용 bearer 토큰 (최소 16자 랜덤 문자열)"
+    required: true
+    sync: false
+
 # ── 볼륨 (영속 데이터) ────────────────────────────────────────
 volumes:
   - path: /app/uploads
@@ -135,6 +141,7 @@ volumes:
 #    - SECRET_KEY: JWT 서명 키 (랜덤 32자+)
 #    - SUPERADMIN_PASSWORD: 관리자 비밀번호
 #    - FRONTEND_URL: https://twinverseai.twinverse.org
+#    - EMAIL_REPORT_INGEST_TOKEN: 이메일 보고서 수집 전용 랜덤 토큰 (16자 이상)
 #
 # 2. 데이터베이스
 #    - 앱 시작 시 자동으로 테이블 생성 (create_db_and_tables)

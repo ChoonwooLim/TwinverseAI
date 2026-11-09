@@ -16,6 +16,7 @@ const PostPage = lazy(() => import("./pages/community/PostPage"));
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
 const AdminUsers = lazy(() => import("./pages/admin/AdminUsers"));
 const AdminBoards = lazy(() => import("./pages/admin/AdminBoards"));
+const AdminEmailReports = lazy(() => import("./pages/admin/AdminEmailReports"));
 const AdminDocs = lazy(() => import("./pages/admin/AdminDocs"));
 const AdminSkills = lazy(() => import("./pages/admin/AdminSkills"));
 const AdminPlugins = lazy(() => import("./pages/admin/AdminPlugins"));
@@ -69,6 +70,8 @@ export default function App() {
             <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminDashboard /></ProtectedRoute>} />
             <Route path="/admin/users" element={<ProtectedRoute requiredRole="admin"><AdminUsers /></ProtectedRoute>} />
             <Route path="/admin/boards" element={<ProtectedRoute requiredRole="admin"><AdminBoards /></ProtectedRoute>} />
+            <Route path="/admin/email-reports" element={<ProtectedRoute requiredRole="admin"><AdminEmailReports /></ProtectedRoute>} />
+            <Route path="/admin/email-reports/:reportId" element={<ProtectedRoute requiredRole="admin"><AdminEmailReports /></ProtectedRoute>} />
             <Route path="/admin/docs" element={<ProtectedRoute requiredRole="admin"><AdminDocs /></ProtectedRoute>} />
             <Route path="/admin/docs/:docKey/:date?" element={<ProtectedRoute requiredRole="admin"><AdminDocs /></ProtectedRoute>} />
             <Route path="/admin/skills" element={<ProtectedRoute requiredRole="admin"><AdminSkills /></ProtectedRoute>} />
