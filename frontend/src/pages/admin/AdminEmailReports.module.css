@@ -61,7 +61,11 @@
 .documentConclusion h3 { grid-column: 1 / -1; margin: 0; color: #242a33; font-size: .82rem; letter-spacing: .04em; }
 .documentConclusion p { margin: 0; color: #343b46; font-size: .86rem; line-height: 1.7; overflow-wrap: anywhere; }
 .documentConclusion strong { padding: .35rem .6rem; border: 1px solid #b4232d; border-radius: 3px; color: #951e27; font-size: .74rem; white-space: nowrap; }
-.documentBody > h3 { margin: 0 0 .8rem; color: #242a33; font-size: 1rem; }
+.documentBodyHeading { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin-bottom: .8rem; }
+.documentBodyHeading h3 { margin: 0; color: #242a33; font-size: 1rem; }
+.documentBodyHeading .visibilityCount { color: #687180; }
+.documentBodyHeading .sectionToggle { border-color: #aaa59b; background: #f4f1eb; color: #303743; }
+.documentBodyHeading .sectionToggle:hover, .documentBodyHeading .sectionToggle:focus-visible { border-color: #596273; color: #171b22; outline-color: rgba(89,98,115,.28); }
 .documentEmpty { margin: 0; padding: 1rem; border: 1px dashed #bbb7ae; color: #596273; font-size: .82rem; line-height: 1.7; text-align: center; }
 .reviewList { margin: 0; padding: 0; list-style: none; counter-reset: review-item; }
 .reviewList > li { counter-increment: review-item; }
@@ -115,6 +119,10 @@
 .accountCard dd { color: white; margin-top: .15rem; font: 650 .83rem/1.2 'Inter', sans-serif; }
 .accountCard p { margin-top: .65rem; padding-top: .6rem; border-top: 1px solid var(--border-subtle); color: var(--text-tertiary); font-size: .65rem; line-height: 1.45; }
 
+.visibilityCount { display: block; margin-top: .35rem; color: var(--text-muted); font-size: .65rem; line-height: 1.4; }
+.sectionToggle { display: inline-flex; align-items: center; justify-content: center; gap: .35rem; min-height: 38px; padding: .45rem .7rem; border: 1px solid rgba(0,212,255,.32); border-radius: var(--radius-sm); background: rgba(0,212,255,.06); color: #bae6fd; font-size: .7rem; font-weight: 650; cursor: pointer; white-space: nowrap; transition: border-color var(--dur-fast), background var(--dur-fast), color var(--dur-fast); }
+.sectionToggle:hover, .sectionToggle:focus-visible { border-color: var(--neon-cyan); background: rgba(0,212,255,.12); color: white; outline: 2px solid rgba(0,212,255,.25); outline-offset: 2px; }
+.sectionToggle span { font-size: .8rem; line-height: 1; }
 .listControls { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
 .sortLabel { display: inline-flex; align-items: center; gap: .4rem; color: var(--text-tertiary); font-size: .7rem; }
 .sortLabel select, .bulkGroup select { padding: .4rem .55rem; min-height: 36px; border-radius: var(--radius-sm); border: 1px solid var(--border-default); background: rgba(5,8,16,.65); color: var(--text-secondary); font-size: .75rem; }
@@ -225,6 +233,8 @@
   .detailContent { padding: 1rem; }
   .detailHeader { flex-direction: column; }
   .reviewDocument { margin-left: -.25rem; margin-right: -.25rem; padding: 1.15rem; }
+  .documentBodyHeading { align-items: stretch; flex-direction: column; }
+  .documentBodyHeading .sectionToggle { width: 100%; min-height: 44px; }
   .documentConclusion { grid-template-columns: 1fr; }
   .documentConclusion strong { width: fit-content; white-space: normal; }
   .reviewEntry { padding-left: 1.4rem; }
@@ -236,6 +246,11 @@
   .cleanupCard { grid-template-columns: 1fr; text-align: left; }
   .itemFacts { grid-template-columns: 1fr; }
   .decisionRow { gap: .35rem; }
+  .listControls { width: 100%; align-items: stretch; }
+  .listControls .sectionToggle { flex: 1 1 100%; min-height: 44px; }
+  .sortLabel { flex: 1 1 auto; }
+  .sortLabel select { flex: 1 1 auto; min-height: 44px; }
+  .selectAllButton { min-height: 44px; }
   .decisionButton, .decisionReset { flex: 1 1 calc(50% - .35rem); min-height: 44px; }
   .selectLabel { width: 44px; height: 44px; margin: -.5rem -.75rem 0; }
   .sourceLink { min-height: 44px; padding: .55rem .75rem; }

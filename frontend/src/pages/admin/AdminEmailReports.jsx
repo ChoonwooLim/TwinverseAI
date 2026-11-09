@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../../services/api";
-import { buildEmailReviewDigest, groupEmailReportsByMonth } from "../../utils/emailReviewReport";
+import { buildEmailListPreview, buildEmailReviewDigest, groupEmailReportsByMonth } from "../../utils/emailReviewReport";
 import { buildEmailSourceLink } from "../../utils/emailSourceLink";
 import styles from "./AdminEmailReports.module.css";
 
@@ -89,7 +89,14 @@ function RiskTag({ tag }) {
 }
 
 function ReviewDocument({ report, digest }) {
+  const [expanded, setExpanded] = useState(false);
   const count = digest.reviewItems.length;
+  const compactPreview = useMemo(() => buildEmailListPreview(digest.reviewItems), [digest.reviewItems]);
+  const preview = useMemo(
+    () => buildEmailListPreview(digest.reviewItems, expanded),
+    [digest.reviewItems, expanded],
+  );
+  const canToggle = compactPreview.hiddenCount > 0;
   const conclusion = count === 0
     ? "오늘 새로 수신된 메일 중 반드시 검토할 긴급·중요 항목은 없습니다."
     : `오늘 새로 수신된 메일 가운데 ${count}건은 사용자의 검토가 필요하며, 이 중 ${digest.immediateCount}건은 즉시 확인이 권장됩니다.`;
@@ -112,12 +119,33 @@ function ReviewDocument({ report, digest }) {
       </div>
 
       <div className={styles.documentBody}>
-        <h3>핵심 검토 목록</h3>
+        <div className={styles.documentBodyHeading}>
+          <div>
+            <h3>핵심 검토 목록</h3>
+            <span className={styles.visibilityCount} aria-live="polite">
+              표시 {preview.visibleCount}건 · 숨김 {preview.hiddenCount}건 · 전체 {preview.totalCount}건
+            </span>
+          </div>
+          {canToggle && (
+            <button
+              type="button"
+              className={styles.sectionToggle}
+              onClick={() => setExpanded((value) => !value)}
+              aria-expanded={expanded}
+              aria-controls="new-mail-review-items"
+              aria-label={expanded ? "필수 검토 요약 목록 간략히 접기" : `필수 검토 요약 전체 ${count}건 펼치기`}
+            >
+              <span aria-hidden="true">{expanded ? "▴" : "▾"}</span>
+              {expanded ? "간략히 접기" : `전체 ${count}건 펼치기`}
+            </button>
+          )}
+        </div>
+        <div id="new-mail-review-items">
         {count === 0 ? (
           <p className={styles.documentEmpty}>현재 기준으로 검토할 새 긴급·중요 메일이 없습니다. 아래 상세 목록에서 이전 항목과 처리 기록을 확인할 수 있습니다.</p>
         ) : (
           <ol className={styles.reviewList}>
-            {digest.reviewItems.map((item) => (
+            {preview.visibleItems.map((item) => (
               <li key={item.id || `${item.account}-${item.subject}-${item.receivedAt || "legacy"}`}>
                 <article className={styles.reviewEntry}>
                   <div className={styles.reviewEntryHeading}>
@@ -143,6 +171,7 @@ function ReviewDocument({ report, digest }) {
             ))}
           </ol>
         )}
+        </div>
         {(digest.excludedCount > 0 || digest.olderCount > 0) && (
           <p className={styles.documentFootnote}>
             참고·광고·자동 삭제 후보 {digest.excludedCount}건은 핵심 본문에서 제외했습니다.
@@ -345,11 +374,13 @@ function ReportDetail({ report, loading, error, onBack, onRefresh }) {
   const [confirmState, setConfirmState] = useState(null);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState(null);
+  const [listExpanded, setListExpanded] = useState(false);
 
   useEffect(() => {
     setSelectedIds(new Set());
     setPending(new Map());
     setFeedback(null);
+    setListExpanded(false);
   }, [report?.id]);
 
   const items = useMemo(() => {
@@ -386,6 +417,14 @@ function ReportDetail({ report, loading, error, onBack, onRefresh }) {
     return filter(items);
   }, [items, sortKey, decisionsByItem]);
 
+  const compactItemPreview = useMemo(() => buildEmailListPreview(sortedItems), [sortedItems]);
+  const itemPreview = useMemo(
+    () => buildEmailListPreview(sortedItems, listExpanded),
+    [sortedItems, listExpanded],
+  );
+  const displayedItems = itemPreview.visibleItems;
+  const canToggleItems = compactItemPreview.hiddenCount > 0;
+
   const togglSelect = useCallback((itemId) => {
     if (!itemId) return;
     setSelectedIds((prev) => {
@@ -408,11 +447,11 @@ function ReportDetail({ report, loading, error, onBack, onRefresh }) {
 
   const toggleAll = useCallback(() => {
     setSelectedIds((prev) => {
-      const allVisibleSelected = sortedItems.length > 0
-        && sortedItems.every((item) => prev.has(item.id));
-      return allVisibleSelected ? new Set() : new Set(sortedItems.map((item) => item.id));
+      const allVisibleSelected = displayedItems.length > 0
+        && displayedItems.every((item) => prev.has(item.id));
+      return allVisibleSelected ? new Set() : new Set(displayedItems.map((item) => item.id));
     });
-  }, [sortedItems]);
+  }, [displayedItems]);
 
   const saveDecisions = useCallback(async (decisionsPayload, successMessage) => {
     if (!report?.id || decisionsPayload.length === 0) return false;
@@ -523,12 +562,12 @@ function ReportDetail({ report, loading, error, onBack, onRefresh }) {
   const summary = report.summaryCounts || {};
   const cleanup = report.cleanupResults || {};
   const accounts = report.accountSummaries || [];
-  const allSelected = sortedItems.length > 0 && sortedItems.every((item) => selectedIds.has(item.id));
+  const allSelected = displayedItems.length > 0 && displayedItems.every((item) => selectedIds.has(item.id));
 
   return (
     <div className={styles.detailContent}>
       <button className={styles.mobileBack} type="button" onClick={onBack}>← 목록으로</button>
-      <ReviewDocument report={report} digest={reviewDigest} />
+      <ReviewDocument key={report.id} report={report} digest={reviewDigest} />
       <header className={styles.detailHeader}>
         <div>
           <span className={styles.eyebrow}>{report.reportKey}</span>
@@ -599,8 +638,24 @@ function ReportDetail({ report, loading, error, onBack, onRefresh }) {
           <div>
             <h3 id="email-decisions-heading">우선순위별 의사결정 목록</h3>
             <p>항목별 핵심 사실과 권장 조치를 확인한 뒤 결정을 기록하세요. 실제 메일함 변경은 실행되지 않고 결정만 저장됩니다.</p>
+            <span className={styles.visibilityCount} aria-live="polite">
+              표시 {itemPreview.visibleCount}건 · 숨김 {itemPreview.hiddenCount}건 · 전체 {itemPreview.totalCount}건
+            </span>
           </div>
-          <div className={styles.listControls} role="toolbar" aria-label="정렬과 전체 선택">
+          <div className={styles.listControls} role="toolbar" aria-label="목록 표시, 정렬과 전체 선택">
+            {canToggleItems && (
+              <button
+                type="button"
+                className={styles.sectionToggle}
+                onClick={() => setListExpanded((value) => !value)}
+                aria-expanded={listExpanded}
+                aria-controls="email-decision-items"
+                aria-label={listExpanded ? "메일 항목 목록 간략히 접기" : `메일 항목 전체 ${sortedItems.length}건 펼치기`}
+              >
+                <span aria-hidden="true">{listExpanded ? "▴" : "▾"}</span>
+                {listExpanded ? "간략히 접기" : `전체 ${sortedItems.length}건 펼치기`}
+              </button>
+            )}
             <label className={styles.sortLabel}>
               <span>정렬</span>
               <select
@@ -608,6 +663,7 @@ function ReportDetail({ report, loading, error, onBack, onRefresh }) {
                 onChange={(e) => {
                   setSortKey(e.target.value);
                   setSelectedIds(new Set());
+                  setListExpanded(false);
                 }}
                 aria-label="정렬 기준"
               >
@@ -618,7 +674,7 @@ function ReportDetail({ report, loading, error, onBack, onRefresh }) {
               type="button"
               className={styles.selectAllButton}
               onClick={toggleAll}
-              disabled={sortedItems.length === 0}
+              disabled={displayedItems.length === 0}
               aria-pressed={allSelected}
             >
               {allSelected ? "전체 해제" : "전체 선택"}
@@ -665,8 +721,8 @@ function ReportDetail({ report, loading, error, onBack, onRefresh }) {
         {sortedItems.length === 0 ? (
           <div className={styles.sectionEmpty}>조건에 맞는 메일이 없습니다.</div>
         ) : (
-          <div className={styles.itemList}>
-            {sortedItems.map((item) => (
+          <div id="email-decision-items" className={styles.itemList}>
+            {displayedItems.map((item) => (
               <DecisionItem
                 key={item.id}
                 item={item}

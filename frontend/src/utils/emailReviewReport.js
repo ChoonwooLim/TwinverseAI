@@ -9,6 +9,8 @@ const AD_WORDS = ["광고", "프로모션", "뉴스레터", "마케팅", "수신
 const AUTO_TRASH_WORDS = ["자동 삭제", "자동삭제", "삭제함 이동", "휴지통 이동"];
 const IMMEDIATE_WORDS = ["즉시", "긴급", "오늘", "바로", "마감"];
 
+export const EMAIL_LIST_PREVIEW_LIMIT = 4;
+
 function textOf(item) {
   return [
     item?.subject,
@@ -34,6 +36,35 @@ function isExcludedFromReview(item, inferredLegacyImportant = false) {
     || (item?.riskTags || []).includes("deletion")
     || AD_WORDS.some((word) => text.includes(word))
     || AUTO_TRASH_WORDS.some((word) => text.includes(word));
+}
+
+export function isImmediateEmailItem(item) {
+  if (item?.priority === "urgent") return true;
+  const urgency = String(item?.urgency || "").toLowerCase();
+  return IMMEDIATE_WORDS.some((word) => urgency.includes(word));
+}
+
+/**
+ * Keeps every immediate item visible in the compact view, then fills the
+ * remaining preview slots with the highest items from the supplied order.
+ */
+export function buildEmailListPreview(items, expanded = false, limit = EMAIL_LIST_PREVIEW_LIMIT) {
+  const list = Array.isArray(items) ? items : [];
+  if (expanded || list.length <= limit) {
+    return { visibleItems: list, visibleCount: list.length, hiddenCount: 0, totalCount: list.length };
+  }
+
+  const immediateItems = list.filter(isImmediateEmailItem);
+  const regularItems = list.filter((item) => !isImmediateEmailItem(item));
+  const regularLimit = Math.max(0, limit - immediateItems.length);
+  const visibleItems = [...immediateItems, ...regularItems.slice(0, regularLimit)];
+
+  return {
+    visibleItems,
+    visibleCount: visibleItems.length,
+    hiddenCount: list.length - visibleItems.length,
+    totalCount: list.length,
+  };
 }
 
 /**
@@ -84,11 +115,7 @@ export function buildEmailReviewDigest(report) {
     return String(b.receivedAt || "").localeCompare(String(a.receivedAt || ""));
   });
 
-  const immediateCount = reviewItems.filter((item) => {
-    if (item.priority === "urgent") return true;
-    const urgency = String(item.urgency || "").toLowerCase();
-    return IMMEDIATE_WORDS.some((word) => urgency.includes(word));
-  }).length;
+  const immediateCount = reviewItems.filter(isImmediateEmailItem).length;
 
   return { reportDate, reviewItems, immediateCount, excludedCount, olderCount };
 }

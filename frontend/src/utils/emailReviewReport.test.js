@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildEmailReviewDigest, groupEmailReportsByMonth } from "./emailReviewReport";
+import {
+  buildEmailListPreview,
+  buildEmailReviewDigest,
+  groupEmailReportsByMonth,
+} from "./emailReviewReport";
 
 const report = (items) => ({
   reportDate: "2026-11-09",
@@ -65,5 +69,46 @@ describe("groupEmailReportsByMonth", () => {
       { year: "2026", months: [{ month: "11", reports: items.slice(0, 2) }] },
       { year: "2025", months: [{ month: "12", reports: items.slice(2) }] },
     ]);
+  });
+});
+
+
+describe("buildEmailListPreview", () => {
+  it("접힌 긴 목록에서도 모든 긴급·즉시 항목을 먼저 표시한다", () => {
+    const items = [
+      item({ id: "normal-1" }),
+      item({ id: "normal-2" }),
+      item({ id: "urgent-1", priority: "urgent" }),
+      item({ id: "normal-3" }),
+      item({ id: "urgent-2", urgency: "오늘 바로 확인" }),
+      item({ id: "normal-4" }),
+    ];
+
+    const result = buildEmailListPreview(items, false, 3);
+
+    expect(result.visibleItems.map(({ id }) => id)).toEqual(["urgent-1", "urgent-2", "normal-1"]);
+    expect(result).toMatchObject({ visibleCount: 3, hiddenCount: 3, totalCount: 6 });
+  });
+
+  it("긴급 항목이 제한보다 많으면 긴급 항목을 숨기지 않는다", () => {
+    const items = [
+      item({ id: "urgent-1", priority: "urgent" }),
+      item({ id: "urgent-2", priority: "urgent" }),
+      item({ id: "urgent-3", priority: "urgent" }),
+      item({ id: "normal" }),
+    ];
+
+    const result = buildEmailListPreview(items, false, 2);
+
+    expect(result.visibleItems.map(({ id }) => id)).toEqual(["urgent-1", "urgent-2", "urgent-3"]);
+    expect(result.hiddenCount).toBe(1);
+  });
+
+  it("펼친 목록은 원래 순서와 전체 건수를 보존한다", () => {
+    const items = [item({ id: "one" }), item({ id: "two", priority: "urgent" })];
+    const result = buildEmailListPreview(items, true, 1);
+
+    expect(result.visibleItems).toBe(items);
+    expect(result).toMatchObject({ visibleCount: 2, hiddenCount: 0, totalCount: 2 });
   });
 });
