@@ -1,9 +1,12 @@
-"""Persisted, metadata-only daily email reports and admin triage decisions.
+"""Persisted email report metadata, admin triage decisions, and their
+mailbox-execution lifecycle.
 
-Only summaries and judgement metadata are stored — never message bodies,
-attachments, or credentials. Decisions record what an admin *wants* to do
-with a given item; execution against the mailbox is intentionally out of
-scope.
+The ingested report stores summaries and judgement metadata only — never
+message bodies, attachments, or credentials. Admin decisions record intent
+(keep / trash / auto rule / defer) and also carry the execution lifecycle
+that an external trusted worker consumes through the worker API. This app
+itself never touches the mailbox or holds mailbox credentials; it only
+publishes a bounded work queue.
 """
 from datetime import date, datetime, timezone
 from typing import Any, Optional
@@ -67,4 +70,27 @@ class EmailReportDecision(SQLModel, table=True):
         default_factory=utc_now,
         sa_type=DateTime(timezone=True),
         index=True,
+    )
+
+    # Mailbox execution lifecycle. The mailbox operation runs on an external
+    # trusted worker (OpenClaw) that claims pending rows through the worker
+    # API. `action` is the concrete mailbox op the worker should perform; the
+    # worker is authoritative on exactly how that maps to IMAP/Gmail calls.
+    action: str = Field(default="noop", max_length=16)
+    status: str = Field(default="pending", max_length=16, index=True)
+    attempts: int = Field(default=0)
+    lease_token: Optional[str] = Field(default=None, max_length=64, index=True)
+    lease_expires_at: Optional[datetime] = Field(
+        default=None,
+        sa_type=DateTime(timezone=True),
+    )
+    error_code: Optional[str] = Field(default=None, max_length=64)
+    error_message: Optional[str] = Field(default=None, max_length=1000)
+    executed_at: Optional[datetime] = Field(
+        default=None,
+        sa_type=DateTime(timezone=True),
+    )
+    last_attempt_at: Optional[datetime] = Field(
+        default=None,
+        sa_type=DateTime(timezone=True),
     )

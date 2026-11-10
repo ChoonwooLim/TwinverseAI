@@ -1,9 +1,18 @@
-"""Email report ingestion and admin read/decision APIs.
+"""Email report ingestion, admin read/decision APIs, and worker execution queue.
 
-Only bounded metadata and summaries are accepted. Message bodies, attachments,
-credentials, and arbitrary metadata are intentionally outside the schema.
-Decisions saved here record intent only — nothing is executed against the
-mailbox from this service.
+Only bounded metadata and summaries are accepted on ingest. Message bodies,
+attachments, credentials, and arbitrary metadata are rejected by the schema.
+
+Admin decisions saved through this service are *automatically applied to the
+real mailbox* by an external trusted worker (OpenClaw). This service never
+stores mailbox credentials and never talks to a mailbox directly — it only
+exposes a bearer-token-protected work queue the worker polls. The worker is
+authoritative on IMAP/Gmail semantics and on resolving the identified message
+from the small bounded metadata returned here (account, sender, subject,
+receivedAt, sourceThreadId).
+
+"trash" moves the message to the mailbox's Trash folder and is recoverable
+inside the mailbox; this service never permanently deletes mail.
 """
 from __future__ import annotations
 
@@ -12,7 +21,7 @@ import re
 import secrets
 from hashlib import sha256
 from datetime import date, datetime, timedelta, timezone
-from typing import Annotated, Any
+from typing import Annotated, Any, Optional
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -27,7 +36,9 @@ from models import EmailReport, EmailReportDecision, User
 
 admin_router = APIRouter()
 ingest_router = APIRouter()
+worker_router = APIRouter()
 ingest_security = HTTPBearer(auto_error=False)
+worker_security = HTTPBearer(auto_error=False)
 
 PROHIBITED_KEYS = {
     "apikey", "attachment", "attachments", "authorization", "body", "bodyhtml",
@@ -68,9 +79,54 @@ MAX_ITEMS_PER_SECTION = 200
 MAX_BULK_DECISIONS = MAX_ITEMS_PER_SECTION * 2
 KST = ZoneInfo("Asia/Seoul")
 
+# --- Execution queue contract ---
+# The worker (OpenClaw) consumes `pending` rows, claims them with a lease,
+# and acknowledges each as succeeded or failed. Statuses:
+#   pending         — queued for the worker
+#   processing      — claimed, lease active
+#   succeeded       — worker reported success; terminal
+#   failed          — worker reported failure after max attempts; terminal
+#   not_applicable  — decision is intentionally a no-op (decide_later)
+EXECUTION_STATUSES = {"pending", "processing", "succeeded", "failed", "not_applicable"}
+TERMINAL_STATUSES = {"succeeded", "failed", "not_applicable"}
+# Concrete mailbox ops the worker is expected to understand.
+EXECUTION_ACTIONS = {"archive", "trash", "noop"}
+# Mapping admin decisions → mailbox action. keep / always_keep_similar want
+# the direct item out of the inbox (archive); the worker decides safely if
+# the message is already outside the inbox. trash options always route to
+# Trash (recoverable). decide_later is a no-op.
+DECISION_TO_ACTION: dict[str, str] = {
+    "keep": "archive",
+    "always_keep_similar": "archive",
+    "auto_archive": "archive",
+    "trash": "trash",
+    "auto_trash_similar": "trash",
+    "decide_later": "noop",
+}
+# Decisions whose action is not applied to the mailbox (and should not sit
+# in the pending queue). ``decide_later`` is the only such decision today.
+DECISIONS_NOT_APPLICABLE = {"decide_later"}
+MAX_EXECUTION_ATTEMPTS = 5
+MAX_WORKER_BATCH = 100
+MIN_LEASE_SECONDS = 10
+MAX_LEASE_SECONDS = 1800
+MAX_ERROR_CODE_LENGTH = 64
+MAX_ERROR_MESSAGE_LENGTH = 500
+
 
 def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _as_utc(value: datetime | None) -> datetime | None:
+    """Treat naive stored timestamps as UTC. SQLite drops the tzinfo on
+    insert; PostgreSQL round-trips aware datetimes. Normalise both so
+    lease-expiry comparisons never crash on a naive legacy row."""
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value
 
 
 def _reject_sensitive_fields(value: Any) -> Any:
@@ -243,6 +299,36 @@ def require_ingest_token(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid ingestion token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+
+def require_worker_token(
+    credentials: HTTPAuthorizationCredentials | None = Depends(worker_security),
+) -> None:
+    """Authenticate the external execution worker.
+
+    Accepts a dedicated ``EMAIL_REPORT_EXECUTION_TOKEN`` and falls back to
+    ``EMAIL_REPORT_INGEST_TOKEN`` so deployments that want a single shared
+    secret still work. Admin JWTs are intentionally NOT accepted — only the
+    OpenClaw worker should ever reach this endpoint.
+    """
+    expected = os.getenv("EMAIL_REPORT_EXECUTION_TOKEN", "").strip()
+    if len(expected) < 16:
+        expected = os.getenv("EMAIL_REPORT_INGEST_TOKEN", "").strip()
+    if len(expected) < 16:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Email report execution worker is not configured",
+        )
+    if (
+        credentials is None
+        or credentials.scheme.lower() != "bearer"
+        or not secrets.compare_digest(credentials.credentials, expected)
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid worker token",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -442,22 +528,63 @@ def _decisions_by_id(session: Session, report_id: int | None) -> dict[str, str]:
     return {row[0]: row[1] for row in rows}
 
 
+def _decision_to_payload(row: EmailReportDecision) -> dict[str, Any]:
+    return {
+        "itemId": row.item_id,
+        "decision": row.decision,
+        "decidedBy": row.decided_by,
+        "decidedByUsername": row.decided_by_username,
+        "updatedAt": row.updated_at.isoformat() if row.updated_at else None,
+        "action": row.action,
+        "status": row.status,
+        "attempts": row.attempts,
+        "errorCode": row.error_code,
+        "errorMessage": row.error_message,
+        "executedAt": row.executed_at.isoformat() if row.executed_at else None,
+        "lastAttemptAt": row.last_attempt_at.isoformat() if row.last_attempt_at else None,
+    }
+
+
 def _decisions_for_report(session: Session, report_id: int) -> list[dict[str, Any]]:
     rows = session.exec(
         select(EmailReportDecision)
         .where(EmailReportDecision.report_id == report_id)
         .order_by(col(EmailReportDecision.updated_at).desc(), col(EmailReportDecision.id).asc())
     ).all()
-    return [
-        {
-            "itemId": row.item_id,
-            "decision": row.decision,
-            "decidedBy": row.decided_by,
-            "decidedByUsername": row.decided_by_username,
-            "updatedAt": row.updated_at.isoformat() if row.updated_at else None,
-        }
-        for row in rows
-    ]
+    return [_decision_to_payload(row) for row in rows]
+
+
+def _reset_execution_lifecycle(row: EmailReportDecision, now: datetime) -> None:
+    """Re-queue a decision for the worker based on its current `decision` value.
+
+    Used when a decision is first saved AND when an existing decision is
+    overwritten with a different intent (so a previously-executed row is
+    re-handed to the worker). Clears any dangling lease so it cannot be
+    acknowledged by a stale worker.
+    """
+    action = DECISION_TO_ACTION.get(row.decision, "noop")
+    row.action = action
+    if row.decision in DECISIONS_NOT_APPLICABLE or action == "noop":
+        row.status = "not_applicable"
+    else:
+        row.status = "pending"
+    row.attempts = 0
+    row.lease_token = None
+    row.lease_expires_at = None
+    row.error_code = None
+    row.error_message = None
+    row.executed_at = None
+    row.last_attempt_at = None
+    row.updated_at = now
+
+
+def _execution_counts(decisions: list[dict[str, Any]]) -> dict[str, int]:
+    counts = {s: 0 for s in EXECUTION_STATUSES}
+    for row in decisions:
+        status_value = row.get("status") or "pending"
+        if status_value in counts:
+            counts[status_value] += 1
+    return counts
 
 
 def _detail(report: EmailReport, session: Session) -> dict[str, Any]:
@@ -477,8 +604,10 @@ def _detail(report: EmailReport, session: Session) -> dict[str, Any]:
         "createdAt": report.created_at.isoformat(),
         "updatedAt": report.updated_at.isoformat(),
         "summaryCounts": _summary_counts(report, decisions_by_id),
+        "executionCounts": _execution_counts(decisions),
         "decisions": decisions,
         "decisionOptions": sorted(DECISION_VALUES),
+        "executionActions": sorted(EXECUTION_ACTIONS),
     }
 
 
@@ -660,11 +789,17 @@ def save_email_report_decisions(
                 created_at=now,
                 updated_at=now,
             )
+            _reset_execution_lifecycle(row, now)
         else:
+            previous_decision = row.decision
             row.decision = incoming.decision
             row.decided_by = user.id
             row.decided_by_username = user.username
             row.updated_at = now
+            # Any change in the saved decision resets execution lifecycle so
+            # the worker re-applies the current intent against the mailbox.
+            if previous_decision != incoming.decision:
+                _reset_execution_lifecycle(row, now)
         session.add(row)
     session.commit()
     return {
@@ -715,3 +850,247 @@ def reset_email_report_decision(
 ):
     """Backward-compatible path form retained for existing clients."""
     return _delete_email_report_decision(report_id, item_id, session)
+
+
+# ---------------------------------------------------------------------------
+# Worker execution queue
+# ---------------------------------------------------------------------------
+#
+# The external trusted worker (OpenClaw) polls this endpoint, claims a batch
+# of pending actions, performs the mailbox operation, then acknowledges each
+# as succeeded or failed. The contract exposes only the minimum metadata the
+# worker needs to locate the message — never bodies, attachments, cookies,
+# tokens, or credentials of any kind.
+
+
+class ClaimRequest(StrictPayload):
+    limit: Annotated[int, Field(default=20, strict=True, ge=1, le=MAX_WORKER_BATCH)]
+    lease_seconds: Annotated[
+        int,
+        Field(
+            default=300,
+            alias="leaseSeconds",
+            strict=True,
+            ge=MIN_LEASE_SECONDS,
+            le=MAX_LEASE_SECONDS,
+        ),
+    ]
+    worker_id: Annotated[
+        str,
+        Field(default="", alias="workerId", max_length=120, pattern=r"^[A-Za-z0-9._:-]*$"),
+    ]
+
+
+class AcknowledgeRequest(StrictPayload):
+    decision_id: Annotated[int, Field(alias="decisionId", strict=True, ge=1)]
+    lease_token: Annotated[
+        str,
+        Field(alias="leaseToken", min_length=16, max_length=64, pattern=r"^[A-Za-z0-9_-]+$"),
+    ]
+    status: Annotated[str, Field(min_length=1, max_length=16)]
+    error_code: Annotated[
+        Optional[str],
+        Field(
+            default=None,
+            alias="errorCode",
+            max_length=MAX_ERROR_CODE_LENGTH,
+            pattern=r"^[A-Za-z0-9_.:-]*$",
+        ),
+    ] = None
+    error_message: Annotated[
+        Optional[str],
+        Field(default=None, alias="errorMessage", max_length=MAX_ERROR_MESSAGE_LENGTH),
+    ] = None
+
+    @model_validator(mode="after")
+    def validate_status(self) -> "AcknowledgeRequest":
+        if self.status not in {"succeeded", "failed"}:
+            raise ValueError("status 값은 'succeeded' 또는 'failed' 이어야 합니다")
+        return self
+
+
+def _item_metadata_for_worker(item: dict[str, Any]) -> dict[str, Any]:
+    """Return ONLY the bounded metadata the worker needs to locate a message.
+
+    No body, summary, reason, classification basis, risk tags, recommended
+    action, or free-form notes — those never leave this service. The worker
+    operates on identity fields and the optional Gmail thread id only.
+    """
+    return {
+        "account": str(item.get("account") or ""),
+        "sender": str(item.get("sender") or ""),
+        "subject": str(item.get("subject") or ""),
+        "receivedAt": item.get("receivedAt") or None,
+        "sourceThreadId": str(item.get("sourceThreadId") or "") or None,
+    }
+
+
+def _report_item_index(session: Session, report_ids: list[int]) -> dict[int, dict[str, dict[str, Any]]]:
+    """Build a {report_id: {item_id: item}} lookup across a set of reports."""
+    index: dict[int, dict[str, dict[str, Any]]] = {}
+    if not report_ids:
+        return index
+    reports = session.exec(
+        select(EmailReport).where(col(EmailReport.id).in_(report_ids))
+    ).all()
+    for report in reports:
+        important, action = _normalise_report_items(report)
+        by_id: dict[str, dict[str, Any]] = {}
+        for item in important + action:
+            item_id = item.get("id")
+            if isinstance(item_id, str) and item_id:
+                by_id.setdefault(item_id, item)
+        index[report.id] = by_id
+    return index
+
+
+@worker_router.post("/execution/claim")
+def claim_execution_batch(
+    payload: ClaimRequest,
+    _: None = Depends(require_worker_token),
+    session: Session = Depends(get_session),
+):
+    """Atomically lease a batch of pending decisions to the worker.
+
+    A decision is claimable when either:
+      - status == 'pending' AND attempts < MAX_EXECUTION_ATTEMPTS, OR
+      - status == 'processing' AND its lease has expired (crash recovery).
+    """
+    now = _utc_now()
+    lease_expires_at = now + timedelta(seconds=payload.lease_seconds)
+
+    # Candidate rows: pending with attempts remaining OR stale-processing.
+    candidate_stmt = (
+        select(EmailReportDecision)
+        .where(
+            EmailReportDecision.status.in_(("pending", "processing")),
+            EmailReportDecision.attempts < MAX_EXECUTION_ATTEMPTS,
+            EmailReportDecision.action != "noop",
+        )
+        .order_by(
+            col(EmailReportDecision.updated_at).asc(),
+            col(EmailReportDecision.id).asc(),
+        )
+        .limit(payload.limit * 2)  # over-select so we can skip active leases
+    )
+    candidates = session.exec(candidate_stmt).all()
+
+    claimed: list[EmailReportDecision] = []
+    for row in candidates:
+        if len(claimed) >= payload.limit:
+            break
+        if row.status == "processing":
+            lease_expires = _as_utc(row.lease_expires_at)
+            if lease_expires is not None and lease_expires > now:
+                # Lease still active; another worker owns it.
+                continue
+        lease_token = secrets.token_urlsafe(32)
+        row.status = "processing"
+        row.lease_token = lease_token
+        row.lease_expires_at = lease_expires_at
+        row.attempts = (row.attempts or 0) + 1
+        row.last_attempt_at = now
+        row.error_code = None
+        row.error_message = None
+        session.add(row)
+        claimed.append(row)
+    session.commit()
+
+    if not claimed:
+        return {"items": [], "leaseSeconds": payload.lease_seconds, "serverTime": now.isoformat()}
+
+    # Resolve the item metadata for the response in bulk.
+    report_ids = sorted({row.report_id for row in claimed})
+    items_by_report = _report_item_index(session, report_ids)
+    response_items: list[dict[str, Any]] = []
+    for row in claimed:
+        session.refresh(row)
+        raw_item = items_by_report.get(row.report_id, {}).get(row.item_id) or {}
+        response_items.append(
+            {
+                "decisionId": row.id,
+                "reportId": row.report_id,
+                "itemId": row.item_id,
+                "action": row.action,
+                "attempts": row.attempts,
+                "leaseToken": row.lease_token,
+                "leaseExpiresAt": row.lease_expires_at.isoformat()
+                if row.lease_expires_at
+                else None,
+                "message": _item_metadata_for_worker(raw_item),
+            }
+        )
+    return {
+        "items": response_items,
+        "leaseSeconds": payload.lease_seconds,
+        "serverTime": now.isoformat(),
+    }
+
+
+@worker_router.post("/execution/ack")
+def acknowledge_execution(
+    payload: AcknowledgeRequest,
+    _: None = Depends(require_worker_token),
+    session: Session = Depends(get_session),
+):
+    """Worker-driven terminal acknowledgement of one claimed decision.
+
+    - Must present a matching lease_token — acknowledgements from stale
+      leases are rejected so a late worker cannot overwrite the result of a
+      fresher claim.
+    - Idempotent on success: acking an already-succeeded row with the same
+      lease token returns 200 without further mutation.
+    - Failures that remain under MAX_EXECUTION_ATTEMPTS go back to pending
+      for retry; failures at or above the ceiling terminate as `failed`.
+    """
+    row = session.get(EmailReportDecision, payload.decision_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Decision not found")
+
+    # Idempotent short-circuit: a success retry with a matching token is a
+    # no-op success. Without matching tokens the ack is rejected, otherwise
+    # a later/different worker could spoof the terminal state.
+    if row.status == "succeeded" and row.lease_token == payload.lease_token:
+        return {"ok": True, "status": row.status, "attempts": row.attempts}
+
+    if row.status in TERMINAL_STATUSES and row.status != "succeeded":
+        raise HTTPException(
+            status_code=409,
+            detail={"message": "Decision is already in a terminal state", "status": row.status},
+        )
+    if row.status != "processing" or row.lease_token != payload.lease_token:
+        raise HTTPException(status_code=409, detail="Lease is not valid for this decision")
+    lease_expires = _as_utc(row.lease_expires_at)
+    if lease_expires is not None and lease_expires < _utc_now():
+        # Lease expired → reject so the next claim cycle picks it up cleanly.
+        raise HTTPException(status_code=409, detail="Lease has expired")
+
+    now = _utc_now()
+    if payload.status == "succeeded":
+        row.status = "succeeded"
+        row.executed_at = now
+        row.error_code = None
+        row.error_message = None
+    else:  # failed
+        if (row.attempts or 0) >= MAX_EXECUTION_ATTEMPTS:
+            row.status = "failed"
+        else:
+            # Release the lease; row goes back into the queue.
+            row.status = "pending"
+            row.lease_token = None
+            row.lease_expires_at = None
+        row.error_code = payload.error_code or None
+        row.error_message = (payload.error_message or None)
+        if row.error_message is not None:
+            row.error_message = row.error_message[:MAX_ERROR_MESSAGE_LENGTH]
+    row.last_attempt_at = now
+    row.updated_at = now
+    session.add(row)
+    session.commit()
+    session.refresh(row)
+    return {
+        "ok": True,
+        "status": row.status,
+        "attempts": row.attempts,
+        "executedAt": row.executed_at.isoformat() if row.executed_at else None,
+    }

@@ -10,13 +10,20 @@ from sqlmodel import Session, SQLModel, create_engine, func, select
 from models.email_report import EmailReport, EmailReportDecision
 from routers.email_reports import (
     DECISION_VALUES,
+    DECISION_TO_ACTION,
+    MAX_EXECUTION_ATTEMPTS,
+    AcknowledgeRequest,
+    ClaimRequest,
     DecisionBatch,
     EmailReportIngest,
     _summary_counts,
+    acknowledge_execution,
+    claim_execution_batch,
     get_email_report,
     ingest_email_report,
     list_email_reports,
     require_ingest_token,
+    require_worker_token,
     reset_email_report_decision,
     reset_email_report_decision_query,
     save_email_report_decisions,
@@ -606,3 +613,318 @@ def test_exact_duplicate_legacy_item_is_rendered_once_across_sections():
     rendered = detail["importantItems"] + detail["actionRequiredItems"]
     assert len(rendered) == 1
     assert rendered[0]["id"].startswith("legacy-mail-")
+
+
+# ---------- new: execution queue lifecycle ----------
+
+
+def _save(session, report_id, decisions, user=None):
+    return save_email_report_decisions(
+        report_id,
+        DecisionBatch.model_validate({"decisions": decisions}),
+        user or _FakeUser(),
+        session,
+    )
+
+
+def _seeded_report(session):
+    ingest_email_report(EmailReportIngest.model_validate(payload_v2()), None, session)
+    return session.exec(select(EmailReport)).one()
+
+
+def test_saving_decision_queues_action_for_worker_and_defers_decide_later():
+    engine = _memory_engine()
+    with Session(engine) as session:
+        report = _seeded_report(session)
+        _save(session, report.id, [
+            {"itemId": "i1", "decision": "keep"},
+            {"itemId": "i2", "decision": "trash"},
+            {"itemId": "a1", "decision": "decide_later"},
+            {"itemId": "a2", "decision": "auto_archive"},
+        ])
+
+        rows = {r.item_id: r for r in session.exec(select(EmailReportDecision)).all()}
+
+    assert rows["i1"].action == "archive" and rows["i1"].status == "pending"
+    assert rows["i2"].action == "trash" and rows["i2"].status == "pending"
+    assert rows["a1"].action == "noop" and rows["a1"].status == "not_applicable"
+    assert rows["a2"].action == "archive" and rows["a2"].status == "pending"
+    # decide_later must never show up in the pending queue.
+    assert rows["a1"].attempts == 0
+
+
+def test_changing_a_decision_resets_execution_lifecycle_to_pending():
+    engine = _memory_engine()
+    with Session(engine) as session:
+        report = _seeded_report(session)
+        _save(session, report.id, [{"itemId": "i1", "decision": "trash"}])
+        row = session.exec(
+            select(EmailReportDecision).where(EmailReportDecision.item_id == "i1")
+        ).one()
+        # Mark it as executed so we can observe the reset.
+        row.status = "succeeded"
+        row.executed_at = datetime.now(timezone.utc)
+        row.attempts = 3
+        row.error_code = None
+        session.add(row)
+        session.commit()
+
+        _save(session, report.id, [{"itemId": "i1", "decision": "keep"}])
+        row = session.exec(
+            select(EmailReportDecision).where(EmailReportDecision.item_id == "i1")
+        ).one()
+
+    assert row.action == "archive"
+    assert row.status == "pending"
+    assert row.attempts == 0
+    assert row.executed_at is None
+    assert row.lease_token is None
+
+
+def test_decision_to_action_contract_is_exhaustive():
+    missing = DECISION_VALUES - set(DECISION_TO_ACTION.keys())
+    assert not missing, f"DECISION_TO_ACTION missing entries for {sorted(missing)}"
+    assert set(DECISION_TO_ACTION.values()) <= {"archive", "trash", "noop"}
+
+
+def test_worker_token_fallback_to_ingest_token(monkeypatch):
+    monkeypatch.delenv("EMAIL_REPORT_EXECUTION_TOKEN", raising=False)
+    monkeypatch.setenv("EMAIL_REPORT_INGEST_TOKEN", "ingest-shared-token-1234567")
+    require_worker_token(HTTPAuthorizationCredentials(scheme="Bearer", credentials="ingest-shared-token-1234567"))
+
+    with pytest.raises(HTTPException) as info:
+        require_worker_token(HTTPAuthorizationCredentials(scheme="Bearer", credentials="wrong"))
+    assert info.value.status_code == 401
+
+
+def test_worker_token_prefers_execution_specific_secret(monkeypatch):
+    monkeypatch.setenv("EMAIL_REPORT_EXECUTION_TOKEN", "worker-only-token-123456")
+    monkeypatch.setenv("EMAIL_REPORT_INGEST_TOKEN", "ingest-separate-token-xx")
+    require_worker_token(HTTPAuthorizationCredentials(scheme="Bearer", credentials="worker-only-token-123456"))
+    with pytest.raises(HTTPException):
+        require_worker_token(HTTPAuthorizationCredentials(scheme="Bearer", credentials="ingest-separate-token-xx"))
+
+
+def test_claim_returns_bounded_metadata_and_marks_processing():
+    engine = _memory_engine()
+    with Session(engine) as session:
+        report = _seeded_report(session)
+        _save(session, report.id, [
+            {"itemId": "i1", "decision": "keep"},
+            {"itemId": "i2", "decision": "trash"},
+            {"itemId": "a1", "decision": "decide_later"},
+        ])
+        result = claim_execution_batch(
+            ClaimRequest.model_validate({"limit": 10, "leaseSeconds": 60}),
+            None,
+            session,
+        )
+
+    # decide_later must not be handed to the worker.
+    assert {item["itemId"] for item in result["items"]} == {"i1", "i2"}
+    for item in result["items"]:
+        assert item["leaseToken"] and len(item["leaseToken"]) >= 20
+        assert item["action"] in {"archive", "trash"}
+        assert item["attempts"] == 1
+        payload_keys = set(item["message"].keys())
+        # Only locator metadata — no body, summary, risk tags, reasoning, etc.
+        assert payload_keys == {"account", "sender", "subject", "receivedAt", "sourceThreadId"}
+
+
+def test_ack_succeeded_is_idempotent_and_terminal():
+    engine = _memory_engine()
+    with Session(engine) as session:
+        report = _seeded_report(session)
+        _save(session, report.id, [{"itemId": "i2", "decision": "trash"}])
+        claim = claim_execution_batch(
+            ClaimRequest.model_validate({"limit": 1, "leaseSeconds": 60}),
+            None,
+            session,
+        )
+        item = claim["items"][0]
+        ack1 = acknowledge_execution(
+            AcknowledgeRequest.model_validate({
+                "decisionId": item["decisionId"],
+                "leaseToken": item["leaseToken"],
+                "status": "succeeded",
+            }),
+            None,
+            session,
+        )
+        # Replay with same lease token must still return 200/succeeded.
+        ack2 = acknowledge_execution(
+            AcknowledgeRequest.model_validate({
+                "decisionId": item["decisionId"],
+                "leaseToken": item["leaseToken"],
+                "status": "succeeded",
+            }),
+            None,
+            session,
+        )
+        # Different lease token after success must be rejected.
+        with pytest.raises(HTTPException) as info:
+            acknowledge_execution(
+                AcknowledgeRequest.model_validate({
+                    "decisionId": item["decisionId"],
+                    "leaseToken": "A" * 32,
+                    "status": "succeeded",
+                }),
+                None,
+                session,
+            )
+
+    assert ack1["status"] == "succeeded" and ack2["status"] == "succeeded"
+    assert info.value.status_code == 409
+
+
+def test_ack_with_stale_lease_is_rejected_after_expired_lease_reclaim():
+    engine = _memory_engine()
+    with Session(engine) as session:
+        report = _seeded_report(session)
+        _save(session, report.id, [{"itemId": "i2", "decision": "trash"}])
+
+        first = claim_execution_batch(
+            ClaimRequest.model_validate({"limit": 1, "leaseSeconds": 10}),
+            None,
+            session,
+        )
+        first_item = first["items"][0]
+
+        # Force the lease to be expired.
+        row = session.get(EmailReportDecision, first_item["decisionId"])
+        row.lease_expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+        session.add(row)
+        session.commit()
+
+        second = claim_execution_batch(
+            ClaimRequest.model_validate({"limit": 1, "leaseSeconds": 60}),
+            None,
+            session,
+        )
+        second_item = second["items"][0]
+        assert second_item["decisionId"] == first_item["decisionId"]
+        assert second_item["leaseToken"] != first_item["leaseToken"]
+        assert second_item["attempts"] == 2
+
+        with pytest.raises(HTTPException) as info:
+            acknowledge_execution(
+                AcknowledgeRequest.model_validate({
+                    "decisionId": first_item["decisionId"],
+                    "leaseToken": first_item["leaseToken"],
+                    "status": "succeeded",
+                }),
+                None,
+                session,
+            )
+    assert info.value.status_code == 409
+
+
+def test_ack_failure_requeues_until_max_attempts_then_terminates():
+    engine = _memory_engine()
+    with Session(engine) as session:
+        report = _seeded_report(session)
+        _save(session, report.id, [{"itemId": "i2", "decision": "trash"}])
+
+        for attempt in range(1, MAX_EXECUTION_ATTEMPTS + 1):
+            claim = claim_execution_batch(
+                ClaimRequest.model_validate({"limit": 1, "leaseSeconds": 60}),
+                None,
+                session,
+            )
+            assert len(claim["items"]) == 1, f"attempt {attempt} did not re-queue"
+            item = claim["items"][0]
+            assert item["attempts"] == attempt
+            ack = acknowledge_execution(
+                AcknowledgeRequest.model_validate({
+                    "decisionId": item["decisionId"],
+                    "leaseToken": item["leaseToken"],
+                    "status": "failed",
+                    "errorCode": "imap_timeout",
+                    "errorMessage": "timed out",
+                }),
+                None,
+                session,
+            )
+            if attempt < MAX_EXECUTION_ATTEMPTS:
+                assert ack["status"] == "pending"
+            else:
+                assert ack["status"] == "failed"
+
+        # Next claim must return nothing: the row is terminal.
+        tail = claim_execution_batch(
+            ClaimRequest.model_validate({"limit": 1, "leaseSeconds": 60}),
+            None,
+            session,
+        )
+    assert tail["items"] == []
+
+
+def test_detail_endpoint_exposes_execution_fields():
+    engine = _memory_engine()
+    with Session(engine) as session:
+        report = _seeded_report(session)
+        _save(session, report.id, [
+            {"itemId": "i1", "decision": "keep"},
+            {"itemId": "a1", "decision": "decide_later"},
+        ])
+        detail = get_email_report(report.id, _FakeUser(), session)
+
+    rows_by_item = {row["itemId"]: row for row in detail["decisions"]}
+    assert rows_by_item["i1"]["status"] == "pending"
+    assert rows_by_item["i1"]["action"] == "archive"
+    assert rows_by_item["a1"]["status"] == "not_applicable"
+    assert detail["executionCounts"]["pending"] == 1
+    assert detail["executionCounts"]["not_applicable"] == 1
+    assert detail["executionCounts"]["succeeded"] == 0
+
+
+def test_resetting_a_decision_removes_it_from_the_queue():
+    engine = _memory_engine()
+    with Session(engine) as session:
+        report = _seeded_report(session)
+        _save(session, report.id, [{"itemId": "i2", "decision": "trash"}])
+        reset_email_report_decision(report.id, "i2", _FakeUser(), session)
+
+        remaining = claim_execution_batch(
+            ClaimRequest.model_validate({"limit": 10, "leaseSeconds": 60}),
+            None,
+            session,
+        )
+    assert remaining["items"] == []
+
+
+def test_ack_schema_rejects_unknown_status_and_short_token():
+    with pytest.raises(ValidationError):
+        AcknowledgeRequest.model_validate({
+            "decisionId": 1,
+            "leaseToken": "A" * 32,
+            "status": "weird",
+        })
+    with pytest.raises(ValidationError):
+        AcknowledgeRequest.model_validate({
+            "decisionId": 1,
+            "leaseToken": "short",
+            "status": "succeeded",
+        })
+    with pytest.raises(ValidationError):
+        AcknowledgeRequest.model_validate({
+            "decisionId": 1,
+            "leaseToken": "A" * 32,
+            "status": "failed",
+            "errorMessage": "x" * 5000,
+        })
+
+
+def test_claim_response_omits_summary_reason_and_risk_tags():
+    engine = _memory_engine()
+    with Session(engine) as session:
+        report = _seeded_report(session)
+        _save(session, report.id, [{"itemId": "i1", "decision": "keep"}])
+        result = claim_execution_batch(
+            ClaimRequest.model_validate({"limit": 1, "leaseSeconds": 60}),
+            None,
+            session,
+        )
+    item = result["items"][0]["message"]
+    for forbidden in ("summary", "reason", "riskTags", "classificationBasis", "recommendedAction"):
+        assert forbidden not in item

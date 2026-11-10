@@ -15,18 +15,34 @@ const PRIORITY_LABELS = {
 };
 
 const DECISION_OPTIONS = [
-  { key: "keep", label: "보존", help: "보존 결정만 기록하며 메일함은 변경하지 않습니다." },
-  { key: "trash", label: "삭제함 이동", help: "삭제함 이동 결정만 기록하며 메일은 이동하지 않습니다." },
-  { key: "auto_trash_similar", label: "같은 유형 자동 삭제", help: "같은 유형의 자동 삭제 규칙 결정만 기록합니다." },
-  { key: "always_keep_similar", label: "같은 유형 항상 보존", help: "같은 유형의 항상 보존 규칙 결정만 기록합니다." },
-  { key: "auto_archive", label: "자동 보관", help: "같은 유형의 자동 보관 규칙 결정만 기록합니다." },
-  { key: "decide_later", label: "나중 결정", help: "추가 확인이 필요해 결정을 나중으로 미룹니다." },
+  { key: "keep", label: "보존", help: "메일을 받은편지함 밖으로 안전하게 보관(아카이브)합니다. 삭제하지 않습니다." },
+  { key: "trash", label: "삭제함 이동", help: "메일을 메일함의 '삭제함(휴지통)'으로 이동합니다. 복구 가능합니다." },
+  { key: "auto_trash_similar", label: "같은 유형 자동 삭제", help: "현재 메일을 삭제함으로 이동하고, 같은 유형 규칙도 기록합니다." },
+  { key: "always_keep_similar", label: "같은 유형 항상 보존", help: "현재 메일을 안전하게 보관하고, 같은 유형 규칙도 기록합니다." },
+  { key: "auto_archive", label: "자동 보관", help: "현재 메일을 안전하게 보관(아카이브)합니다." },
+  { key: "decide_later", label: "나중 결정", help: "추가 확인이 필요하므로 메일함 작업은 하지 않고 결정만 보류합니다." },
 ];
 
 const DECISION_LABELS = DECISION_OPTIONS.reduce((acc, opt) => {
   acc[opt.key] = opt.label;
   return acc;
 }, {});
+
+const EXECUTION_STATUS_LABELS = {
+  pending: "대기 중",
+  processing: "실행 중",
+  succeeded: "완료",
+  failed: "실패",
+  not_applicable: "실행 불필요",
+};
+
+const EXECUTION_STATUS_HINTS = {
+  pending: "메일함 실행 작업자가 곧 처리합니다.",
+  processing: "실행 작업자가 현재 처리 중입니다.",
+  succeeded: "메일함에서 선택한 작업이 성공적으로 적용되었습니다.",
+  failed: "메일함 작업이 실패했습니다. 결정을 다시 저장하면 재실행됩니다.",
+  not_applicable: "메일함 변경이 필요 없는 결정입니다.",
+};
 
 const RISK_TAG_LABELS = {
   payment: "결제",
@@ -266,6 +282,23 @@ function DecisionItem({
               {currentDecision && !dirty && (
                 <span className={styles.savedBadge} title={decision?.decidedByUsername || ""}>
                   저장됨 · {DECISION_LABELS[currentDecision] || currentDecision}
+                </span>
+              )}
+              {decision?.status && !dirty && (
+                <span
+                  className={`${styles.executionBadge} ${styles[`execution_${decision.status}`] || ""}`}
+                  title={
+                    [
+                      EXECUTION_STATUS_HINTS[decision.status],
+                      decision.attempts ? `시도 ${decision.attempts}회` : null,
+                      decision.errorMessage ? `오류: ${decision.errorMessage}` : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")
+                  }
+                >
+                  메일함 {EXECUTION_STATUS_LABELS[decision.status] || decision.status}
+                  {decision.status === "failed" && decision.attempts ? ` (${decision.attempts})` : ""}
                 </span>
               )}
             </div>
@@ -525,8 +558,8 @@ function ReportDetail({ report, loading, error, onBack, onRefresh }) {
     const payload = Array.from(selectedIds).map((itemId) => ({ itemId, decision: bulkChoice }));
     setConfirmState({
       title: "일괄 결정을 적용할까요?",
-      body: `${selectedCount}건의 메일에 "${DECISION_LABELS[bulkChoice]}" 결정을 저장합니다. 실제 메일함에서 삭제/보존은 실행되지 않고 결정만 기록됩니다.`,
-      confirmLabel: "결정 저장",
+      body: `${selectedCount}건의 메일에 "${DECISION_LABELS[bulkChoice]}" 결정을 저장합니다. 외부 실행 작업자가 자동으로 메일함에 적용하며 "삭제함 이동"은 메일함의 삭제함(휴지통)으로 이동해 복구할 수 있습니다.`,
+      confirmLabel: "결정 저장 및 실행",
       onConfirm: async () => {
         const ok = await saveDecisions(payload, `${selectedCount}건에 일괄 결정이 저장되었습니다.`);
         if (ok) setSelectedIds(new Set());
@@ -540,8 +573,8 @@ function ReportDetail({ report, loading, error, onBack, onRefresh }) {
     const payload = Array.from(pending.entries()).map(([itemId, decision]) => ({ itemId, decision }));
     setConfirmState({
       title: "대기 중인 결정을 저장할까요?",
-      body: `${pendingCount}건의 결정을 저장합니다. 메일함 작업은 실행되지 않습니다.`,
-      confirmLabel: "저장",
+      body: `${pendingCount}건의 결정을 저장합니다. 저장된 결정은 외부 실행 작업자가 메일함에 자동으로 적용합니다.`,
+      confirmLabel: "저장 및 실행",
       onConfirm: async () => {
         await saveDecisions(payload);
         setConfirmState(null);
@@ -561,7 +594,7 @@ function ReportDetail({ report, loading, error, onBack, onRefresh }) {
     }
     setConfirmState({
       title: "저장된 결정을 취소할까요?",
-      body: "선택한 메일의 저장된 결정을 삭제합니다. 메일함 작업은 실행되지 않습니다.",
+      body: "선택한 메일의 저장된 결정을 삭제해 실행 대기열에서 제거합니다. 이미 메일함에 적용된 결정은 되돌리지 않으며, 삭제함으로 이동한 메일은 메일함의 삭제함에서 직접 복구할 수 있습니다.",
       confirmLabel: "결정 삭제",
       onConfirm: async () => {
         setSaving(true);
@@ -603,6 +636,7 @@ function ReportDetail({ report, loading, error, onBack, onRefresh }) {
 
   const counts = report.totalCounts || {};
   const summary = report.summaryCounts || {};
+  const execution = report.executionCounts || null;
   const cleanup = report.cleanupResults || {};
   const accounts = report.accountSummaries || [];
   const allSelected = displayedItems.length > 0 && displayedItems.every((item) => selectedIds.has(item.id));
@@ -656,6 +690,16 @@ function ReportDetail({ report, loading, error, onBack, onRefresh }) {
         <Metric label="자동화 추천" value={summary.automationSuggested} tone="cyan" title="자동 규칙 전환이 권장되는 메일" />
       </div>
 
+      {execution && (
+        <div className={styles.summaryStrip} role="list" aria-label="메일함 실행 현황">
+          <Metric label="실행 대기" value={execution.pending} tone="amber" title="외부 실행 작업자가 곧 처리합니다" />
+          <Metric label="실행 중" value={execution.processing} tone="cyan" title="외부 실행 작업자가 현재 처리 중입니다" />
+          <Metric label="완료" value={execution.succeeded} tone="green" title="메일함 적용이 완료되었습니다" />
+          <Metric label="실패" value={execution.failed} tone="rose" title="메일함 적용이 실패했습니다. 결정을 다시 저장하면 재실행됩니다" />
+          <Metric label="실행 불필요" value={execution.not_applicable} tone="slate" title="메일함 변경이 필요 없는 결정입니다" />
+        </div>
+      )}
+
       <section className={styles.section}>
         <div className={styles.sectionHeading}>
           <div><h3>계정별 현황</h3><p>연결된 메일 계정의 핵심 지표입니다.</p></div>
@@ -680,7 +724,7 @@ function ReportDetail({ report, loading, error, onBack, onRefresh }) {
         <div className={styles.sectionHeading}>
           <div>
             <h3 id="email-decisions-heading">우선순위별 의사결정 목록</h3>
-            <p>항목별 핵심 사실과 권장 조치를 확인한 뒤 결정을 기록하세요. 실제 메일함 변경은 실행되지 않고 결정만 저장됩니다.</p>
+            <p>항목별 핵심 사실과 권장 조치를 확인한 뒤 결정을 기록하세요. 저장된 결정은 외부 실행 작업자가 메일함에 자동 적용하며, "삭제함 이동"은 메일함의 삭제함(휴지통)으로 이동해 복구할 수 있습니다.</p>
             <span className={styles.visibilityCount} aria-live="polite">
               {itemListVisible
                 ? `표시 ${sortedItems.length}건 · 전체 ${sortedItems.length}건`
@@ -872,11 +916,11 @@ export default function AdminEmailReports() {
         <div>
           <span className={styles.eyebrow}>EMAIL OPERATIONS</span>
           <h1>이메일 의사결정 보고서</h1>
-          <p>우선순위별 메일 요약과 권장 조치를 확인하고, 각 메일의 처리 결정을 안전하게 기록합니다.</p>
+          <p>우선순위별 메일 요약을 확인하고 결정을 저장하면, 외부 실행 작업자가 메일함에 자동으로 적용합니다. "삭제함 이동"은 메일함의 삭제함(휴지통)으로 보내 복구할 수 있으며 영구 삭제는 수행하지 않습니다.</p>
         </div>
         <div className={styles.privacyNote}>
           <span aria-hidden="true">✓</span>
-          <span>원문 본문·첨부·인증정보는 저장하지 않습니다. 요약과 판단에 필요한 최소 정보와 관리자 결정만 기록합니다.</span>
+          <span>이 서버에는 메일 원문·첨부·인증정보를 저장하지 않으며 메일함에 직접 접속하지 않습니다. 저장된 결정만 외부 실행 작업자가 안전하게 메일함에 적용합니다.</span>
         </div>
       </header>
 

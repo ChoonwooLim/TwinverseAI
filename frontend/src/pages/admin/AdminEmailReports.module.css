@@ -182,6 +182,12 @@
 
 .dirtyBadge { display: inline-flex; padding: .12rem .5rem; border-radius: 999px; font: 600 .6rem/1.2 'Inter', sans-serif; color: #fde68a; background: rgba(245,158,11,.12); border: 1px dashed rgba(245,158,11,.4); }
 .savedBadge { display: inline-flex; padding: .12rem .55rem; border-radius: 999px; font: 600 .6rem/1.2 'Inter', sans-serif; color: #6ee7b7; background: rgba(6,255,165,.08); border: 1px solid rgba(6,255,165,.3); }
+.executionBadge { display: inline-flex; padding: .12rem .55rem; border-radius: 999px; font: 600 .6rem/1.2 'Inter', sans-serif; border: 1px solid var(--border-subtle); color: var(--text-secondary); background: rgba(255,255,255,.04); }
+.execution_pending { color: #fde68a; background: rgba(245,158,11,.1); border-color: rgba(245,158,11,.35); }
+.execution_processing { color: #bae6fd; background: rgba(0,212,255,.1); border-color: rgba(0,212,255,.38); }
+.execution_succeeded { color: #6ee7b7; background: rgba(6,255,165,.1); border-color: rgba(6,255,165,.35); }
+.execution_failed { color: #fca5a5; background: rgba(239,68,68,.12); border-color: rgba(239,68,68,.4); }
+.execution_not_applicable { color: #cbd5f5; background: rgba(148,163,184,.08); border-color: rgba(148,163,184,.3); }
 
 .itemFacts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: .5rem .85rem; margin: 0; }
 .itemFacts > div { min-width: 0; }
