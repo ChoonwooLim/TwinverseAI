@@ -1801,3 +1801,55 @@ systematic-debugging 으로 컨테이너 상태 → 모델/토큰/채널 설정 
   으로 실제 응답을 받은 뒤 확정할 것 — 카탈로그 존재가 계정 사용 가능을 보장하지 않음.
 
 ---
+
+## 2026-11-12 (OpenClaw Gateway OOM 복구 + 재부팅 후 GPU 드라이버 진단)
+
+### 작업 요약
+
+| 카테고리 | 작업 내용 | 상태 |
+|----------|----------|------|
+| fix | OpenClaw 관리 콘솔 "Gateway down" — gateway OOM 사망 원인 확정 + 컨테이너 재시작으로 복구 | 완료 |
+| infra | twinverse-ai 재부팅 원인 확인 (데스크톱 수동 재시작) + 재부팅 후 OpenClaw·watcher 상태 검증 | 완료 |
+| infra | 재부팅 후 GPU 미인식 원인 진단 (7.0.0-42 nvidia 모듈 링크 실패) | 진단 완료, 복구 승인 대기 |
+
+### 세부 내용
+
+**Gateway down.** 관리 콘솔 채팅 탭이 "Gateway down". 백엔드 `gateway_health()` 가 실행하는
+`openclaw gateway health --json` 을 직접 재현하니 `gateway closed (1006)` 이고 18789 포트가 닫혀 있었다.
+`docker logs` 끝에 `FATAL ERROR: Reached heap limit ... JavaScript heap out of memory`
+(JsonParser 스택) — 2026-11-10 20:47 UTC, main 세션(`12cdd2f3-...jsonl`, 42MB·930메시지) 컨텍스트
+압축 2차 시도 중 사망. 힙 한도 4144MB, 컨테이너는 34일 가동 상태였다.
+컨테이너가 Up 인데 gateway 만 죽어 있던 이유는 Hostinger 래퍼 `/hostinger/server.mjs` 가
+`openclaw gateway run` 을 한 번만 spawn 하고 exit 이벤트에서 `h=null` 만 할 뿐 재기동하지 않기 때문.
+좀비 프로세스 100여 개, 17일 묵은 `bench-qwen25-05b` agent 프로세스도 쌓여 있었다.
+
+**복구.** 토큰이 `OPENCLAW_GATEWAY_TOKEN` env 로 고정돼 있음을 확인하고(설정 파일·env 해시 일치),
+relay watcher 들이 `gateway:startup` 훅으로 다시 뜨는 구조임을 확인한 뒤 `docker restart openclaw`.
+15초 만에 health ok, 토큰 해시 재시작 전후 동일.
+
+**재부팅.** 직후 04:00 KST 호스트가 재부팅됨. journal 상 03:59:54 콘솔 모니터 연결 →
+04:00:36 GNOME 셸(uid 1000)이 PackageKit 을 깨운 직후 systemd reboot — 데스크톱에서 수동으로
+다시 시작한 것. unattended-upgrades 자동 재부팅 설정은 없음.
+재부팅 후 컨테이너 자동 기동, gateway ready, 토큰 해시 동일, telegram roy·jini 기동,
+relay watcher 4종(claude·lucifer·steven relay + semhana-browser-monitor, 마지막은 claude-relay-watcher
+훅이 함께 spawn) pid 파일과 함께 정상 기동 확인.
+
+**GPU.** 재부팅 후 커널 7.0.0-42 로 올라와 `nvidia-smi` 실패, Ollama 는 `library=cpu` 로 기동.
+`/var/log/apt/term.log` 에서 `linux-modules-nvidia-580-7.0.0-42-generic` postinst 가
+`/usr/src/linux-headers-7.0.0-42-generic/scripts/module.lds` 와 `objtool` 을 못 찾아 .ko 생성 실패.
+2026-11-04 unattended-upgrade 가 nvidia 모듈 hwe 메타만 7.0.0-42 로 올리고 헤더 메타
+(`linux-headers-generic-hwe-24.04`)는 7.0.0-38 에 보류 → 헤더 미설치. 이후 매일 재시도해도 같은 실패.
+8/4 부팅한 7.0.0-28(정상 드라이버)로 계속 돌던 동안은 드러나지 않았고, GRUB_DEFAULT 가 이미 삭제된
+6.8.0-107 을 가리켜 재부팅 시 최신 커널로 폴백되면서 드러남. 유저스페이스 580.178.04 와 모듈 요구 버전 일치,
+Secure Boot 꺼짐, nouveau 미로드라 헤더만 넣으면 재부팅 없이 복구 가능.
+
+### 다음 세션 참고
+
+- GPU 복구는 감독님 승인 후 진행: `apt-get install linux-headers-7.0.0-42-generic` →
+  `dpkg --configure -a` → `modprobe nvidia` → `nvidia-smi` → `systemctl restart ollama wan-video-service`.
+  GRUB_DEFAULT 는 존재하지 않는 6.8.0-107 을 가리키므로 함께 정정할 것.
+- OpenClaw 재발 방지 후보: 호스트 워치독(health 실패 시 재시작), `NODE_OPTIONS=--max-old-space-size` 상향
+  (컨테이너 재생성 필요), main 세션 정리. `backend/services/openclaw_cli.py` 의 `gateway_health()` 가
+  stderr 를 버려 콘솔에 원인이 안 보이는 점도 개선 후보.
+
+---
