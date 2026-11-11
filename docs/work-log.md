@@ -1811,6 +1811,8 @@ systematic-debugging 으로 컨테이너 상태 → 모델/토큰/채널 설정 
 | fix | OpenClaw 관리 콘솔 "Gateway down" — gateway OOM 사망 원인 확정 + 컨테이너 재시작으로 복구 | 완료 |
 | infra | twinverse-ai 재부팅 원인 확인 (데스크톱 수동 재시작) + 재부팅 후 OpenClaw·watcher 상태 검증 | 완료 |
 | infra | 재부팅 후 GPU 미인식 원인 진단 (7.0.0-42 nvidia 모듈 링크 실패) + 재부팅 없이 복구 | 완료 |
+| infra | OpenClaw 재발 방지 — 워치독 cron · 힙 8GB 컨테이너 재생성 · 로이 main 세션 정리 | 완료 |
+| fix | 관리 콘솔·개요 페이지에 gateway down 원인 표시 (백엔드 error/hint, SSH 실패 unreachable) | 완료 |
 
 ### 세부 내용
 
@@ -1851,14 +1853,29 @@ Secure Boot 꺼짐, nouveau 미로드라 헤더만 넣으면 재부팅 없이 �
 ai-image-service 는 스스로 GPU 를 잡았고, 부팅 시 CPU 로 고정된 Ollama 와 wan-video-service 는 재시작.
 Ollama `inference compute library=CUDA`, qwen2.5:0.5b 576 tok/s·100% VRAM, wan-video `/healthz` → `cuda:true`.
 
+**OpenClaw 재발 방지 (감독님이 4종 모두 선택).**
+- *로이 main 세션 정리*: 직전 응답이 끝난 대기 시점(143k/200k)에 세션 파일을 `/data/backups/roy-main-session-20261112/` 로
+  백업한 뒤 gateway 정식 경로 `openclaw gateway call sessions.reset --params '{"key":"agent:main:main","reason":"new"}'`
+  (텔레그램 `/new` 와 동일, 전달 대상·채널 유지). 이전 대화는 gateway 가 `*.jsonl.reset.2026-11-11T19-34-08.707Z` 로 보관.
+- *힙 8GB*: `docker diff` 로 쓰기 계층이 `/tmp` 뿐임(openclaw 2026.4.12 = 이미지와 동일)을 확인하고 `/tmp` 를
+  `/data/backups/container-tmp-20261112.tgz` 로 백업. 기존 컨테이너는 지우지 않고 `openclaw-old-20261112` 로 이름만 바꿔
+  보존(restart=no), 원본 env 그대로 + `NODE_OPTIONS=--max-old-space-size=8192` 로 같은 이미지·볼륨(`/data`, `/shared` rslave)·
+  host 네트워크 재생성. gateway 프로세스 env 에 NODE_OPTIONS 확인, 힙 한도 8240MB, 토큰 해시 동일, 텔레그램·watcher 4종 기동.
+- *워치독*: `~/openclaw-gateway-watchdog.sh` + stevenlim crontab `*/5`. 2회 연속 health 실패 → `docker restart`, 15분 쿨다운,
+  기동 3분 유예, 의도적 중지는 무시. `FORCE_FAIL=1 DRY_RUN=1` 로 실패·쿨다운·중지 경로, 실제 health 경로까지 테스트 후 등록.
+  04:40 첫 cron 실행 정상.
+- *콘솔 원인 표시*: `gateway_health()` 가 CLI stderr 의 `Error:` 줄을 ANSI 제거·300자 제한·토큰형 문자열 마스킹 후
+  `error` 로, 상황별 `hint` 와 함께 반환. SSH 예외는 500 대신 `status: unreachable`. 콘솔 헤더는 원인+안내, 개요 페이지는
+  down 시 빨간 pill(기존엔 노란 "상태 확인 중"에 머물러 down 을 알 수 없었음). pytest 9건 추가(전체 56 통과), 프론트 빌드·vitest 53 통과.
+
 ### 다음 세션 참고
 
 - GRUB_DEFAULT 를 삭제된 6.8.0-107 죽은 핀에서 `0`(최신 커널)으로 정정 완료 — Claude 권한 정책상 감독님이
   `ssh -t twinverse-ai "sudo ... && sudo update-grub"` 로 직접 실행. 백업 `/etc/default/grub.bak-20261112`.
 - 헤더 메타를 맞춰 놨으므로 다음 커널 업데이트부터는 헤더가 함께 들어와야 정상. 다음 재부팅 전
   `dpkg -l | grep -E '^i[^i].*linux-(modules-nvidia|headers)'` 로 반쯤 설정된 패키지가 없는지 확인 권장.
-- OpenClaw 재발 방지 후보: 호스트 워치독(health 실패 시 재시작), `NODE_OPTIONS=--max-old-space-size` 상향
-  (컨테이너 재생성 필요), main 세션 정리. `backend/services/openclaw_cli.py` 의 `gateway_health()` 가
-  stderr 를 버려 콘솔에 원인이 안 보이는 점도 개선 후보.
+- 이전 컨테이너 `openclaw-old-20261112` 는 롤백용으로 중지 보존 중 — 며칠 안정 확인 후 `docker rm openclaw-old-20261112`.
+- 워치독이 재시작하면 `~/.openclaw-watchdog/watchdog.log` 에 남는다. 재시작이 잦으면 메모리 누수 추적 필요
+  (재생성 직후 gateway RSS 약 1GB).
 
 ---

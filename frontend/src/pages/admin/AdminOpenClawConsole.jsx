@@ -70,9 +70,14 @@ export default function AdminOpenClawConsole({ tab, active = true }) {
           {healthErr ? (
             <span className={styles.healthDown}>● Gateway 응답 없음: {healthErr.slice(0, 120)}</span>
           ) : health ? (
-            <span className={health.ok ? styles.healthUp : styles.healthDown}>
-              ● Gateway {health.ok ? "OK" : "down"} {health.version ? `· v${health.version}` : ""}
-            </span>
+            <>
+              <span className={health.ok ? styles.healthUp : styles.healthDown}>
+                ● Gateway {health.ok ? "OK" : health.status === "unreachable" ? "서버 연결 불가" : "down"}
+                {health.version ? ` · v${health.version}` : ""}
+                {!health.ok && health.error ? ` — ${health.error}` : ""}
+              </span>
+              {!health.ok && health.hint && <p className={styles.healthHint}>{health.hint}</p>}
+            </>
           ) : (
             <span className={styles.healthPending}>● 상태 확인 중…</span>
           )}

@@ -27,6 +27,12 @@ export default function AdminOpenClawOverview() {
     ? { dot: styles.pillDotYellow, label: "Gateway 응답 지연" }
     : gatewayUp
     ? { dot: styles.pillDotGreen, label: "LAN Gateway 운영 중" }
+    : health
+    ? {
+        dot: styles.pillDotRed,
+        label: health.status === "unreachable" ? "LAN 서버 연결 불가" : "LAN Gateway down",
+        title: [health.error, health.hint].filter(Boolean).join("\n"),
+      }
     : { dot: styles.pillDotYellow, label: "상태 확인 중" };
 
   return (
@@ -47,7 +53,7 @@ export default function AdminOpenClawOverview() {
           </p>
 
           <div className={styles.heroPills}>
-            <span className={styles.pill}>
+            <span className={styles.pill} title={gatewayPill.title || undefined}>
               <span className={`${styles.pillDot} ${gatewayPill.dot}`} />
               {gatewayPill.label}
               {health?.version ? ` · v${health.version}` : ""}

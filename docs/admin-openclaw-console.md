@@ -115,6 +115,35 @@ GET    /api/admin/openclaw/console/config/audit?lines=50
 POST   /api/admin/openclaw/console/rpc                        {method, params}   # allowlisted methods only
 ```
 
+### `/health` 응답 (2026-11-12 갱신)
+
+정상이면 `openclaw gateway health --json` 결과에 `ok: true` 를 붙여 그대로 돌려준다. 실패하면 원인을 같이 준다:
+
+```json
+{"ok": false, "status": "down",
+ "error": "gateway closed (1006 abnormal closure (no close frame)): no close reason",
+ "hint": "gateway 프로세스가 응답하지 않습니다. twinverse-ai 워치독이 ..."}
+```
+
+- `status`: `down` (CLI 실행됨, gateway 응답 없음 / 컨테이너 중지) · `unreachable` (twinverse-ai SSH 접속 실패 — 예전엔 500 이었음)
+- `error`: CLI 출력 중 `Error:` 줄(없으면 첫 줄). ANSI 제거, 300자 제한, 32자 이상 토큰형 문자열은 `<redacted>`
+- 콘솔 헤더와 개요 페이지(빨간 pill, 마우스 오버 시 error·hint)가 이 값을 표시
+
+## 자동 복구 워치독 (twinverse-ai, 2026-11-12 설치)
+
+`/hostinger/server.mjs` 는 gateway 를 한 번만 띄우고 죽어도 다시 띄우지 않는다
+(2026-11-10 heap OOM 으로 22시간 down). 그래서 호스트에 워치독을 둔다.
+
+- 스크립트: `~/openclaw-gateway-watchdog.sh` (stevenlim crontab `*/5 * * * *`, sudo 불필요)
+- 동작: `docker exec -u node openclaw openclaw gateway health --json` → 2회 연속 실패 시 `docker restart openclaw`.
+  재시작 후 15분 쿨다운, 컨테이너 기동 3분 이내는 건너뜀, 컨테이너가 의도적으로 중지돼 있으면 건드리지 않음.
+- 로그: `~/.openclaw-watchdog/watchdog.log` (실패·복구·재시작만 기록, 정상이면 비어 있음)
+- 부작용 없는 테스트: `FORCE_FAIL=1 DRY_RUN=1 STATE_DIR=/tmp/wd-test ~/openclaw-gateway-watchdog.sh`
+- 재시작이 안전한 이유: `OPENCLAW_GATEWAY_TOKEN` env 고정 → 토큰 드리프트 없음. relay watcher 들은 `gateway:startup` 훅이 재기동.
+
+컨테이너 힙 한도도 2026-11-12 재생성 때 `NODE_OPTIONS=--max-old-space-size=8192` 로 올렸다 (기본 약 4GB).
+재생성 시 원본 설정은 `~/openclaw-inspect-20261112.json`, 이전 컨테이너는 `openclaw-old-20261112` (중지, restart=no).
+
 ## WebSocket 엔드포인트
 
 **공통**: 첫 프레임은 반드시 `{"op":"auth","token":"<jwt>"}` — 실패 시 `close(4401)` / `close(4403)`.
@@ -154,6 +183,7 @@ POST   /api/admin/openclaw/console/rpc                        {method, params}  
 | 증상 | 원인 / 조치 |
 |---|---|
 | 콘솔 접속 시 "Gateway 응답 없음" | `ssh twinverse-ai docker ps` 로 openclaw 컨테이너 live 확인. `systemctl status cloudflared`. |
+| "Gateway down — gateway closed (1006 …)" | gateway 프로세스 사망 (컨테이너는 Up). `docker logs --tail 80 openclaw` 에서 `heap out of memory` 확인. 워치독이 최대 ~10분 내 재시작, 급하면 `docker restart openclaw` (토큰 고정이라 안전). |
 | 채팅 `sessions.send` 실패 (`must have required property 'key'`) | 먼저 `sessions.create` 로 key 발급 필요. 자동 처리되지만 에이전트 id 잘못 지정 시 실패 |
 | 플러그인 config 저장 시 `dry-run failed` | `--strict-json` 파싱 오류. JSON 형식 재확인, `config schema <plugin-id>` 참고 |
 | 로그가 흐르지 않음 | SSH 연결 정상인데 stdout 없음 → `docker logs openclaw` 직접 실행해 비교 |

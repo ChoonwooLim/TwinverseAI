@@ -88,6 +88,7 @@
 .pillDot { width: 0.5rem; height: 0.5rem; border-radius: 999px; }
 .pillDotGreen { background: #4ade80; box-shadow: 0 0 8px rgba(74, 222, 128, 0.55); }
 .pillDotYellow { background: #facc15; }
+.pillDotRed { background: #f87171; box-shadow: 0 0 8px rgba(248, 113, 113, 0.55); }
 .pillDotPurple { background: #a855f7; }
 
 .heroActions {

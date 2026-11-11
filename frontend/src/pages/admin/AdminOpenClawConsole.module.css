@@ -27,10 +27,11 @@
 .desc { color: var(--text-secondary, #ccc); font-size: 0.9rem; line-height: 1.6; }
 .desc code { background: rgba(255,255,255,0.08); padding: 0.1em 0.4em; border-radius: 4px; font-size: 0.85em; }
 
-.healthRow { margin-top: 0.75rem; font-size: 0.85rem; }
+.healthRow { margin-top: 0.75rem; font-size: 0.85rem; overflow-wrap: anywhere; }
 .healthUp { color: #4ade80; }
 .healthDown { color: #f87171; }
 .healthPending { color: #888; }
+.healthHint { margin: 0.35rem 0 0; color: var(--text-secondary, #aaa); font-size: 0.8rem; line-height: 1.5; }
 
 .warningBar {
   background: rgba(250, 204, 21, 0.08);

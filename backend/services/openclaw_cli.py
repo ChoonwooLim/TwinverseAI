@@ -805,10 +805,51 @@ def models_list() -> list[dict[str, Any]]:
     return models
 
 
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
+# Long hex/base64url-ish runs look like tokens or keys: never echo them to the browser.
+# "/" is excluded so file paths in module/permission errors stay readable.
+_SECRETISH_RE = re.compile(r"[A-Za-z0-9+_\-]{32,}={0,2}")
+_HEALTH_ERROR_MAX = 300
+
+_HINT_GATEWAY_DOWN = (
+    "gateway 프로세스가 응답하지 않습니다. twinverse-ai 워치독이 5분마다 확인해 "
+    "2회 연속 실패하면 컨테이너를 자동 재시작합니다 (최대 약 10분)."
+)
+_HINT_CONTAINER_STOPPED = "openclaw 컨테이너가 중지돼 있습니다. 워치독은 의도적인 중지로 보고 재시작하지 않습니다."
+_HINT_UNREACHABLE = "twinverse-ai 서버에 SSH 로 접속하지 못했습니다. 서버 전원·네트워크를 확인하세요."
+
+
+def _summarize_health_error(text: str) -> str:
+    """Pick the most informative line of the CLI's error output, safe to show in the UI."""
+    lines = [_ANSI_RE.sub("", ln).strip() for ln in (text or "").splitlines()]
+    lines = [ln for ln in lines if ln]
+    if not lines:
+        return "unknown error (no output)"
+    line = next((ln for ln in lines if ln.startswith("Error")), lines[0])
+    if line.startswith("Error: "):
+        line = line[len("Error: "):]
+    line = _SECRETISH_RE.sub("<redacted>", line)
+    return line[:_HEALTH_ERROR_MAX]
+
+
+def _health_hint(error: str) -> str:
+    return _HINT_CONTAINER_STOPPED if "is not running" in error or "No such container" in error else _HINT_GATEWAY_DOWN
+
+
 def gateway_health() -> dict[str, Any]:
-    rc, out, _ = openclaw_exec("gateway health --json", timeout=8)
+    """Run `openclaw gateway health` and, when it fails, say why (error line + operator hint)."""
+    try:
+        rc, out, err = openclaw_exec("gateway health --json", timeout=15)
+    except Exception as e:  # SSH connect/read failure: report it instead of bubbling up a 500
+        return {
+            "ok": False,
+            "status": "unreachable",
+            "error": _summarize_health_error(f"{type(e).__name__}: {e}"),
+            "hint": _HINT_UNREACHABLE,
+        }
     if rc != 0:
-        return {"ok": False, "status": "down"}
+        error = _summarize_health_error(err or out)
+        return {"ok": False, "status": "down", "error": error, "hint": _health_hint(error)}
     try:
         data = json.loads(out.strip() or "{}")
         data["ok"] = True
