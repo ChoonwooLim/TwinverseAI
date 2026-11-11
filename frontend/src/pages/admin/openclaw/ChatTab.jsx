@@ -12,6 +12,13 @@ import {
   pastedImageName,
   planAttachments,
 } from "../../../utils/chatAttachments";
+import {
+  apiErrorText,
+  isAlreadyGone,
+  resolveActiveConversation,
+  sessionKeysForConversation,
+  withoutDeleted,
+} from "../../../utils/chatConversations";
 
 const OPENCLAW_PUBLIC_BASE = "https://openclaw.twinverse.org";
 
@@ -303,6 +310,18 @@ export default function ChatTab({ active = true }) {
   const lastErrorRef = useRef(0);
   // sessionKey → convId (reverse) so gateway events can be routed
   const convBySessionKey = useRef({});
+  // Conversations deleted in this tab. A list request that was already in
+  // flight, or a late gateway reply, must not bring them back.
+  const deletedConvIds = useRef(new Set());
+  const deletingConvRef = useRef(new Set());
+  const [deletingConvIds, setDeletingConvIds] = useState(() => new Set());
+  // Newest list request per agent wins; older responses are discarded.
+  const convListSeq = useRef({});
+  // Seq of the list request still in flight per agent (unset when idle).
+  const convListPending = useRef({});
+  // Current values for async handlers that outlive the render they started in.
+  const latest = useRef({ convsByAgent: {}, activeConvByAgent: {} });
+  useEffect(() => { latest.current = { convsByAgent, activeConvByAgent }; });
 
   const activeConvId = selectedAgent ? activeConvByAgent[selectedAgent] || null : null;
   const messages = (activeConvId && messagesByConv[activeConvId]) || EMPTY_MESSAGES;
@@ -310,7 +329,7 @@ export default function ChatTab({ active = true }) {
   const isAwaitingAssistant = activeConvId ? Boolean(pendingByConv[activeConvId]) : false;
 
   const appendMessage = (convId, msg) => {
-    if (!convId) return;
+    if (!convId || deletedConvIds.current.has(convId)) return;
     setMessagesByConv((prev) => ({
       ...prev,
       [convId]: [...(prev[convId] || []), msg],
@@ -362,15 +381,22 @@ export default function ChatTab({ active = true }) {
   }, [convsByAgent, loadAgents]);
 
   const loadConversations = useCallback(async (agentId) => {
-    if (!agentId) return [];
+    if (!agentId) return null;
+    const seq = (convListSeq.current[agentId] || 0) + 1;
+    convListSeq.current[agentId] = seq;
+    convListPending.current[agentId] = seq;
     try {
       const r = await api.get(`${CONV_BASE}?agent_id=${encodeURIComponent(agentId)}`);
-      const convs = r.data.conversations || [];
+      // Superseded by a newer request (e.g. one issued after a delete).
+      if (convListSeq.current[agentId] !== seq) return null;
+      const convs = withoutDeleted(r.data.conversations, deletedConvIds.current);
       setConvsByAgent((prev) => ({ ...prev, [agentId]: convs }));
       return convs;
     } catch (e) {
-      setErr(e?.response?.data?.detail || e.message || "대화 목록 로드 실패");
-      return [];
+      setErr(apiErrorText(e, "대화 목록 로드 실패"));
+      return null;
+    } finally {
+      if (convListPending.current[agentId] === seq) delete convListPending.current[agentId];
     }
   }, []);
 
@@ -395,6 +421,10 @@ export default function ChatTab({ active = true }) {
     try {
       const r = await api.post(CONV_BASE, { agent_id: agentId, title });
       const conv = r.data;
+      // A list request issued before this create does not know the new
+      // conversation; applying it would drop it from the sidebar and deselect
+      // it. Supersede it with a fresh request.
+      if (convListPending.current[agentId]) loadConversations(agentId);
       setConvsByAgent((prev) => ({
         ...prev,
         [agentId]: [conv, ...(prev[agentId] || [])],
@@ -443,48 +473,92 @@ export default function ChatTab({ active = true }) {
     }
   };
 
+  const dropKey = (convId) => (prev) => {
+    if (!(convId in prev)) return prev;
+    const next = { ...prev };
+    delete next[convId];
+    return next;
+  };
+
+  // Remove every local trace of a conversation the server no longer has.
+  const forgetConversation = (agentId, convId) => {
+    // From here on, stale list responses and late replies skip this id.
+    deletedConvIds.current.add(convId);
+
+    // Best effort: drop the gateway session too so a running reply stops. The
+    // relay only accepts keys this connection created; the DB row is already
+    // gone, so a failure here must not surface as a failed delete.
+    for (const key of sessionKeysForConversation(convBySessionKey.current, convId)) {
+      delete convBySessionKey.current[key];
+      if (wsRef.current?.readyState === 1) rpc("sessions.delete", { key }).catch(() => {});
+    }
+    delete needsReplayByConv.current[convId];
+    setSessionKeyByConv(dropKey(convId));
+    setPendingByConv(dropKey(convId));
+    setMessagesByConv(dropKey(convId));
+
+    const remaining = (latest.current.convsByAgent[agentId] || []).filter((c) => c.id !== convId);
+    setConvsByAgent((prev) => ({
+      ...prev,
+      [agentId]: (prev[agentId] || []).filter((c) => c.id !== convId),
+    }));
+    if (latest.current.activeConvByAgent[agentId] !== convId) return;
+    // The open conversation was deleted: fall back to the most recent one
+    // rather than leaving a dead selection behind.
+    const nextId = resolveActiveConversation(remaining, null);
+    setActiveConvByAgent((prev) => {
+      if (prev[agentId] !== convId) return prev;
+      const next = { ...prev };
+      if (nextId) next[agentId] = nextId;
+      else delete next[agentId];
+      return next;
+    });
+    if (nextId) loadConversationMessages(nextId);
+  };
+
   const deleteConversation = async (convId) => {
+    const agentId = selectedAgent; // the user may switch agents while we wait
+    if (!agentId || deletingConvRef.current.has(convId)) return;
     if (!window.confirm("이 대화를 삭제하시겠습니까? (복구 불가)")) return;
+    deletingConvRef.current.add(convId);
+    setDeletingConvIds(new Set(deletingConvRef.current));
     try {
-      await api.delete(`${CONV_BASE}/${convId}`);
-      setConvsByAgent((prev) => {
-        const agentId = selectedAgent;
-        if (!agentId) return prev;
-        return {
-          ...prev,
-          [agentId]: (prev[agentId] || []).filter((c) => c.id !== convId),
-        };
-      });
-      if (activeConvByAgent[selectedAgent] === convId) {
-        setActiveConvByAgent((prev) => {
-          const next = { ...prev };
-          delete next[selectedAgent];
-          return next;
-        });
+      try {
+        await api.delete(`${CONV_BASE}/${convId}`);
+      } catch (e) {
+        // Already deleted elsewhere - the goal is reached, just drop it here.
+        if (!isAlreadyGone(e)) throw e;
       }
-      setMessagesByConv((prev) => {
-        const next = { ...prev };
-        delete next[convId];
-        return next;
-      });
+      forgetConversation(agentId, convId);
+      setErr("");
     } catch (e) {
-      setErr(e?.response?.data?.detail || e.message || "삭제 실패");
+      setErr(apiErrorText(e, "대화 삭제 실패"));
+    } finally {
+      deletingConvRef.current.delete(convId);
+      setDeletingConvIds(new Set(deletingConvRef.current));
     }
   };
 
-  // Agent switch: load conversations, auto-pick most recent or create a fresh one
+  // Agent switch: load conversations and open the most recent one. An empty
+  // list stays empty - the first send creates the conversation. (Creating one
+  // here made a deleted last conversation "come back" on every refresh, and
+  // a failed list request spawned a stray one.)
   useEffect(() => {
     if (!selectedAgent) return;
+    const agentId = selectedAgent;
     (async () => {
-      const convs = await loadConversations(selectedAgent);
-      if (activeConvByAgent[selectedAgent]) return;
-      if (convs.length > 0) {
-        const mostRecent = convs[0];
-        setActiveConvByAgent((prev) => ({ ...prev, [selectedAgent]: mostRecent.id }));
-        await loadConversationMessages(mostRecent.id);
-      } else {
-        await createConversation(selectedAgent);
-      }
+      const convs = await loadConversations(agentId);
+      if (!convs) return;
+      const current = latest.current.activeConvByAgent[agentId] || null;
+      const nextId = resolveActiveConversation(convs, current);
+      if (nextId === current) return;
+      setActiveConvByAgent((prev) => {
+        const next = { ...prev };
+        if (nextId) next[agentId] = nextId;
+        else delete next[agentId];
+        return next;
+      });
+      if (nextId) await loadConversationMessages(nextId);
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedAgent]);
@@ -745,6 +819,13 @@ export default function ChatTab({ active = true }) {
     setAttachErrors([]);
     try {
       const key = await ensureSession(agentId, convId);
+      if (deletedConvIds.current.has(convId)) {
+        // Deleted while the session was being opened: don't send into it.
+        delete convBySessionKey.current[key];
+        setSessionKeyByConv(dropKey(convId));
+        rpc("sessions.delete", { key }).catch(() => {});
+        return;
+      }
       const params = {
         key,
         message: messageOut,
@@ -883,7 +964,9 @@ export default function ChatTab({ active = true }) {
                       >✎</button>
                       <button
                         className={styles.convIconBtn}
-                        title="삭제"
+                        title={deletingConvIds.has(c.id) ? "삭제 중…" : "삭제"}
+                        aria-label="대화 삭제"
+                        disabled={deletingConvIds.has(c.id)}
                         onClick={(e) => {
                           e.stopPropagation();
                           deleteConversation(c.id);

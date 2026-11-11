@@ -124,6 +124,18 @@ POST   /api/admin/openclaw/console/rpc                        {method, params}  
 - 클라이언트는 표준 JSON-RPC envelope 전송: `{id, method, params}`
 - 허용 메서드 예: `sessions.create`, `sessions.send`, `sessions.messages.subscribe`, `agents.list`, `chat.history`
 - 응답 메시지에서 `token`/`apiKey`/`secret` 등 필드는 자동 strip
+- `sessions.delete` 는 **같은 WS 연결이 `sessions.create` 로 만든 key 만** 통과 (그 외는 게이트웨이에
+  보내지 않고 `FORBIDDEN` 응답, params 는 `{key}` 로 축소). 릴레이는 `openclaw-tui` / `ui` +
+  `operator.admin` 으로 접속하므로 게이트웨이의 webchat 삭제 제한을 받지 않고 main 을 제외한 모든
+  세션(DeskRPG 등)을 지울 수 있기 때문.
+
+### 대화 삭제 (휴지통)
+- 진실 원천은 DB: `DELETE /conversations/{id}` 가 대화 row 를 잠근 뒤 메시지+대화를 한 트랜잭션으로
+  삭제. 저장 중인 답변과 경합하면 1회 재시도, 계속 실패하면 `409` (메시지 그대로 표시).
+- 프론트는 `404` 를 "이미 삭제됨"으로 처리하고, 삭제한 id 를 탭 수명 동안 기억해 진행 중이던 목록
+  요청·늦게 도착한 답변이 대화를 되살리지 못하게 한다. 게이트웨이 세션 정리는 best-effort.
+- 대화가 0개인 에이전트는 빈 목록 그대로 둔다 (첫 전송 때 생성). 자동 생성하면 마지막 대화를 지운 뒤
+  새로고침할 때마다 "새 대화"가 다시 나타난다.
 
 ### `/logs` — 로그 스트리밍
 - 서버가 SSH 채널로 `docker logs -f --tail 200 openclaw` 실행

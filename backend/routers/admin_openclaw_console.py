@@ -21,6 +21,8 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
+from sqlalchemy import delete as sa_delete
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from database import engine, get_session
@@ -469,18 +471,60 @@ def conversations_delete(
     user: User = Depends(require_admin),
     session: Session = Depends(get_session),
 ) -> dict[str, Any]:
-    conv = session.get(OpenClawConversation, conv_id)
-    if not conv or conv.user_id != user.id:
-        raise HTTPException(status_code=404, detail="conversation not found")
-    # delete messages first (no cascade configured)
-    msgs = session.exec(
-        select(OpenClawMessage).where(OpenClawMessage.conversation_id == conv_id)
-    ).all()
-    for m in msgs:
-        session.delete(m)
-    session.delete(conv)
-    session.commit()
+    # The chat relay may be persisting a reply into this conversation right
+    # now. Lock the parent row first so a concurrent insert either lands before
+    # the bulk message delete (and is removed with it) or fails afterwards on
+    # the missing parent - never an FK error that leaves the conversation
+    # undeleted and back in the list on refresh.
+    for attempt in (1, 2):
+        conv = session.exec(
+            select(OpenClawConversation)
+            .where(OpenClawConversation.id == conv_id)
+            .with_for_update()
+        ).first()
+        if not conv or conv.user_id != user.id:
+            raise HTTPException(status_code=404, detail="conversation not found")
+        try:
+            # no cascade configured - remove messages in the same transaction
+            session.exec(sa_delete(OpenClawMessage).where(OpenClawMessage.conversation_id == conv_id))
+            session.delete(conv)
+            session.commit()
+            break
+        except IntegrityError:
+            session.rollback()
+            if attempt == 2:
+                logger.exception("conversation delete failed conv=%s", conv_id)
+                raise HTTPException(
+                    status_code=409,
+                    detail="대화에 새 메시지가 저장되는 중입니다. 잠시 후 다시 삭제해 주세요.",
+                )
     return {"ok": True}
+
+
+def _created_session_key(payload: Any) -> str | None:
+    """Session key from a gateway `sessions.create` response payload."""
+    if not isinstance(payload, dict):
+        return None
+    key = payload.get("key") or payload.get("sessionKey")
+    return key if isinstance(key, str) and key else None
+
+
+def _owned_session_delete_params(params: Any, owned_keys: set[str]) -> dict[str, Any] | None:
+    """Params for a relayed `sessions.delete`, or None when it must be refused.
+
+    The relay connects as an operator with `operator.admin`, so the gateway
+    would delete ANY non-main session it is asked to (its webchat-client
+    restriction does not apply to our `openclaw-tui` / `ui` identity). The
+    browser may therefore only delete sessions this same WS connection created
+    for a console conversation. Extra params are dropped: the gateway schema is
+    `additionalProperties: false` and we always want its defaults.
+    """
+    if not isinstance(params, dict):
+        return None
+    key = params.get("key")
+    if not isinstance(key, str) or key not in owned_keys:
+        return None
+    return {"key": key}
 
 
 @router.websocket("/chat")
@@ -630,6 +674,15 @@ async def chat_ws(ws: WebSocket) -> None:
     # for the same assistant reply. Track the message ids we've already
     # forwarded to the browser so we don't render duplicates.
     seen_message_ids: set[str] = set()
+    # Gateway sessions created over this connection (rpc id of a pending
+    # create, then the returned key). Only these may be `sessions.delete`d.
+    pending_create_ids: set[str] = set()
+    owned_session_keys: set[str] = set()
+    # rpc ids forwarded and not yet answered. An id may not be reused while in
+    # flight: otherwise the response to some other request sharing a pending
+    # create's id (e.g. a lookup returning another session's key) would be
+    # taken for the create result and make that foreign key "owned".
+    inflight_ids: set[str] = set()
     save_tasks: set[asyncio.Task[Any]] = set()
 
     def _save_message(conv_id: int, role: str, content: str,
@@ -701,6 +754,16 @@ async def chat_ws(ws: WebSocket) -> None:
                     continue
                 params = msg.get("params") or {}
 
+                if str(mid) in inflight_ids:
+                    await ws.send_text(json.dumps({
+                        "id": mid,
+                        "error": {
+                            "code": "DUPLICATE_ID",
+                            "message": "같은 id 의 요청이 아직 처리 중입니다.",
+                        },
+                    }, ensure_ascii=False))
+                    continue
+
                 # --- Persistence hook: intercept `sessions.send` ---
                 if method == "sessions.send" and isinstance(params, dict):
                     conv_id_raw = params.pop("tvConversationId", None)
@@ -722,6 +785,25 @@ async def chat_ws(ws: WebSocket) -> None:
                             _schedule_save_message(conv_id, "user", user_text, attachments)
                             pending_user_by_id[str(mid)] = conv_id
 
+                if method == "sessions.create":
+                    pending_create_ids.add(str(mid))
+                elif method == "sessions.delete":
+                    safe_params = _owned_session_delete_params(params, owned_session_keys)
+                    if safe_params is None:
+                        await ws.send_text(json.dumps({
+                            "id": mid,
+                            "error": {
+                                "code": "FORBIDDEN",
+                                "message": "이 연결에서 만든 대화 세션만 삭제할 수 있습니다.",
+                            },
+                        }, ensure_ascii=False))
+                        continue
+                    params = safe_params
+                    # A reply still in flight must not be written back.
+                    owned_session_keys.discard(safe_params["key"])
+                    session_to_conv.pop(safe_params["key"], None)
+
+                inflight_ids.add(str(mid))
                 frame = {"type": "req", "id": str(mid), "method": method,
                          "params": params}
                 await gw.send(json.dumps(frame, ensure_ascii=False))
@@ -750,9 +832,16 @@ async def chat_ws(ws: WebSocket) -> None:
                     # Translate to JSON-RPC: {id, result, error}
                     out: dict[str, Any] = {"id": frame.get("id")}
                     err = frame.get("error")
+                    was_create = str(frame.get("id")) in pending_create_ids
+                    pending_create_ids.discard(str(frame.get("id")))
+                    inflight_ids.discard(str(frame.get("id")))
                     if err:
                         out["error"] = _strip_sensitive(err)
                     elif frame.get("ok") is not False:
+                        if was_create:
+                            created_key = _created_session_key(frame.get("payload"))
+                            if created_key:
+                                owned_session_keys.add(created_key)
                         out["result"] = _strip_sensitive(frame.get("payload"))
                     await ws.send_text(json.dumps(out, ensure_ascii=False))
                 elif ftype == "event":
