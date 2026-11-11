@@ -121,6 +121,97 @@ test("keeps selection, draft, attachments, scroll and one connection across site
   expect(state.closed).toBe(0);
 });
 
+// 1x1 PNGs with different pixels, so they are distinct images.
+const PNG_RED = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==";
+const PNG_BLUE = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPj/HwADBwIAMCbHYQAAAABJRU5ErkJggg==";
+
+// Dispatch a real paste event carrying files, the way a screenshot paste does.
+async function pasteFiles(page, files, text = {}) {
+  await page.getByRole("textbox").evaluate((textarea, { files, text }) => {
+    const data = new DataTransfer();
+    for (const f of files) {
+      const bytes = f.base64
+        ? Uint8Array.from(atob(f.base64), (c) => c.charCodeAt(0))
+        : new Uint8Array(f.size || 0);
+      data.items.add(new File([bytes], f.name, { type: f.type }));
+    }
+    for (const [type, value] of Object.entries(text)) data.setData(type, value);
+    textarea.focus();
+    textarea.dispatchEvent(new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true }));
+  }, { files, text });
+}
+
+test("pasting clipboard images attaches previews once, enforces limits and sends them as attachments", async ({ page }) => {
+  const state = await fixture(page);
+  await page.goto(CHAT_PATH);
+  await selectAgent(page);
+  const thumbs = page.locator('img[alt$="미리보기"]');
+  const alert = page.getByRole("alert");
+
+  // One screenshot is exposed through both clipboard files and items: one chip.
+  await pasteFiles(page, [{ name: "image.png", type: "image/png", base64: PNG_RED }]);
+  await expect(thumbs).toHaveCount(1);
+  await expect(page.getByRole("textbox")).toHaveValue("");
+  await expect(thumbs.first()).toHaveJSProperty("naturalWidth", 1);
+
+  // The same image again is not attached twice.
+  await pasteFiles(page, [{ name: "image.png", type: "image/png", base64: PNG_RED }]);
+  await expect(alert).toContainText("이미 첨부된 이미지입니다.");
+  await expect(thumbs).toHaveCount(1);
+
+  // Unsupported type and an over-limit image are rejected inline in Korean.
+  await pasteFiles(page, [{ name: "image.bmp", type: "image/bmp", size: 16 }]);
+  await expect(alert).toContainText("PNG, JPEG, GIF, WebP만 첨부할 수 있습니다.");
+  await pasteFiles(page, [{ name: "huge.png", type: "image/png", size: 9 * 1024 * 1024 + 1 }]);
+  await expect(alert).toContainText("한 파일당 최대 9MB까지 첨부할 수 있습니다.");
+  await expect(thumbs).toHaveCount(1);
+
+  // A second, different image can be added and then removed again.
+  await pasteFiles(page, [{ name: "image.png", type: "image/png", base64: PNG_BLUE }]);
+  await expect(thumbs).toHaveCount(2);
+  await expect(alert).toHaveCount(0);
+  await page.getByRole("button", { name: /첨부 제거$/ }).last().click();
+  await expect(thumbs).toHaveCount(1);
+
+  // Image-only send: default prompt plus the base64 attachment over sessions.send.
+  await page.getByRole("button", { name: "전송", exact: true }).click();
+  await expect.poll(() => state.rpc.filter((m) => m.method === "sessions.send").length).toBe(1);
+  const { params } = state.rpc.find((m) => m.method === "sessions.send");
+  expect(params.tvRawUserText).toBe("첨부한 이미지를 확인하고 내용을 설명해 주세요.");
+  expect(params.message).toContain("첨부한 이미지를 확인하고 내용을 설명해 주세요.");
+  expect(params.attachments).toHaveLength(1);
+  expect(params.attachments[0]).toMatchObject({ type: "image", mimeType: "image/png", content: PNG_RED });
+  expect(params.attachments[0].fileName).toMatch(/^붙여넣은-이미지-\d{8}-\d{6}\.png$/);
+  await expect(thumbs).toHaveCount(0);
+});
+
+test("pasting text into the chat box stays an ordinary text paste", async ({ page }) => {
+  await fixture(page);
+  await page.goto(CHAT_PATH);
+  await selectAgent(page);
+  const textbox = page.getByRole("textbox");
+
+  // A plain-text paste is not intercepted by the composer.
+  const plainPrevented = await textbox.evaluate((textarea) => {
+    const data = new DataTransfer();
+    data.setData("text/plain", "just text");
+    const event = new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true });
+    textarea.dispatchEvent(event);
+    return event.defaultPrevented;
+  });
+  expect(plainPrevented).toBe(false);
+
+  // A rich copy (cells with a rendered bitmap) is also left to the browser.
+  await pasteFiles(
+    page,
+    [{ name: "image.png", type: "image/png", base64: PNG_RED }],
+    { "text/plain": "A1\tB1", "text/html": "<table><tr><td>A1</td><td>B1</td></tr></table>" },
+  );
+  await textbox.fill("typed after paste");
+  await expect(page.locator('img[alt$="미리보기"]')).toHaveCount(0);
+  await expect(page.getByRole("alert")).toHaveCount(0);
+});
+
 test("retained chat reflects explicit agent edits and deletion without losing the current conversation on edit", async ({ page }) => {
   await fixture(page);
   await page.goto(CHAT_PATH);

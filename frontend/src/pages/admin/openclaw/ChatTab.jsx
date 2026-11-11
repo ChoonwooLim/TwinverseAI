@@ -2,6 +2,16 @@ import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, useCallbac
 import ReactMarkdown from "react-markdown";
 import api from "../../../services/api";
 import styles from "../AdminOpenClawConsole.module.css";
+import {
+  IMAGE_MIMES,
+  DOC_MIMES,
+  DOC_EXTS,
+  buildUserText,
+  extractClipboardImages,
+  isDuplicateImage,
+  pastedImageName,
+  planAttachments,
+} from "../../../utils/chatAttachments";
 
 const OPENCLAW_PUBLIC_BASE = "https://openclaw.twinverse.org";
 
@@ -42,11 +52,7 @@ const MARKDOWN_COMPONENTS = {
  * context block so the model has prior turns without gateway-side session
  * persistence. `tvRawUserText` keeps the DB copy clean (no prefix noise).
  */
-const IMAGE_MIMES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
-const DOC_MIMES = ["text/plain", "text/markdown", "application/json"];
-const DOC_EXTS = [".txt", ".md", ".json", ".log", ".csv"];
 const ATTACH_ACCEPT = [...IMAGE_MIMES, ...DOC_MIMES, ...DOC_EXTS].join(",");
-const MAX_ATTACH_BYTES = 9 * 1024 * 1024;
 const REPLAY_TURN_LIMIT = 8;
 const REPLAY_MSG_CHAR_LIMIT = 1200;
 const REPLAY_TOTAL_CHAR_LIMIT = 7000;
@@ -78,7 +84,11 @@ const readFileAsText = (file) => new Promise((resolve, reject) => {
   r.readAsText(file, "utf-8");
 });
 
-const CONV_BASE = "/api/admin/openclaw/console/conversations";
+const releasePreviews = (items) => {
+  for (const a of items) if (a.previewUrl) URL.revokeObjectURL(a.previewUrl);
+};
+
+const CONV_BASE ="/api/admin/openclaw/console/conversations";
 const SIDEBAR_STORAGE_KEY = "openclaw:chat-sidebars";
 const EMPTY_MESSAGES = [];
 
@@ -275,6 +285,7 @@ export default function ChatTab({ active = true }) {
 
   const [draft, setDraft] = useState("");
   const [pendingAttachments, setPendingAttachments] = useState([]);
+  const [attachErrors, setAttachErrors] = useState([]);
   const [pendingByConv, setPendingByConv] = useState({});
   const [connState, setConnState] = useState("idle");
   const [err, setErr] = useState("");
@@ -285,6 +296,10 @@ export default function ChatTab({ active = true }) {
   const scrollRef = useRef(null);
   const visibleScroll = useRef({ messages: null, pending: false, convId: null, top: 0 });
   const fileInputRef = useRef(null);
+  // Mirror of pendingAttachments that is current between renders, so limits
+  // hold when several pastes land before React re-renders.
+  const pendingAttachmentsRef = useRef([]);
+  const attachQueue = useRef(Promise.resolve());
   const lastErrorRef = useRef(0);
   // sessionKey → convId (reverse) so gateway events can be routed
   const convBySessionKey = useRef({});
@@ -622,39 +637,68 @@ export default function ChatTab({ active = true }) {
   const hasPendingImage = pendingAttachments.some((a) => a.kind === "image");
   const visionWarning = hasPendingImage && selectedAgentObj && !isVisionModel(selectedAgentObj.model);
 
-  const addAttachments = async (fileList) => {
-    if (!fileList || fileList.length === 0) return;
-    const next = [];
-    for (const file of Array.from(fileList)) {
-      if (file.size > MAX_ATTACH_BYTES) {
-        setErr(`${file.name}: 파일이 너무 큽니다 (최대 ${Math.floor(MAX_ATTACH_BYTES / 1024 / 1024)}MB)`);
-        continue;
-      }
-      const mime = file.type || "application/octet-stream";
-      const isImg = IMAGE_MIMES.includes(mime);
-      const extIsDoc = DOC_EXTS.some((e) => file.name.toLowerCase().endsWith(e));
-      const isDoc = DOC_MIMES.includes(mime) || extIsDoc;
-      if (!isImg && !isDoc) {
-        setErr(`${file.name}: 지원하지 않는 형식`);
-        continue;
-      }
-      try {
-        if (isImg) {
-          const b64 = await readFileAsBase64(file);
-          next.push({ kind: "image", mimeType: mime, fileName: file.name, content: b64, size: file.size });
-        } else {
-          const text = await readFileAsText(file);
-          next.push({ kind: "document", mimeType: mime, fileName: file.name, text, size: file.size });
-        }
-      } catch (e) {
-        setErr(`${file.name}: 읽기 실패 — ${e?.message || e}`);
-      }
-    }
-    if (next.length) setPendingAttachments((prev) => [...prev, ...next]);
+  const commitAttachments = (next) => {
+    pendingAttachmentsRef.current = next;
+    setPendingAttachments(next);
   };
 
-  const removeAttachment = (idx) =>
-    setPendingAttachments((prev) => prev.filter((_, i) => i !== idx));
+  // On unmount, free whatever is pending at that moment (not at mount time).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => () => releasePreviews(pendingAttachmentsRef.current), []);
+
+  const readAttachments = async (files, { pasted }) => {
+    const now = new Date();
+    const incoming = files.map((file, index) => ({
+      file,
+      name: pasted ? pastedImageName(file, now, index) : file.name,
+    }));
+    const { accepted, errors } = planAttachments(pendingAttachmentsRef.current, incoming);
+    const next = [];
+    for (const { file, name, kind } of accepted) {
+      try {
+        if (kind === "image") {
+          const item = { kind, mimeType: file.type, fileName: name, content: await readFileAsBase64(file), size: file.size };
+          if (isDuplicateImage([...pendingAttachmentsRef.current, ...next], item)) {
+            errors.push(`${name}: 이미 첨부된 이미지입니다.`);
+            continue;
+          }
+          next.push({ ...item, previewUrl: URL.createObjectURL(file) });
+        } else {
+          const text = await readFileAsText(file);
+          next.push({ kind, mimeType: file.type || "text/plain", fileName: name, text, size: file.size });
+        }
+      } catch (e) {
+        errors.push(`${name}: 파일을 읽지 못했습니다 — ${e?.message || e}`);
+      }
+    }
+    if (next.length) commitAttachments([...pendingAttachmentsRef.current, ...next]);
+    setAttachErrors(errors);
+  };
+
+  // Batches run one after another, so each validates against what the
+  // previous one actually attached.
+  const addAttachments = (fileList, options = { pasted: false }) => {
+    const files = Array.from(fileList || []);
+    if (files.length === 0) return attachQueue.current;
+    attachQueue.current = attachQueue.current
+      .then(() => readAttachments(files, options))
+      .catch((e) => setAttachErrors([`첨부 처리 중 오류가 발생했습니다 — ${e?.message || e}`]));
+    return attachQueue.current;
+  };
+
+  const handlePaste = (e) => {
+    const images = extractClipboardImages(e.clipboardData);
+    if (images.length === 0) return; // ordinary text paste
+    e.preventDefault();
+    addAttachments(images, { pasted: true });
+  };
+
+  const removeAttachment = (idx) => {
+    const current = pendingAttachmentsRef.current;
+    releasePreviews(current.filter((_, i) => i === idx));
+    commitAttachments(current.filter((_, i) => i !== idx));
+    setAttachErrors([]);
+  };
 
   const openFilePicker = () => fileInputRef.current?.click();
 
@@ -669,11 +713,8 @@ export default function ChatTab({ active = true }) {
     }
 
     const images = pendingAttachments.filter((a) => a.kind === "image");
-    const docs = pendingAttachments.filter((a) => a.kind === "document");
-    const docBlocks = docs.map(
-      (d) => `--- 첨부 문서: ${d.fileName} ---\n\`\`\`\n${d.text}\n\`\`\``
-    );
-    const rawUserText = [draft.trim(), ...docBlocks].filter(Boolean).join("\n\n");
+    // Image-only sends get a default instruction so the message is never empty.
+    const { prompt, rawUserText } = buildUserText(draft, pendingAttachments);
 
     // History replay on the first send of a resumed conversation
     let messageOut = rawUserText;
@@ -694,12 +735,14 @@ export default function ChatTab({ active = true }) {
     const chipSummary = pendingAttachments.length
       ? `📎 ${pendingAttachments.map((a) => a.fileName).join(", ")}`
       : "";
-    const displayContent = [draft.trim(), chipSummary].filter(Boolean).join("\n\n");
+    const displayContent = [prompt, chipSummary].filter(Boolean).join("\n\n");
 
     appendMessage(convId, { role: "user", content: displayContent || "(첨부 전송)" });
     setPendingByConv((prev) => ({ ...prev, [convId]: true }));
     setDraft("");
-    setPendingAttachments([]);
+    releasePreviews(pendingAttachmentsRef.current);
+    commitAttachments([]);
+    setAttachErrors([]);
     try {
       const key = await ensureSession(agentId, convId);
       const params = {
@@ -883,19 +926,39 @@ export default function ChatTab({ active = true }) {
             <div className={styles.attachStrip}>
               {pendingAttachments.map((a, i) => (
                 <div
-                  key={i}
-                  className={styles.attachChip}
+                  key={a.previewUrl || `${a.fileName}:${i}`}
+                  className={`${styles.attachChip} ${a.previewUrl ? styles.attachChipImage : ""}`}
                   title={`${a.fileName} · ${(a.size / 1024).toFixed(1)} KB`}
                 >
-                  <span className={styles.attachIcon}>{a.kind === "image" ? "🖼" : "📄"}</span>
+                  {a.previewUrl ? (
+                    <img className={styles.attachThumb} src={a.previewUrl} alt={`${a.fileName} 미리보기`} />
+                  ) : (
+                    <span className={styles.attachIcon}>{a.kind === "image" ? "🖼" : "📄"}</span>
+                  )}
                   <span className={styles.attachName}>{a.fileName}</span>
                   <button
+                    type="button"
                     className={styles.attachRemove}
                     onClick={() => removeAttachment(i)}
                     title="제거"
+                    aria-label={`${a.fileName} 첨부 제거`}
                   >×</button>
                 </div>
               ))}
+            </div>
+          )}
+          {attachErrors.length > 0 && (
+            <div className={styles.attachError} role="alert">
+              <ul className={styles.attachErrorList}>
+                {attachErrors.map((message) => <li key={message}>{message}</li>)}
+              </ul>
+              <button
+                type="button"
+                className={styles.attachRemove}
+                onClick={() => setAttachErrors([])}
+                title="닫기"
+                aria-label="첨부 오류 닫기"
+              >×</button>
             </div>
           )}
           {visionWarning && (
@@ -930,10 +993,11 @@ export default function ChatTab({ active = true }) {
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={handleKey}
+              onPaste={handlePaste}
               placeholder={
                 !selectedAgent ? "좌측에서 에이전트를 선택하세요"
                 : !activeConvId ? "대화를 선택하거나 새로 만드세요"
-                : "메시지를 입력하세요 (Enter=전송, Shift+Enter=줄바꿈)"
+                : "메시지를 입력하세요 (Enter=전송, Shift+Enter=줄바꿈, Ctrl+V=이미지 붙여넣기)"
               }
               disabled={!selectedAgent}
             />

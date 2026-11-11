@@ -591,6 +591,38 @@ select.input option {
   padding: 0 0.1rem;
 }
 .attachRemove:hover { color: #fff; }
+.attachChipImage {
+  padding: 0.25rem 0.55rem 0.25rem 0.25rem;
+  border-radius: 10px;
+  max-width: 260px;
+}
+.attachThumb {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  object-fit: cover;
+  border-radius: 7px;
+  background: rgba(0,0,0,0.35);
+}
+.attachError {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0.35rem 0.75rem 0;
+  padding: 0.5rem 0.75rem;
+  background: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  border-radius: 6px;
+  color: #fca5a5;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+.attachErrorList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
 .attachWarn {
   margin: 0.35rem 0.75rem 0;
   padding: 0.5rem 0.75rem;
