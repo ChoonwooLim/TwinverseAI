@@ -29,6 +29,12 @@ It does not modify or share the web application's process lifecycle.
   is available. A failed startup closes dependencies and exits so
   `Restart=on-failure` can retry; missing cuDNN therefore never reaches readiness
   before real audio arrives.
+- A startup that *hangs* instead of failing (seen 2026-11-12 when CUDA init
+  caught the NVIDIA driver mid-recovery) is also recovered: the unit's
+  `ExecStartPost` runs `app.wait_ready`, which polls `/ready` and exits non-zero
+  after `INTERPRETATION_STARTUP_TIMEOUT_SECONDS` (default 540, kept below the
+  unit's `TimeoutStartSec=600`). systemd then stops the hung process and
+  restarts it. While warming up the unit reports `activating`, not `active`.
 
 The consumer is responsible for its own transcript retention policy. Receiving a
 `caption.source.final` or `caption.translation.final` event does not authorize
