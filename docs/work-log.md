@@ -1810,7 +1810,7 @@ systematic-debugging 으로 컨테이너 상태 → 모델/토큰/채널 설정 
 |----------|----------|------|
 | fix | OpenClaw 관리 콘솔 "Gateway down" — gateway OOM 사망 원인 확정 + 컨테이너 재시작으로 복구 | 완료 |
 | infra | twinverse-ai 재부팅 원인 확인 (데스크톱 수동 재시작) + 재부팅 후 OpenClaw·watcher 상태 검증 | 완료 |
-| infra | 재부팅 후 GPU 미인식 원인 진단 (7.0.0-42 nvidia 모듈 링크 실패) | 진단 완료, 복구 승인 대기 |
+| infra | 재부팅 후 GPU 미인식 원인 진단 (7.0.0-42 nvidia 모듈 링크 실패) + 재부팅 없이 복구 | 완료 (GRUB 정정만 남음) |
 
 ### 세부 내용
 
@@ -1843,11 +1843,21 @@ relay watcher 4종(claude·lucifer·steven relay + semhana-browser-monitor, 마�
 6.8.0-107 을 가리켜 재부팅 시 최신 커널로 폴백되면서 드러남. 유저스페이스 580.178.04 와 모듈 요구 버전 일치,
 Secure Boot 꺼짐, nouveau 미로드라 헤더만 넣으면 재부팅 없이 복구 가능.
 
+**GPU 복구 (감독님 승인 후).** 시뮬레이션(`apt-get -s`)으로 삭제 0건을 먼저 확인하고
+`apt-get install linux-headers-generic-hwe-24.04` 를 `systemd-run` 으로 서버 측 실행(SSH 끊김 대비).
+헤더 메타가 7.0.0-42 로 맞춰지며 `linux-headers-7.0.0-42-generic` 설치, 멈춰 있던
+`linux-modules-nvidia-580-7.0.0-42-generic` postinst 가 다시 돌아 .ko 5개 생성(EXIT=0, objtool 경고는 무해).
+`modprobe nvidia nvidia-uvm nvidia-modeset nvidia-drm` → `nvidia-smi` 에 RTX 3090 / 580.178.04 (모듈·유저스페이스 일치).
+ai-image-service 는 스스로 GPU 를 잡았고, 부팅 시 CPU 로 고정된 Ollama 와 wan-video-service 는 재시작.
+Ollama `inference compute library=CUDA`, qwen2.5:0.5b 576 tok/s·100% VRAM, wan-video `/healthz` → `cuda:true`.
+
 ### 다음 세션 참고
 
-- GPU 복구는 감독님 승인 후 진행: `apt-get install linux-headers-7.0.0-42-generic` →
-  `dpkg --configure -a` → `modprobe nvidia` → `nvidia-smi` → `systemctl restart ollama wan-video-service`.
-  GRUB_DEFAULT 는 존재하지 않는 6.8.0-107 을 가리키므로 함께 정정할 것.
+- GRUB_DEFAULT 는 여전히 삭제된 6.8.0-107 을 가리킴 (실제 부팅은 0번=최신 커널로 폴백). 정정 명령은
+  권한 정책상 감독님이 직접 실행: `sudo cp -p /etc/default/grub /etc/default/grub.bak-20261112 &&
+  sudo sed -i 's|^GRUB_DEFAULT=.*|GRUB_DEFAULT=0|' /etc/default/grub && sudo update-grub`.
+- 헤더 메타를 맞춰 놨으므로 다음 커널 업데이트부터는 헤더가 함께 들어와야 정상. 다음 재부팅 전
+  `dpkg -l | grep -E '^i[^i].*linux-(modules-nvidia|headers)'` 로 반쯤 설정된 패키지가 없는지 확인 권장.
 - OpenClaw 재발 방지 후보: 호스트 워치독(health 실패 시 재시작), `NODE_OPTIONS=--max-old-space-size` 상향
   (컨테이너 재생성 필요), main 세션 정리. `backend/services/openclaw_cli.py` 의 `gateway_health()` 가
   stderr 를 버려 콘솔에 원인이 안 보이는 점도 개선 후보.
