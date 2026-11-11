@@ -58,7 +58,7 @@ export default function AdminOpenClawOverview() {
             </span>
             <span className={styles.pill}>
               <span className={`${styles.pillDot} ${styles.pillDotPurple}`} />
-              기본 모델 <code>openai-codex/gpt-5.5</code>
+              기본 모델 <code>openai-codex/gpt-6-astra</code>
             </span>
             <span className={styles.pill}>
               <span className={`${styles.pillDot} ${styles.pillDotPurple}`} />
@@ -159,7 +159,7 @@ export default function AdminOpenClawOverview() {
               </dd>
               <dt>기본 모델</dt>
               <dd>
-                <code>openai-codex/gpt-5.5</code>
+                <code>openai-codex/gpt-6-astra</code>
               </dd>
               <dt>폴백</dt>
               <dd>
@@ -514,7 +514,7 @@ export default function AdminOpenClawOverview() {
               디바이스 키 보관: <code>~/.deskrpg/openclaw-devices/{`{sha256(identityKey)}`}.json</code> · 페어링 미완료 시 errorCode <code>PAIRING_REQUIRED</code> (HTTP 409).
             </li>
             <li>
-              지원 모델: <code>openai-codex/gpt-5.5</code>, <code>openai-codex/gpt-5.4</code>, <code>claude-cli/claude-opus-4-6</code>, <code>ollama/qwen2.5:7b</code>.
+              지원 모델: <code>openai-codex/gpt-6-astra</code>, <code>openai-codex/gpt-6.1-sol</code>, <code>claude-cli/claude-fable-5-2</code>, <code>ollama/qwen2.5:7b</code>.
             </li>
           </ul>
         </div>
@@ -564,7 +564,7 @@ export default function AdminOpenClawOverview() {
                 </td>
                 <td>기본 에이전트 모델 (override 가능)</td>
                 <td>
-                  <code>openai-codex/gpt-5.5</code>
+                  <code>openai-codex/gpt-6-astra</code>
                 </td>
               </tr>
               <tr>

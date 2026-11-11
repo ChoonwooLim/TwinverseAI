@@ -4,8 +4,9 @@ import styles from "../AdminOpenClawConsole.module.css";
 
 // Minimal offline fallback only — real list comes from /api/.../models which
 // includes Ollama + every provider registered in models.providers.
+const DEFAULT_MODEL_ID = "openai-codex/gpt-6-astra";
 const FALLBACK_MODELS = [
-  { id: "anthropic/claude-opus-4-7", name: "Claude Opus 4.7", supportsTools: true },
+  { id: DEFAULT_MODEL_ID, name: "GPT-6 Astra", supportsTools: true },
 ];
 
 export default function AgentsTab() {
@@ -125,11 +126,16 @@ export default function AgentsTab() {
 // Claude-CLI 프로바이더는 게이트웨이 전역 config 스키마에서 거부되므로
 // (auth:"cli" / baseUrl 없음) `/models` 응답에 포함되지 않는다.
 // 드롭다운에서 바로 고를 수 있도록 프론트엔드에서 프리셋으로 하드코딩한다.
+// GPT-6 계열도 게이트웨이(2026.4.12) 카탈로그·models.providers 에 없어
+// `/models` 응답에 안 나오므로 같이 프리셋으로 둔다.
+// 전부 2026-11-12 LAN 게이트웨이에서 실제 호출 확인된 ID.
 const EXTRA_PRESET_MODELS = [
-  { id: "claude-cli/claude-opus-4-7",   label: "Claude Opus 4.7 (CLI·구독)" },
-  { id: "claude-cli/claude-opus-4-6",   label: "Claude Opus 4.6 (CLI·구독)" },
-  { id: "claude-cli/claude-sonnet-4-6", label: "Claude Sonnet 4.6 (CLI·구독)" },
-  { id: "claude-cli/claude-haiku-4-5",  label: "Claude Haiku 4.5 (CLI·구독)" },
+  { id: "openai-codex/gpt-6-astra",     label: "GPT-6 Astra (Codex·최상위)" },
+  { id: "openai-codex/gpt-6.1-sol",     label: "GPT-6.1 Sol (Codex·최신 주력)" },
+  { id: "claude-cli/claude-fable-5-2",  label: "Claude Fable 5.2 (CLI·구독·최상위)" },
+  { id: "claude-cli/claude-opus-5-5",   label: "Claude Opus 5.5 (CLI·구독)" },
+  { id: "claude-cli/claude-sonnet-5-5", label: "Claude Sonnet 5.5 (CLI·구독)" },
+  { id: "claude-cli/claude-haiku-5-5",  label: "Claude Haiku 5.5 (CLI·구독)" },
 ];
 
 function ModelSelect({ models, value, onChange }) {
@@ -162,7 +168,7 @@ function ModelSelect({ models, value, onChange }) {
         );
       })}
       {presets.length > 0 && (
-        <optgroup label="Claude CLI (구독·프리셋)">
+        <optgroup label="구독 프리셋 (Codex · Claude CLI)">
           {presets.map((p) => (
             <option key={p.id} value={p.id}>{p.id} — {p.label}</option>
           ))}
@@ -179,7 +185,7 @@ function ModelSelect({ models, value, onChange }) {
 function AgentCreateModal({ models, onClose, onSaved, onError }) {
   const [id, setId] = useState("");
   const [displayName, setDisplayName] = useState("");
-  const [model, setModel] = useState((models && models[0]?.id) || "anthropic/claude-opus-4-7");
+  const [model, setModel] = useState((models && models[0]?.id) || DEFAULT_MODEL_ID);
   const [systemPrompt, setSystemPrompt] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -232,7 +238,7 @@ function AgentCreateModal({ models, onClose, onSaved, onError }) {
 
 function AgentEditModal({ agent, models, onClose, onSaved, onError }) {
   const [displayName, setDisplayName] = useState(agent.displayName || "");
-  const [model, setModel] = useState(agent.model || (models && models[0]?.id) || "anthropic/claude-opus-4-7");
+  const [model, setModel] = useState(agent.model || (models && models[0]?.id) || DEFAULT_MODEL_ID);
   const [theme, setTheme] = useState(agent.theme || "");
   const [emoji, setEmoji] = useState(agent.emoji || "");
   const [systemPrompt, setSystemPrompt] = useState("");
