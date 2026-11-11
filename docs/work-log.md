@@ -1801,3 +1801,69 @@ systematic-debugging 으로 컨테이너 상태 → 모델/토큰/채널 설정 
   으로 실제 응답을 받은 뒤 확정할 것 — 카탈로그 존재가 계정 사용 가능을 보장하지 않음.
 
 ---
+
+## 2026-11-12 (OpenClaw 모델 전면 업그레이드 + 로그인 세션 유지 + 클립보드 이미지 첨부 + 대화 삭제 500 진단)
+
+### 작업 요약
+
+| 카테고리 | 작업 내용 | 상태 |
+|----------|----------|------|
+| infra | OpenClaw LAN 3개 컨테이너 모델 전면 교체 (Codex gpt-5.x→gpt-6.x, Claude→Fable 5.2) + 코드/문서 동기화 | 완료 |
+| feat | 로그인 세션 자동 유지 — HttpOnly 쿠키 기반 디바이스 리프레시 플로우 | 완료 |
+| feat | 관리자 채팅(OpenClaw 콘솔)에 클립보드 이미지 붙여넣기 지원 | 완료 |
+| fix | OpenClaw 콘솔 대화목록 삭제 500 에러 — Roy(OpenClaw 자가코딩 에이전트)가 FK 레이스 컨디션 수정 | 완료 |
+| 진단 | 위 삭제 버그를 별도 세션에서 재조사 → 이미 수정 배포됨을 확인, 재시도로 정상 동작 검증 | 완료 |
+
+### 세부 내용
+
+**OpenClaw 모델 전면 업그레이드.** `twinverse-ai` LAN 서버의 OpenClaw 컨테이너 3개
+(openclaw/openclaw-igos/openclaw-suit) 모델을 전부 최신 top-tier로 교체: Codex 계열
+`gpt-5.x` → `gpt-6-astra`(로이·기본값)/`gpt-6.1-sol`(codex-pro), Claude 계열 →
+`fable-5-2`. `ai-shared-registry.md` SSOT 먼저 갱신 후 애플리케이션 코드
+(`Orbitron.yaml`, `npc_agent.py`, `news_crawler`, `AgentsTab.jsx`,
+`AdminOpenClawOverview.jsx`) 동기화. PR #2 로 merge, Orbitron·Hostinger 양쪽
+동기화까지 완료 (상세는 메모리 `reference_openclaw_model_lineup.md`).
+
+**로그인 세션 자동 유지.** 액세스 토큰이 8시간 후 리프레시 경로 없이 만료되어
+방문할 때마다 재로그인해야 했던 문제. `tv_device` HttpOnly/Secure/SameSite=Lax
+쿠키(해시만 DB 저장) + `POST /api/auth/refresh`로 30일 비활성 윈도우 내 자동
+갱신. 프론트는 첫 렌더 전 조용히 리프레시 + 401 발생 시 1회 재시도. 기존 액세스
+토큰 포맷은 불변이라 PS2/WebSocket 소비자는 영향 없음.
+
+**클립보드 이미지 붙여넣기.** OpenClaw 콘솔 채팅(ChatTab)에 Ctrl+V로 이미지를
+바로 첨부할 수 있는 기능 추가. `chatAttachments.js` 유틸 분리 + e2e 테스트.
+
+**대화목록 삭제 500 에러.** 감독님이 OpenClaw 콘솔 "채팅" 탭에서 휴지통 버튼으로
+대화를 삭제해도 `Request failed with status code 500`이 뜨고 목록에서 안 지워지는
+버그를 리포트. 스크린샷을 보면 로이(OpenClaw 자가코딩 에이전트)에게 직접 같은
+버그를 알려 로이가 자체적으로 원인 진단 후 커밋(`a3c5217 fix: reliably delete
+admin OpenClaw conversations`, 작성자 `OpenClaw <openclaw@localhost>`)으로
+수정·merge까지 완료한 상태였다. 원인: 채팅 릴레이가 백그라운드로 게이트웨이
+응답을 저장하는 도중(`_schedule_save_message`) 사용자가 같은 대화를 삭제하면
+메시지 일괄 삭제 이후 FK 제약을 위반하는 INSERT가 끼어들어 삭제 트랜잭션이
+IntegrityError로 실패 — 그런데 실패를 잡지 않아 프론트에는 500만 보이고 실제로는
+부분 삭제 상태가 남는 레이스 컨디션. 수정은 `conversations_delete`에서
+`SELECT ... FOR UPDATE`로 부모 행을 먼저 잠그고, 메시지 삭제와 부모 삭제를 같은
+트랜잭션에 묶어 레이스가 나면 최대 2회 재시도 후 사용자에게 읽을 수 있는 409로
+안내. 게이트웨이 `sessions.delete`도 이 WS 커넥션이 직접 만든 세션 키만 삭제
+가능하도록 소유권 가드 추가.
+
+이와 별개로 Claude Code 세션(본인)에게도 같은 500 에러가 보고되어 독립적으로
+재조사: `git rebase origin/main`으로 이미 머지된 수정을 받아오고, Orbitron
+컨테이너(`orbitron-twinverseai-mwclg19x`)에 새 백엔드 코드(`with_for_update` +
+`IntegrityError` 재시도 로직 확인)와 새 프론트 번들(`ChatTab-BgcS29x_.js`,
+2026-11-11 20:50 생성)이 모두 반영됐음을 직접 확인. 회귀 테스트
+(`test_openclaw_conversation_delete.py`) 8건 전부 통과. 감독님이 하드 새로고침
+후 재시도한 삭제 요청(`conv_id=43`)이 백엔드 로그에 `200 OK`로 찍히는 것을
+실시간으로 확인해 종료.
+
+### 다음 세션 참고
+
+- Hostinger 인스턴스(DeskRPG/Codex)는 아직 구 Codex 모델(`gpt-5.4`)에 머물러 있음 —
+  SSH 키 인증 문제로 이번 업그레이드 세션에서 미완료. 수동 또는 SSH 재설정 후 재시도 필요.
+- 대화 삭제 버그는 Roy(OpenClaw)가 직접 고치고 머지한 최초 사례 — 콘솔 채팅으로
+  버그 리포트를 받으면 자가수정까지 가능하다는 선례. 단, 회귀 테스트·e2e까지
+  갖춰 커밋했는지는 매번 확인할 것 (이번엔 `backend/tests/test_openclaw_conversation_delete.py`,
+  `frontend/e2e/openclaw-delete.e2e.js` 포함되어 있었음).
+
+---

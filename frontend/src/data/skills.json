@@ -397,6 +397,195 @@
           "features": [
             "자동 감지된 스킬입니다. 상세 기능은 추후 업데이트됩니다."
           ]
+        },
+        {
+          "command": "/agent-relay",
+          "desc": "Codex 스레드나 다른 Claude Code 세션과 경계 지어진 왕복 대화 — /agent-relay 로 확인·메시지·보류",
+          "features": [
+            "자동 감지된 스킬입니다. 상세 기능은 추후 업데이트됩니다."
+          ]
+        },
+        {
+          "command": "/built-in-browser",
+          "desc": "Claude 데스크탑 앱 내장 브라우저(browser pane) 사용 전 필독 — 탭/프리뷰/사이트 승인 가이드",
+          "features": [
+            "자동 감지된 스킬입니다. 상세 기능은 추후 업데이트됩니다."
+          ]
+        },
+        {
+          "command": "/canvas-design",
+          "desc": "포스터·아트워크 등 정적 비주얼 디자인을 .png/.pdf 로 생성 (원본 창작만, 저작권 보호)",
+          "features": [
+            "자동 감지된 스킬입니다. 상세 기능은 추후 업데이트됩니다."
+          ]
+        },
+        {
+          "command": "/chrome-browser",
+          "desc": "Claude in Chrome(브라우저 확장, 실제 크롬) 사용 전 필독 — 탭/권한/GIF 녹화 가이드",
+          "features": [
+            "자동 감지된 스킬입니다. 상세 기능은 추후 업데이트됩니다."
+          ]
+        },
+        {
+          "command": "/codebase-design",
+          "desc": "딥 모듈 설계 공통 어휘 — 인터페이스 설계, 심화 지점 발견, 테스트 가능성 개선 시 사용",
+          "features": [
+            "자동 감지된 스킬입니다. 상세 기능은 추후 업데이트됩니다."
+          ]
+        },
+        {
+          "command": "/computer-use",
+          "desc": "데스크탑 앱 조작(스크린샷 + 클릭/타이핑/스크롤) 사용 전 필독 — 권한 플로우·안전 규칙",
+          "features": [
+            "자동 감지된 스킬입니다. 상세 기능은 추후 업데이트됩니다."
+          ]
+        },
+        {
+          "command": "/deep-research",
+          "desc": "복수 출처 리서치 + 종합 보고서 작성 (서브에이전트 코디네이션 필요)",
+          "features": [
+            "자동 감지된 스킬입니다. 상세 기능은 추후 업데이트됩니다."
+          ]
+        },
+        {
+          "command": "/docs",
+          "desc": "공유·협업용 문서(doc) 작성 — 기본 문서 산출물, Word/PDF/Markdown 내보내기",
+          "features": [
+            "자동 감지된 스킬입니다. 상세 기능은 추후 업데이트됩니다."
+          ]
+        },
+        {
+          "command": "/docx",
+          "desc": "Word 문서(.docx/.dotx) 생성·읽기·편집 — 추적 변경, 이미지 삽입, 찾기-바꾸기",
+          "features": [
+            "자동 감지된 스킬입니다. 상세 기능은 추후 업데이트됩니다."
+          ]
+        },
+        {
+          "command": "/domain-modeling",
+          "desc": "프로젝트 도메인 모델 구축 — GLOSSARY.md, ADR 작성/편집",
+          "features": [
+            "자동 감지된 스킬입니다. 상세 기능은 추후 업데이트됩니다."
+          ]
+        },
+        {
+          "command": "/google-workspace",
+          "desc": "Google Docs/Sheets/Slides 파일 생성·편집 전 필독",
+          "features": [
+            "자동 감지된 스킬입니다. 상세 기능은 추후 업데이트됩니다."
+          ]
+        },
+        {
+          "command": "/import-memory",
+          "desc": "다른 AI 어시스턴트의 메모리 내보내기를 Claude 메모리로 대화형 임포트",
+          "features": [
+            "자동 감지된 스킬입니다. 상세 기능은 추후 업데이트됩니다."
+          ]
+        },
+        {
+          "command": "/logo-sting",
+          "desc": "로고 엔딩/인트로 영상(로고 스팅)을 Higgsfield Seedance 2.5 로 생성",
+          "features": [
+            "자동 감지된 스킬입니다. 상세 기능은 추후 업데이트됩니다."
+          ]
+        },
+        {
+          "command": "/lucifer",
+          "desc": "새 프로젝트를 사장님 텔레그램 중계망(Lucifers)에 연결 — 주제방 개설 + 로이 중계 세팅",
+          "features": [
+            "자동 감지된 스킬입니다. 상세 기능은 추후 업데이트됩니다."
+          ]
+        },
+        {
+          "command": "/mcp-builder",
+          "desc": "고품질 MCP 서버 제작 가이드 (Python FastMCP / Node MCP SDK)",
+          "features": [
+            "자동 감지된 스킬입니다. 상세 기능은 추후 업데이트됩니다."
+          ]
+        },
+        {
+          "command": "/morning",
+          "desc": "아침 브리핑을 스타일링된 HTML 아티팩트로 렌더링 또는 평일 반복 태스크로 설정",
+          "features": [
+            "자동 감지된 스킬입니다. 상세 기능은 추후 업데이트됩니다."
+          ]
+        },
+        {
+          "command": "/pdf",
+          "desc": "PDF 읽기/추출/병합/분할/회전/워터마크/폼 채우기/암복호화/OCR 등 전체 작업",
+          "features": [
+            "자동 감지된 스킬입니다. 상세 기능은 추후 업데이트됩니다."
+          ]
+        },
+        {
+          "command": "/pptx",
+          "desc": "PowerPoint(.pptx/.potx) 생성·읽기·편집 — 슬라이드 덱, 템플릿, 발표자 노트",
+          "features": [
+            "자동 감지된 스킬입니다. 상세 기능은 추후 업데이트됩니다."
+          ]
+        },
+        {
+          "command": "/reverse-engineer-anything",
+          "desc": "네이티브/Electron/패키지/펌웨어/브라우저 타겟 리버스 엔지니어링 + AgentEnv 번들 생성",
+          "features": [
+            "자동 감지된 스킬입니다. 상세 기능은 추후 업데이트됩니다."
+          ]
+        },
+        {
+          "command": "/scrapling",
+          "desc": "격리된 Scrapling Python 환경으로 HTML/구조화 데이터 추출 (인가된 웹 추출용)",
+          "features": [
+            "자동 감지된 스킬입니다. 상세 기능은 추후 업데이트됩니다."
+          ]
+        },
+        {
+          "command": "/security-audit",
+          "desc": "코드베이스·API·서비스 보안 가이드 및 취약점 리뷰 — 감사/펜테스트 요청 시 전체 워크플로우",
+          "features": [
+            "자동 감지된 스킬입니다. 상세 기능은 추후 업데이트됩니다."
+          ]
+        },
+        {
+          "command": "/semhana",
+          "desc": "셈하나 주제방(텔레그램 토픽 117) ↔ 로이(OpenClaw) 중계 채널 연결, 세션 시작 시 미확인 메시지 확인",
+          "features": [
+            "자동 감지된 스킬입니다. 상세 기능은 추후 업데이트됩니다."
+          ]
+        },
+        {
+          "command": "/skill-creator",
+          "desc": "스킬 신규 생성·기존 스킬 개선/최적화, 성능 측정(eval)",
+          "features": [
+            "자동 감지된 스킬입니다. 상세 기능은 추후 업데이트됩니다."
+          ]
+        },
+        {
+          "command": "/theme-factory",
+          "desc": "아티팩트(슬라이드/문서/HTML)에 적용할 10종 프리셋 테마 또는 신규 테마 생성 툴킷",
+          "features": [
+            "자동 감지된 스킬입니다. 상세 기능은 추후 업데이트됩니다."
+          ]
+        },
+        {
+          "command": "/web-artifacts-builder",
+          "desc": "React/Tailwind/shadcn 기반 복잡한 다중 컴포넌트 HTML 아티팩트 제작 스위트",
+          "features": [
+            "자동 감지된 스킬입니다. 상세 기능은 추후 업데이트됩니다."
+          ]
+        },
+        {
+          "command": "/windows-desktop-tools",
+          "desc": "Windows 네이티브 데스크탑 앱 조작(agent-desktop CLI) — 접근성 트리 검사 + 타겟 액션",
+          "features": [
+            "자동 감지된 스킬입니다. 상세 기능은 추후 업데이트됩니다."
+          ]
+        },
+        {
+          "command": "/xlsx",
+          "desc": "스프레드시트(.xlsx/.xlsm/.csv/.tsv) 생성·읽기·편집·정리",
+          "features": [
+            "자동 감지된 스킬입니다. 상세 기능은 추후 업데이트됩니다."
+          ]
         }
       ]
     }
