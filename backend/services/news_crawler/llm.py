@@ -44,7 +44,8 @@ OLLAMA_TIMEOUT = float(os.getenv("NEWS_OLLAMA_TIMEOUT", "60"))
 OPENCLAW_WS_URL = os.getenv("OPENCLAW_WS_URL", "")
 OPENCLAW_TOKEN = os.getenv("OPENCLAW_TOKEN", "")
 # News crawler uses this agent on OpenClaw for fallback analysis.
-# Default 'main' (its model is openai-codex/gpt-5.5 per current config).
+# Default 'main' (its model is set on the gateway, not here —
+# openai-codex/gpt-6-astra as of 2026-11-12).
 OPENCLAW_NEWS_AGENT_ID = os.getenv("OPENCLAW_NEWS_AGENT_ID", "main")
 # gpt-5.5 first-call warmup is occasionally >3min; give the fallback path margin.
 OPENCLAW_CHAT_TIMEOUT = float(os.getenv("NEWS_OPENCLAW_TIMEOUT", "300"))
