@@ -1,20 +1,18 @@
 import api from "./api";
+import {
+  clearStoredAuth,
+  isDeviceRemembered,
+  readToken,
+  refreshSession,
+  tokenSecondsLeft,
+} from "./session";
 
-function decodeJwtPayload(token) {
-  try {
-    const part = token.split(".")[1];
-    if (!part) return null;
-    const b64 = part.replace(/-/g, "+").replace(/_/g, "/");
-    const padded = b64 + "===".slice((b64.length + 3) % 4);
-    return JSON.parse(atob(padded));
-  } catch {
-    return null;
-  }
-}
+// Refresh this long before the 8h access token runs out, so WebSocket
+// handshakes and other direct localStorage readers always see a live token.
+const REFRESH_AHEAD_SEC = 15 * 60;
 
 function clearAuth(reason) {
-  localStorage.removeItem("token");
-  localStorage.removeItem("user");
+  clearStoredAuth();
   if (typeof window === "undefined") return;
   if (window.location.pathname === "/login") return;
   console.warn(`[auth] cleared: ${reason}`);
@@ -24,16 +22,26 @@ function clearAuth(reason) {
 let serverCheckInFlight = false;
 
 export async function runAuthCheck() {
-  const token = localStorage.getItem("token");
+  const token = readToken();
   if (!token) return;
 
-  const payload = decodeJwtPayload(token);
-  if (!payload) {
+  const left = tokenSecondsLeft(token);
+  if (left === null) {
     clearAuth("malformed token");
     return;
   }
-  const nowSec = Math.floor(Date.now() / 1000);
-  if (typeof payload.exp === "number" && payload.exp <= nowSec) {
+
+  if (left <= REFRESH_AHEAD_SEC && isDeviceRemembered()) {
+    const result = await refreshSession();
+    if (result === "ok") return;
+    if (result === "rejected") {
+      clearAuth("remembered device rejected");
+      return;
+    }
+    // "unavailable": keep the current token while it still works.
+  }
+
+  if (left <= 0) {
     clearAuth("token expired (client exp check)");
     return;
   }
@@ -44,6 +52,7 @@ export async function runAuthCheck() {
     await api.get("/api/auth/me");
   } catch (err) {
     if (err?.response?.status === 401) {
+      if (isDeviceRemembered() && (await refreshSession()) === "ok") return;
       clearAuth("server rejected /api/auth/me");
     }
   } finally {

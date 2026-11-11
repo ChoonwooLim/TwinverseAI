@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import api from "../services/api";
+import { storeSession } from "../services/session";
 import styles from "./LoginPage.module.css";
 
 export default function LoginPage() {
@@ -8,6 +9,7 @@ export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [remember, setRemember] = useState(true);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -34,11 +36,11 @@ export default function LoginPage() {
     try {
       const endpoint = mode === "login" ? "/api/auth/login" : "/api/auth/register";
       const body = mode === "login"
-        ? { username, password }
-        : { username, email, password };
-      const { data } = await api.post(endpoint, body);
-      localStorage.setItem("token", data.access_token);
-      localStorage.setItem("user", JSON.stringify(data.user));
+        ? { username, password, remember }
+        : { username, email, password, remember };
+      // withCredentials lets the HttpOnly device cookie land even when the API is on another origin.
+      const { data } = await api.post(endpoint, body, { withCredentials: true });
+      storeSession(data, { remember });
       navigate(data.user.role === "admin" || data.user.role === "superadmin" ? "/admin" : "/");
     } catch (err) {
       const msg = err.response?.data?.detail;
@@ -134,6 +136,21 @@ export default function LoginPage() {
                 Password
               </label>
             </div>
+
+            <label className={styles.remember} htmlFor="login-remember">
+              <input
+                className={styles.rememberInput}
+                type="checkbox"
+                id="login-remember"
+                checked={remember}
+                onChange={(e) => setRemember(e.target.checked)}
+              />
+              <span className={styles.rememberBox} aria-hidden="true" />
+              <span className={styles.rememberText}>
+                이 기기에서 로그인 유지
+                <span className={styles.rememberHint}>공용 PC에서는 해제하세요</span>
+              </span>
+            </label>
 
             {error && <p className={styles.error}>{error}</p>}
 

@@ -1,8 +1,9 @@
-import { lazy, useEffect } from "react";
+import { lazy, useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import MainLayout from "./components/layout/MainLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { runAuthCheck } from "./services/authCheck";
+import { ensureSession, needsBootRefresh } from "./services/session";
 
 // Lazy-loaded pages
 const HomePage = lazy(() => import("./pages/HomePage"));
@@ -33,14 +34,30 @@ const DeskLaunch = lazy(() => import("./pages/twinversedesk/DeskLaunch"));
 const TVDeskRun = lazy(() => import("./pages/twinversedesk/TVDeskRun"));
 
 export default function App() {
+  // A remembered device with an expired token is signed back in before the
+  // first render, so protected routes never bounce it to /login.
+  const [authReady, setAuthReady] = useState(() => !needsBootRefresh());
+
   // Validate token on boot + every 60s. Detects expired/revoked JWTs and clears
   // localStorage so the UI stops showing a stale "admin" name while downstream
   // services (PS2 GPU, etc.) reject the user. See 2026-05-12 fix.
+  // Remembered devices refresh ahead of expiry instead of being signed out.
   useEffect(() => {
-    runAuthCheck();
+    let alive = true;
+    (async () => {
+      if (needsBootRefresh()) await ensureSession({ minValiditySec: 60 });
+      if (!alive) return;
+      setAuthReady(true);
+      runAuthCheck();
+    })();
     const id = setInterval(runAuthCheck, 60000);
-    return () => clearInterval(id);
+    return () => {
+      alive = false;
+      clearInterval(id);
+    };
   }, []);
+
+  if (!authReady) return null;
 
   return (
     <BrowserRouter>

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { isOpenClawPath } from "./openClawNavigation";
+import { logoutSession } from "../../services/session";
 import styles from "./TopBar.module.css";
 
 const NAV_ITEMS = [
@@ -71,9 +72,9 @@ function TopBar() {
     setMenuOpen(false);
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+  const handleLogout = async () => {
+    // Revokes this device's "keep me signed in" cookie too, not just the local token.
+    await logoutSession();
     navigate("/login");
   };
 

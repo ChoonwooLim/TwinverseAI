@@ -1,4 +1,5 @@
 from .user import User
+from .auth_device import AuthDevice
 from .post import Post
 from .comment import Comment
 from .file import FileRecord

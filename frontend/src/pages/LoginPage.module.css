@@ -220,6 +220,92 @@
   text-transform: uppercase;
 }
 
+/* ── Remember device ── */
+
+.remember {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3, 0.75rem);
+  margin-top: calc(var(--sp-3, 0.75rem) * -1);
+  cursor: pointer;
+  user-select: none;
+}
+
+.rememberInput {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+
+.rememberBox {
+  flex: none;
+  position: relative;
+  width: 1.125rem;
+  height: 1.125rem;
+  margin-top: 0.1rem;
+  border: 1.5px solid rgba(255, 255, 255, 0.28);
+  border-radius: 4px;
+  transition: background var(--dur-fast, 120ms), border-color var(--dur-fast, 120ms), box-shadow var(--dur-fast, 120ms);
+}
+
+.rememberBox::after {
+  content: '';
+  position: absolute;
+  left: 0.32rem;
+  top: 0.1rem;
+  width: 0.3rem;
+  height: 0.58rem;
+  border: solid #ffffff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg) scale(0.6);
+  opacity: 0;
+  transition: opacity var(--dur-fast, 120ms), transform var(--dur-fast, 120ms);
+}
+
+.remember:hover .rememberBox {
+  border-color: var(--neon-indigo, #667eea);
+}
+
+.rememberInput:checked + .rememberBox {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-color: transparent;
+}
+
+.rememberInput:checked + .rememberBox::after {
+  opacity: 1;
+  transform: rotate(45deg) scale(1);
+}
+
+.rememberInput:focus-visible + .rememberBox {
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.35);
+}
+
+.rememberText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-sm, 0.875rem);
+  font-weight: 500;
+  color: var(--text-secondary, #ccc);
+  line-height: 1.35;
+}
+
+.rememberHint {
+  font-size: 0.7rem;
+  font-weight: 400;
+  color: var(--text-tertiary, #888);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rememberBox,
+  .rememberBox::after {
+    transition: none;
+  }
+}
+
 /* ── Error ── */
 
 .error {
