@@ -1810,7 +1810,7 @@ systematic-debugging 으로 컨테이너 상태 → 모델/토큰/채널 설정 
 |----------|----------|------|
 | fix | OpenClaw 관리 콘솔 "Gateway down" — gateway OOM 사망 원인 확정 + 컨테이너 재시작으로 복구 | 완료 |
 | infra | twinverse-ai 재부팅 원인 확인 (데스크톱 수동 재시작) + 재부팅 후 OpenClaw·watcher 상태 검증 | 완료 |
-| infra | 재부팅 후 GPU 미인식 원인 진단 (7.0.0-42 nvidia 모듈 링크 실패) + 재부팅 없이 복구 | 완료 (GRUB 정정만 남음) |
+| infra | 재부팅 후 GPU 미인식 원인 진단 (7.0.0-42 nvidia 모듈 링크 실패) + 재부팅 없이 복구 | 완료 |
 
 ### 세부 내용
 
@@ -1853,9 +1853,8 @@ Ollama `inference compute library=CUDA`, qwen2.5:0.5b 576 tok/s·100% VRAM, wan-
 
 ### 다음 세션 참고
 
-- GRUB_DEFAULT 는 여전히 삭제된 6.8.0-107 을 가리킴 (실제 부팅은 0번=최신 커널로 폴백). 정정 명령은
-  권한 정책상 감독님이 직접 실행: `sudo cp -p /etc/default/grub /etc/default/grub.bak-20261112 &&
-  sudo sed -i 's|^GRUB_DEFAULT=.*|GRUB_DEFAULT=0|' /etc/default/grub && sudo update-grub`.
+- GRUB_DEFAULT 를 삭제된 6.8.0-107 죽은 핀에서 `0`(최신 커널)으로 정정 완료 — Claude 권한 정책상 감독님이
+  `ssh -t twinverse-ai "sudo ... && sudo update-grub"` 로 직접 실행. 백업 `/etc/default/grub.bak-20261112`.
 - 헤더 메타를 맞춰 놨으므로 다음 커널 업데이트부터는 헤더가 함께 들어와야 정상. 다음 재부팅 전
   `dpkg -l | grep -E '^i[^i].*linux-(modules-nvidia|headers)'` 로 반쯤 설정된 패키지가 없는지 확인 권장.
 - OpenClaw 재발 방지 후보: 호스트 워치독(health 실패 시 재시작), `NODE_OPTIONS=--max-old-space-size` 상향
