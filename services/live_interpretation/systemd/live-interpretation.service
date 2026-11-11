@@ -15,6 +15,9 @@ Environment=PYTHONDONTWRITEBYTECODE=1
 Environment=HF_HOME=/var/cache/live-interpretation/huggingface
 ExecStartPre=/srv/live-interpretation/venv/bin/python -m app.check_config
 ExecStart=/srv/live-interpretation/scripts/launch.sh
+# Type=simple marks a hung startup "running"; this gate turns it into a failed
+# start so Restart=on-failure recovers it (2026-11-12 GPU-recovery hang).
+ExecStartPost=/srv/live-interpretation/venv/bin/python -m app.wait_ready
 Restart=on-failure
 RestartSec=5
 TimeoutStartSec=600

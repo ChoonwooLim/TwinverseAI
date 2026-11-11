@@ -94,7 +94,9 @@ sudo install -o root -g root -m 0644 \
   "$INSTALL_DIR/systemd/$UNIT_FILE" "/etc/systemd/system/$UNIT_FILE"
 sudo systemctl daemon-reload
 sudo systemctl enable "$UNIT_FILE" >/dev/null
-sudo systemctl restart "$UNIT_FILE"
+# --no-block: the ExecStartPost readiness gate makes a blocking restart wait for
+# it, and a failed restart would exit via set -e before the diagnostics below.
+sudo systemctl restart --no-block "$UNIT_FILE"
 
 for _ in $(seq 1 120); do
   if curl --fail --silent --show-error http://127.0.0.1:8201/ready >/dev/null; then
