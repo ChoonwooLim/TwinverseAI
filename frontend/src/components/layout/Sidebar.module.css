@@ -172,7 +172,7 @@
     display: none;
   }
 
-  .openClawSidebar {
+  .mobileStrip {
     display: block;
     width: 100%;
     min-width: 0;
@@ -180,11 +180,16 @@
     border-right: none;
     border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,0.06));
   }
-  .openClawSidebar .title { margin: 0; padding: 0.5rem 1rem; }
-  .openClawSidebar .nav {
+  .mobileStrip .title { margin: 0; padding: 0.5rem 1rem; }
+  .mobileStrip .nav {
     flex-direction: row;
     overflow-x: auto;
+    overscroll-behavior-x: contain;
   }
-  .openClawSidebar .nav > div { flex-shrink: 0; }
-  .openClawSidebar .link { min-height: 44px; white-space: nowrap; }
+  .mobileStrip .nav > div { flex-shrink: 0; }
+  .mobileStrip .link { min-height: 44px; white-space: nowrap; }
+  /* Group parents link to their first page; nested entries stay a desktop affordance. */
+  .mobileStrip .toggle,
+  .mobileStrip .subNav { display: none; }
+  .mobileStrip .linkWithToggle { padding-right: var(--sp-6, 1.5rem) !important; }
 }

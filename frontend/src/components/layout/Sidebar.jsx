@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { OPENCLAW_ITEMS } from "./openClawNavigation";
 import styles from "./Sidebar.module.css";
@@ -63,6 +63,9 @@ const SIDEBAR_CONFIG = {
   },
 };
 
+// Sections that stay reachable on phones as a horizontally scrolling strip.
+const MOBILE_STRIP_SECTIONS = new Set(["openclaw", "admin"]);
+
 const STORAGE_KEY = "twinverse:sidebar:collapsed";
 
 function loadCollapsed() {
@@ -103,12 +106,25 @@ export default function Sidebar({ section }) {
     return match ? match.path : null;
   }, [config, location.pathname]);
 
+  // Keep the current entry visible inside the mobile strip without moving the page.
+  const navRef = useRef(null);
+  useEffect(() => {
+    const nav = navRef.current;
+    const current = nav?.querySelector('[aria-current="page"]');
+    if (!nav || !current || nav.scrollWidth <= nav.clientWidth) return;
+    const navBox = nav.getBoundingClientRect();
+    const box = current.getBoundingClientRect();
+    if (box.left < navBox.left || box.right > navBox.right) {
+      nav.scrollLeft += box.left - navBox.left - (navBox.width - box.width) / 2;
+    }
+  }, [section, location.pathname]);
+
   if (!config) return null;
 
   return (
-    <aside className={`${styles.sidebar} ${section === "openclaw" ? styles.openClawSidebar : ""}`} aria-label={config.title}>
+    <aside className={`${styles.sidebar} ${MOBILE_STRIP_SECTIONS.has(section) ? styles.mobileStrip : ""}`} aria-label={config.title}>
       <h3 className={styles.title}>{config.title}</h3>
-      <nav className={styles.nav} aria-label={`${config.title} 메뉴`}>
+      <nav ref={navRef} className={styles.nav} aria-label={`${config.title} 메뉴`}>
         {config.items.map((item) => {
           const hasChildren = Array.isArray(item.children) && item.children.length > 0;
           const userCollapsed = collapsed[item.path];

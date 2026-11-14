@@ -13,6 +13,8 @@ const NAV_ITEMS = [
   { label: "커뮤니티", path: "/community/notice" },
 ];
 
+const EMAIL_REPORTS_PATH = "/admin/email-reports";
+
 const DESK_ITEMS = [
   { label: "TVDesk 분석 보고서", path: "/twinversedesk/analysis" },
   { label: "TwinverseDesk 개발계획", path: "/twinversedesk/plan" },
@@ -66,6 +68,7 @@ function TopBar() {
   const user = JSON.parse(localStorage.getItem("user") || "null");
   const isAdmin = user?.role === "admin" || user?.role === "superadmin";
   const isOpenClawPage = isOpenClawPath(location.pathname);
+  const isEmailReportsPage = location.pathname === EMAIL_REPORTS_PATH || location.pathname.startsWith(`${EMAIL_REPORTS_PATH}/`);
 
   const closeMenus = () => {
     setOpenDropdown(null);
@@ -163,7 +166,16 @@ function TopBar() {
               <Link to="/admin/openclaw" className={`${styles.navLink} ${isOpenClawPage ? styles.active : ""}`} onClick={closeMenus}>
                 OpenClaw
               </Link>
-              <Link to="/admin" className={`${styles.navLink} ${isActive("/admin") && !isOpenClawPage ? styles.active : ""}`} onClick={closeMenus}>
+              {/* Shortcut only: the route and its API stay behind the existing admin gates. */}
+              <Link
+                to={EMAIL_REPORTS_PATH}
+                className={`${styles.navLink} ${isEmailReportsPage ? styles.active : ""}`}
+                aria-current={isEmailReportsPage ? "page" : undefined}
+                onClick={closeMenus}
+              >
+                이메일 보고서
+              </Link>
+              <Link to="/admin" className={`${styles.navLink} ${isActive("/admin") && !isOpenClawPage && !isEmailReportsPage ? styles.active : ""}`} onClick={closeMenus}>
                 관리자
               </Link>
             </>

@@ -157,6 +157,7 @@
 .itemHead { display: flex; gap: .75rem; align-items: flex-start; }
 .itemHeadMain { min-width: 0; flex: 1 1 auto; }
 .itemMeta { display: flex; flex-wrap: wrap; gap: .25rem .65rem; color: var(--text-tertiary); font-size: .65rem; }
+.itemMeta span { min-width: 0; overflow-wrap: anywhere; }
 .itemBadges { display: flex; flex-wrap: wrap; gap: .3rem; align-items: center; }
 .sourceLink { display: inline-flex; align-items: center; gap: .3rem; width: fit-content; margin-top: .55rem; padding: .4rem .65rem; min-height: 34px; border: 1px solid rgba(0,212,255,.38); border-radius: var(--radius-sm); color: #bae6fd; background: rgba(0,212,255,.07); font-size: .7rem; font-weight: 650; text-decoration: none; transition: border-color var(--dur-fast), background var(--dur-fast), color var(--dur-fast); }
 .sourceLink:hover, .sourceLink:focus-visible { border-color: var(--neon-cyan); color: white; background: rgba(0,212,255,.14); outline: 2px solid rgba(0,212,255,.25); outline-offset: 2px; }
@@ -272,6 +273,29 @@
   .selectLabel { width: 44px; height: 44px; margin: -.5rem -.75rem 0; }
   .sourceLink { min-height: 44px; padding: .55rem .75rem; }
   .detailErrorState { min-height: 360px; }
+  .detailErrorState > div { width: 100%; }
+  .detailErrorState button { flex: 1 1 0; min-height: 44px; }
+  .pageHeader { gap: 1rem; padding-bottom: 1.1rem; margin-bottom: 1rem; }
+  .pageHeader h1 { font-size: 1.6rem; }
+  .pageHeader p { font-size: .82rem; }
+  .panelHeader, .reportRow, .yearGroup > h3, .monthGroup > h4 { padding-left: 1rem; padding-right: 1rem; }
+  .rowTop { flex-wrap: wrap; }
+  .rowTop strong { font-size: 1rem; }
+  .rowTop span { max-width: 100%; }
+  .pagination button, .mobileBack { min-height: 44px; padding: .5rem 1rem; font-size: .8rem; }
+  .pagination button { min-width: 72px; }
+  .mobileBack { align-items: center; }
+  .eyebrow, .detailHeader h2, .detailHeader p, .accountCard p, .cleanupCard p, .modalBody { overflow-wrap: anywhere; }
+  .detailHeader > div { min-width: 0; max-width: 100%; }
+  .accountCard h4 { white-space: normal; overflow-wrap: anywhere; }
+  .itemCard { padding: .85rem; }
+  .itemMeta { flex-direction: column; gap: .2rem; margin-top: .4rem; font-size: .7rem; }
+  .bulkBar, .bulkGroup { align-items: stretch; }
+  .bulkGroup { display: flex; flex: 1 1 100%; flex-wrap: wrap; min-width: 0; }
+  .bulkGroup > span { flex: 1 1 100%; }
+  .bulkGroup select { flex: 1 1 9rem; min-width: 0; min-height: 44px; }
+  .bulkApply { flex: 1 1 auto; min-height: 44px; }
+  .modalActions button { flex: 1 1 0; min-height: 44px; }
 }
 
 @media print {
