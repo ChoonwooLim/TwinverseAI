@@ -1,0 +1,373 @@
+{
+  "file": "avatar.glb",
+  "source": "/Game/00_SaipanPapago/avatar/SM_StevenCharacter",
+  "heightM": 1.861,
+  "boundsM": {
+    "min": [
+      -0.5296,
+      -0.012,
+      -0.1802
+    ],
+    "max": [
+      0.5296,
+      1.849,
+      0.2123
+    ]
+  },
+  "units": "metres (glTF), +Y up, right-handed; Unreal export scale 0.01",
+  "up": "+Y",
+  "facing": "+Z",
+  "facingVector": [
+    -0.0,
+    0.004,
+    1.0
+  ],
+  "yawToFacePlusZDeg": 0.0,
+  "restPose": "A-pose",
+  "upperArmAngleBelowHorizontalDeg": {
+    "left": 59.3,
+    "right": 59.3
+  },
+  "rootJoint": "Hips",
+  "skinnedMeshNode": "scene root node index 0 is UNNAMED and holds mesh 'SM_StevenCharacter' + skin 0 (skin.skeleton = node 0). Joints are its children; root joint 'Hips'. Root node has no rotation/scale/translation.",
+  "bones": {
+    "hips": "Hips",
+    "spine": [
+      "Spine",
+      "Spine1",
+      "Spine2"
+    ],
+    "neck": "Neck",
+    "head": "Head",
+    "leftUpLeg": "LeftUpLeg",
+    "leftLeg": "LeftLeg",
+    "leftFoot": "LeftFoot",
+    "leftToe": "LeftToeBase",
+    "rightUpLeg": "RightUpLeg",
+    "rightLeg": "RightLeg",
+    "rightFoot": "RightFoot",
+    "rightToe": "RightToeBase",
+    "leftShoulder": "LeftShoulder",
+    "leftArm": "LeftArm",
+    "leftForeArm": "LeftForeArm",
+    "leftHand": "LeftHand",
+    "rightShoulder": "RightShoulder",
+    "rightArm": "RightArm",
+    "rightForeArm": "RightForeArm",
+    "rightHand": "RightHand"
+  },
+  "boneAxesConvention": "Measured in each bone's own local frame in the rest pose (the frame three.js Object3D.rotateOnAxis uses). 'along' = local axis pointing to the child joint. 'hingeAxisPositiveRotation' = local axis A such that bone.rotateOnAxis(A, +theta) (right-hand rule) produces 'hingeMotion': kneeFlex = foot moves backward, hipFlex = knee moves forward, elbowFlex = hand moves toward the front, shoulderSwingForward = arm swings forward, ankleToeDown = toes move down, shoulderShrugUp = clavicle tip moves up; 'lowerArmAxisPositiveRotation' = arm moves down toward the body. Purity 1.0 = exactly that axis; the exact local vector is given too. Example: LeftLeg kneeFlex about -X means rotation.x decreases.",
+  "boneAxes": {
+    "LeftUpLeg": {
+      "along": "+Y",
+      "alongPurity": 1.0,
+      "alongLocal": [
+        -0.0,
+        1.0,
+        -0.0
+      ],
+      "hingeMotion": "hipFlex(legForward)",
+      "hingeAxisPositiveRotation": "+X",
+      "hingePurity": 1.0,
+      "hingeAxisLocal": [
+        1.0,
+        0.0,
+        0.0047
+      ]
+    },
+    "LeftLeg": {
+      "along": "+Y",
+      "alongPurity": 1.0,
+      "alongLocal": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "hingeMotion": "kneeFlex",
+      "hingeAxisPositiveRotation": "-X",
+      "hingePurity": 1.0,
+      "hingeAxisLocal": [
+        -1.0,
+        0.0,
+        -0.0037
+      ]
+    },
+    "LeftFoot": {
+      "along": "+Y",
+      "alongPurity": 1.0,
+      "alongLocal": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "hingeMotion": "ankleToeDown",
+      "hingeAxisPositiveRotation": "-X",
+      "hingePurity": 0.996,
+      "hingeAxisLocal": [
+        -0.9956,
+        0.0,
+        -0.0933
+      ]
+    },
+    "RightUpLeg": {
+      "along": "+Y",
+      "alongPurity": 1.0,
+      "alongLocal": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "hingeMotion": "hipFlex(legForward)",
+      "hingeAxisPositiveRotation": "+X",
+      "hingePurity": 1.0,
+      "hingeAxisLocal": [
+        1.0,
+        -0.0,
+        -0.0047
+      ]
+    },
+    "RightLeg": {
+      "along": "+Y",
+      "alongPurity": 1.0,
+      "alongLocal": [
+        -0.0,
+        1.0,
+        0.0
+      ],
+      "hingeMotion": "kneeFlex",
+      "hingeAxisPositiveRotation": "-X",
+      "hingePurity": 1.0,
+      "hingeAxisLocal": [
+        -1.0,
+        -0.0,
+        0.0037
+      ]
+    },
+    "RightFoot": {
+      "along": "+Y",
+      "alongPurity": 1.0,
+      "alongLocal": [
+        -0.0,
+        1.0,
+        0.0
+      ],
+      "hingeMotion": "ankleToeDown",
+      "hingeAxisPositiveRotation": "-X",
+      "hingePurity": 0.996,
+      "hingeAxisLocal": [
+        -0.9956,
+        -0.0,
+        0.0933
+      ]
+    },
+    "LeftShoulder": {
+      "along": "+Y",
+      "alongPurity": 1.0,
+      "alongLocal": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "hingeMotion": "shoulderShrugUp",
+      "hingeAxisPositiveRotation": "-X",
+      "hingePurity": 0.997,
+      "hingeAxisLocal": [
+        -0.9967,
+        0.0,
+        0.0815
+      ]
+    },
+    "LeftArm": {
+      "along": "+Y",
+      "alongPurity": 1.0,
+      "alongLocal": [
+        -0.0,
+        1.0,
+        -0.0
+      ],
+      "hingeMotion": "shoulderSwingForward",
+      "hingeAxisPositiveRotation": "+Z",
+      "hingePurity": 1.0,
+      "hingeAxisLocal": [
+        0.0305,
+        0.0,
+        0.9995
+      ],
+      "lowerArmAxisPositiveRotation": "+X",
+      "lowerArmPurity": 0.995,
+      "lowerArmAxisLocal": [
+        0.9948,
+        0.0,
+        0.1018
+      ]
+    },
+    "LeftForeArm": {
+      "along": "+Y",
+      "alongPurity": 1.0,
+      "alongLocal": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "hingeMotion": "elbowFlex",
+      "hingeAxisPositiveRotation": "+Z",
+      "hingePurity": 1.0,
+      "hingeAxisLocal": [
+        -0.0016,
+        0.0,
+        1.0
+      ]
+    },
+    "RightShoulder": {
+      "along": "+Y",
+      "alongPurity": 1.0,
+      "alongLocal": [
+        -0.0,
+        1.0,
+        -0.0
+      ],
+      "hingeMotion": "shoulderShrugUp",
+      "hingeAxisPositiveRotation": "-X",
+      "hingePurity": 0.997,
+      "hingeAxisLocal": [
+        -0.9967,
+        -0.0,
+        -0.0815
+      ]
+    },
+    "RightArm": {
+      "along": "+Y",
+      "alongPurity": 1.0,
+      "alongLocal": [
+        -0.0,
+        1.0,
+        0.0
+      ],
+      "hingeMotion": "shoulderSwingForward",
+      "hingeAxisPositiveRotation": "-Z",
+      "hingePurity": 1.0,
+      "hingeAxisLocal": [
+        0.0305,
+        0.0,
+        -0.9995
+      ],
+      "lowerArmAxisPositiveRotation": "+X",
+      "lowerArmPurity": 0.995,
+      "lowerArmAxisLocal": [
+        0.9948,
+        0.0,
+        -0.1018
+      ]
+    },
+    "RightForeArm": {
+      "along": "+Y",
+      "alongPurity": 1.0,
+      "alongLocal": [
+        -0.0,
+        1.0,
+        0.0
+      ],
+      "hingeMotion": "elbowFlex",
+      "hingeAxisPositiveRotation": "-Z",
+      "hingePurity": 1.0,
+      "hingeAxisLocal": [
+        -0.0016,
+        0.0,
+        -1.0
+      ]
+    }
+  },
+  "allJoints": [
+    "Hips",
+    "Spine",
+    "Spine1",
+    "Spine2",
+    "Neck",
+    "Head",
+    "HeadTop_End",
+    "LeftEye",
+    "RightEye",
+    "LeftShoulder",
+    "LeftArm",
+    "LeftForeArm",
+    "LeftHand",
+    "LeftHandThumb1",
+    "LeftHandThumb2",
+    "LeftHandThumb3",
+    "LeftHandThumb4",
+    "LeftHandIndex1",
+    "LeftHandIndex2",
+    "LeftHandIndex3",
+    "LeftHandIndex4",
+    "LeftHandMiddle1",
+    "LeftHandMiddle2",
+    "LeftHandMiddle3",
+    "LeftHandMiddle4",
+    "LeftHandRing1",
+    "LeftHandRing2",
+    "LeftHandRing3",
+    "LeftHandRing4",
+    "LeftHandPinky1",
+    "LeftHandPinky2",
+    "LeftHandPinky3",
+    "LeftHandPinky4",
+    "RightShoulder",
+    "RightArm",
+    "RightForeArm",
+    "RightHand",
+    "RightHandThumb1",
+    "RightHandThumb2",
+    "RightHandThumb3",
+    "RightHandThumb4",
+    "RightHandIndex1",
+    "RightHandIndex2",
+    "RightHandIndex3",
+    "RightHandIndex4",
+    "RightHandMiddle1",
+    "RightHandMiddle2",
+    "RightHandMiddle3",
+    "RightHandMiddle4",
+    "RightHandRing1",
+    "RightHandRing2",
+    "RightHandRing3",
+    "RightHandRing4",
+    "RightHandPinky1",
+    "RightHandPinky2",
+    "RightHandPinky3",
+    "RightHandPinky4",
+    "LeftUpLeg",
+    "LeftLeg",
+    "LeftFoot",
+    "LeftToeBase",
+    "LeftToe_End",
+    "RightUpLeg",
+    "RightLeg",
+    "RightFoot",
+    "RightToeBase",
+    "RightToe_End"
+  ],
+  "materials": [
+    "Wolf3D_Eye_SM_StevenCharacter",
+    "Wolf3D_Skin_SM_StevenCharacter",
+    "Wolf3D_Teeth1_SM_StevenCharacter",
+    "Wolf3D_Glasses_SM_StevenCharacter",
+    "Wolf3D_Headwear_SM_StevenCharacter",
+    "Wolf3D_Outfit_Top_SM_StevenCharacter",
+    "Wolf3D_Outfit_Bottom_SM_StevenCharacter",
+    "Wolf3D_Outfit_Footwear_SM_StevenCharacter",
+    "Wolf3D_Body_SM_StevenCharacter"
+  ],
+  "materialsNote": "metallicFactor/roughnessFactor were restored from the Unreal material parameters (UE 5.8 exporter dropped them): Skin m0 r0.7, Body m0 r0.553, Eye m0, Teeth m0, Headwear m0 (x texture B), Outfit_Bottom m0.5 (x texture B). Glasses is alphaMode BLEND. Normal maps are in glTF (OpenGL, +Y) convention.",
+  "morphTargets": 3,
+  "morphTargetNames": [
+    "659f9fb059f8a0f0bd5415ab_mesh_2_0_MorphTarget",
+    "659f9fb059f8a0f0bd5415ab_mesh_2_1_MorphTarget",
+    "659f9fb059f8a0f0bd5415ab_mesh_3_0_MorphTarget"
+  ],
+  "morphTargetNotes": {
+    "659f9fb059f8a0f0bd5415ab_mesh_2_0_MorphTarget": "index 0; moves only Wolf3D_Skin (head) verts, 594 verts, lower face moves down (mean dy -2.9 mm, max 11 mm): likely mouthOpen (head)",
+    "659f9fb059f8a0f0bd5415ab_mesh_2_1_MorphTarget": "index 1; moves only Wolf3D_Skin (head) verts, 1212 verts, mouth area up and wider (mean dy +3.3 mm, max 16 mm): likely mouthSmile",
+    "659f9fb059f8a0f0bd5415ab_mesh_3_0_MorphTarget": "index 2; moves only Wolf3D_Teeth verts, 98 verts, down (mean dy -4.6 mm): likely mouthOpen (teeth); drive together with index 0",
+    "storage": "every primitive carries all 3 targets (zero deltas where unused); names are in mesh.extras.targetNames so three.js morphTargetDictionary uses them"
+  }
+}
