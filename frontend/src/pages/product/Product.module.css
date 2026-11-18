@@ -1,0 +1,320 @@
+/* ═══════════════════════════════════════════════
+   Product — preset library (Dark Glass Neon)
+   Shared by ProductOverview and PresetCategoryPage.
+   ═══════════════════════════════════════════════ */
+
+.page {
+  max-width: 960px;
+  min-width: 0;
+}
+
+.page :is(a, button):focus-visible {
+  outline: 2px solid var(--neon-cyan, #00d4ff);
+  outline-offset: 4px;
+}
+
+/* ── Page Header (same treatment as AdminSkills) ── */
+
+.pageHeader {
+  padding-bottom: var(--sp-6, 1.5rem);
+  border-bottom: 1px solid var(--border-default, rgba(255, 255, 255, 0.1));
+  margin-bottom: var(--sp-8, 2rem);
+}
+
+.overline {
+  display: block;
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: 600;
+  letter-spacing: var(--tracking-mega, 0.15em);
+  text-transform: uppercase;
+  color: var(--text-tertiary, #888);
+  margin-bottom: var(--sp-2, 0.5rem);
+}
+
+.title {
+  font-family: var(--font-display, 'Noto Sans KR'), sans-serif;
+  font-size: clamp(1.75rem, 3vw, 2.75rem);
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--text-primary, #ffffff);
+  margin: 0;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.headerDesc {
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-sm, 0.85rem);
+  color: var(--text-secondary, #ccc);
+  margin: var(--sp-3, 0.75rem) 0 0;
+  line-height: 1.7;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+/* ── Sections ── */
+
+.section {
+  margin-bottom: var(--sp-10, 2.5rem);
+}
+
+.sectionTitle {
+  font-family: var(--font-display, 'Noto Sans KR'), sans-serif;
+  font-size: var(--text-lg, 1.2rem);
+  font-weight: 700;
+  color: var(--text-primary, #ffffff);
+  margin: 0 0 var(--sp-4, 1rem);
+}
+
+.holdsList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.holdsList li {
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-sm, 0.85rem);
+  color: var(--text-secondary, #ccc);
+  line-height: 1.7;
+  padding-left: 1rem;
+  position: relative;
+  overflow-wrap: anywhere;
+}
+
+.holdsList li::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  color: var(--neon-indigo, #667eea);
+}
+
+/* ── Card Grid ── */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
+  gap: var(--sp-4, 1rem);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.gridItem {
+  display: flex;
+  min-width: 0;
+}
+
+/* ── Category Card (overview) ── */
+
+.categoryCard {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  padding: var(--sp-5, 1.25rem);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.1));
+  border-radius: var(--radius-md, 10px);
+  color: inherit;
+  text-decoration: none;
+}
+
+.categoryCard:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--border-strong, rgba(255, 255, 255, 0.2));
+}
+
+.cardTitle {
+  font-family: var(--font-display, 'Noto Sans KR'), sans-serif;
+  font-size: var(--text-md, 1.05rem);
+  font-weight: 700;
+  color: var(--text-primary, #ffffff);
+  margin: 0 0 var(--sp-2, 0.5rem);
+}
+
+.categoryCard:hover .cardTitle {
+  color: var(--neon-cyan, #00d4ff);
+}
+
+.cardDesc {
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-sm, 0.85rem);
+  color: var(--text-secondary, #ccc);
+  line-height: 1.6;
+  margin: 0 0 var(--sp-4, 1rem);
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.count {
+  align-self: flex-start;
+  margin-top: auto;
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--neon-indigo, #667eea);
+  background: rgba(102, 126, 234, 0.15);
+  padding: 0.15em 0.6em;
+  border-radius: 100px;
+}
+
+/* ── Preset Card (category page) ── */
+
+.presetCard {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.1));
+  border-radius: var(--radius-md, 10px);
+  overflow: hidden;
+}
+
+.thumb {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  background: rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
+}
+
+.presetBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3, 0.75rem);
+  padding: var(--sp-5, 1.25rem);
+  min-width: 0;
+}
+
+.presetName {
+  font-family: var(--font-display, 'Noto Sans KR'), sans-serif;
+  font-size: var(--text-base, 0.95rem);
+  font-weight: 600;
+  color: var(--text-primary, #ffffff);
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.presetSummary {
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-sm, 0.85rem);
+  color: var(--text-secondary, #ccc);
+  line-height: 1.6;
+  margin: 0;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.meta {
+  display: grid;
+  gap: var(--sp-1, 0.25rem);
+  margin: 0;
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-xs, 0.75rem);
+  line-height: 1.6;
+}
+
+.metaRow {
+  display: grid;
+  grid-template-columns: 3.5rem minmax(0, 1fr);
+  gap: var(--sp-2, 0.5rem);
+}
+
+.metaRow dt {
+  color: var(--text-tertiary, #888);
+}
+
+.metaRow dd {
+  margin: 0;
+  min-width: 0;
+  color: var(--text-secondary, #ccc);
+  overflow-wrap: anywhere;
+}
+
+.source {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.95em;
+  color: var(--text-secondary, #ccc);
+  overflow-wrap: anywhere;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2, 0.5rem);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.tag {
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--text-secondary, #ccc);
+  padding: 0.1em 0.55em;
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.1));
+  border-radius: var(--radius-sm, 5px);
+  overflow-wrap: anywhere;
+}
+
+/* ── Empty / Not Found ── */
+
+.empty {
+  padding: var(--sp-8, 2rem) var(--sp-6, 1.5rem);
+  border: 1px dashed var(--border-rule, rgba(255, 255, 255, 0.15));
+  border-radius: var(--radius-md, 10px);
+}
+
+.emptyTitle {
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-base, 0.95rem);
+  font-weight: 600;
+  color: var(--text-primary, #ffffff);
+  margin: 0 0 var(--sp-2, 0.5rem);
+}
+
+.emptyText {
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-sm, 0.85rem);
+  color: var(--text-secondary, #ccc);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.textLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-sm, 0.85rem);
+  color: var(--neon-cyan, #00d4ff);
+  text-underline-offset: 4px;
+}
+
+/* ── Motion (opt-in, so reduced-motion users get none) ── */
+
+@media (prefers-reduced-motion: no-preference) {
+  .categoryCard {
+    transition: background var(--dur-fast, 120ms) var(--ease-smooth, ease),
+                border-color var(--dur-fast, 120ms) var(--ease-smooth, ease);
+  }
+
+  .cardTitle {
+    transition: color var(--dur-fast, 120ms) var(--ease-smooth, ease);
+  }
+}
+
+@media (max-width: 768px) {
+  .categoryCard,
+  .presetBody {
+    padding: var(--sp-4, 1rem);
+  }
+
+  .empty {
+    padding: var(--sp-6, 1.5rem) var(--sp-4, 1rem);
+  }
+}

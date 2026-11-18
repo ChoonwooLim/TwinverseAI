@@ -6,10 +6,9 @@ import styles from "./TopBar.module.css";
 
 const NAV_ITEMS = [
   { label: "홈", path: "/" },
-  { label: "비전", path: "/vision" },
-  { label: "회사소개", path: "/about" },
   { label: "서비스", path: "/services" },
   { label: "디자인", path: "/designs" },
+  { label: "Product", path: "/product" },
   { label: "커뮤니티", path: "/community/notice" },
 ];
 

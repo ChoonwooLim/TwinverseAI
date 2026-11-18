@@ -4,10 +4,14 @@ import styles from "./AdminSkills.module.css";
 
 const SKILL_CATEGORIES = skillsData.categories;
 
+// Auto-discovered entries carry only a command, so the command doubles as the id.
+// Without this every nameless entry shared one key and opened together.
+const skillId = (skill) => skill.name ?? skill.command;
+
 export default function AdminSkills() {
   const [openSkill, setOpenSkill] = useState(null);
 
-  const toggle = (name) => setOpenSkill(openSkill === name ? null : name);
+  const toggle = (id) => setOpenSkill(openSkill === id ? null : id);
 
   const totalSkills = SKILL_CATEGORIES.reduce((sum, cat) => sum + cat.skills.length, 0);
 
@@ -30,39 +34,100 @@ export default function AdminSkills() {
           <p className={styles.catDesc}>{cat.desc}</p>
 
           <ul className={styles.list}>
-            {cat.skills.map((skill, i) => (
-              <li key={skill.name} className={styles.item}>
-                <button onClick={() => toggle(skill.name)} className={styles.skillBtn}>
-                  <span className={styles.skillIndex}>{String(i + 1).padStart(2, "0")}</span>
-                  <div className={styles.skillBody}>
-                    <span className={styles.skillName}>
-                      {skill.name}
-                      <code className={styles.command}>{skill.command}</code>
+            {cat.skills.map((skill, i) => {
+              const id = skillId(skill);
+              const isOpen = openSkill === id;
+              return (
+                <li key={id} className={styles.item}>
+                  <button onClick={() => toggle(id)} className={styles.skillBtn}>
+                    <span className={styles.skillIndex}>{String(i + 1).padStart(2, "0")}</span>
+                    <div className={styles.skillBody}>
+                      <span className={styles.skillName}>
+                        {skill.name}
+                        <code className={styles.command}>{skill.command}</code>
+                      </span>
+                      <span className={styles.skillShort}>{skill.desc}</span>
+                    </div>
+                    <span className={`${styles.skillChevron} ${isOpen ? styles.skillChevronOpen : ""}`}>
+                      ▼
                     </span>
-                    <span className={styles.skillShort}>{skill.desc}</span>
-                  </div>
-                  <span className={`${styles.skillChevron} ${openSkill === skill.name ? styles.skillChevronOpen : ""}`}>
-                    ▼
-                  </span>
-                </button>
-                {openSkill === skill.name && (
-                  <div className={styles.detail}>
-                    <div className={styles.detailSection}>
-                      <h4 className={styles.detailLabel}>주요 기능</h4>
-                      <ul className={styles.featureList}>
-                        {skill.features.map((f, j) => (
-                          <li key={j}>{f}</li>
-                        ))}
-                      </ul>
+                  </button>
+                  {isOpen && (
+                    <div className={styles.detail}>
+                      {skill.intro && (
+                        <div className={styles.detailSection}>
+                          <h4 className={styles.detailLabel}>소개</h4>
+                          {skill.intro.map((text, j) => (
+                            <p key={j} className={styles.introText}>{text}</p>
+                          ))}
+                        </div>
+                      )}
+                      <div className={styles.detailSection}>
+                        <h4 className={styles.detailLabel}>주요 기능</h4>
+                        <ul className={styles.featureList}>
+                          {skill.features.map((f, j) => (
+                            <li key={j}>{f}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      {(skill.usage || skill.guides) && (
+                        <div className={styles.detailSection}>
+                          <h4 className={styles.detailLabel}>사용법</h4>
+                          {skill.usage && <p className={styles.usageText}>{skill.usage}</p>}
+                          {skill.guides && (
+                            <ol className={styles.guideList}>
+                              {skill.guides.map((guide) => (
+                                <li key={guide.title} className={styles.guide}>
+                                  <h5 className={styles.guideTitle}>{guide.title}</h5>
+                                  {guide.text && <p className={styles.guideText}>{guide.text}</p>}
+                                  {guide.code && (
+                                    <pre className={styles.code} tabIndex={0}>
+                                      <code>{guide.code}</code>
+                                    </pre>
+                                  )}
+                                </li>
+                              ))}
+                            </ol>
+                          )}
+                        </div>
+                      )}
+                      {skill.prompts && (
+                        <div className={styles.detailSection}>
+                          <h4 className={styles.detailLabel}>AI에게 요청하는 예</h4>
+                          <ul className={styles.promptList}>
+                            {skill.prompts.map((prompt, j) => (
+                              <li key={j}>{prompt}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {skill.tips && (
+                        <div className={styles.detailSection}>
+                          <h4 className={styles.detailLabel}>실무 체크리스트</h4>
+                          <ul className={styles.featureList}>
+                            {skill.tips.map((tip, j) => (
+                              <li key={j}>{tip}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {skill.links && (
+                        <div className={styles.detailSection}>
+                          <h4 className={styles.detailLabel}>참고 링크</h4>
+                          <ul className={styles.linkList}>
+                            {skill.links.map((link) => (
+                              <li key={link.url}>
+                                <a href={link.url} target="_blank" rel="noopener noreferrer">{link.label}</a>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                     </div>
-                    <div className={styles.detailSection}>
-                      <h4 className={styles.detailLabel}>사용법</h4>
-                      <p className={styles.usageText}>{skill.usage}</p>
-                    </div>
-                  </div>
-                )}
-              </li>
-            ))}
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </section>
       ))}
