@@ -13,7 +13,8 @@
 }
 
 .page :is(h2, h1) {
-  scroll-margin-top: 6rem;
+  /* Adds to the root scroll-padding-top (72px, global.css): keeps the previous 6rem (84px) offset. */
+  scroll-margin-top: 12px;
 }
 
 .headerMeta, .sectionNav {

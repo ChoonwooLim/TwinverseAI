@@ -1,5 +1,6 @@
 """SPA routing and a persistent, bounded archive of content-hashed build assets."""
 from dataclasses import dataclass
+import mimetypes
 import os
 from pathlib import Path, PurePosixPath
 import re
@@ -14,8 +15,15 @@ IMMUTABLE = "public, max-age=31536000, immutable"
 RETENTION_SECONDS = 30 * 86400
 _HASHED_ASSET = re.compile(
     r"^[^.][^/\\]*-[A-Za-z0-9_-]{8,}\.(?:js|css|woff2?|ttf|otf|eot|"
-    r"png|jpe?g|gif|svg|webp|avif|ico|mp4|webm|mp3|ogg|wav|wasm)$"
+    r"png|jpe?g|gif|svg|webp|avif|ico|mp4|webm|mp3|ogg|wav|wasm|glb|hdr|ktx2|bin)$"
 )
+
+# 3D scene assets are large (tens of MB). Without a registered type the slim Python image
+# serves them as text/plain, which invites proxy compression and drops Content-Length,
+# so the browser cannot show download progress.
+mimetypes.add_type("model/gltf-binary", ".glb")
+mimetypes.add_type("image/vnd.radiance", ".hdr")
+mimetypes.add_type("image/ktx2", ".ktx2")
 
 
 @dataclass(frozen=True)

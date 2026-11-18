@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { OPENCLAW_ITEMS } from "./openClawNavigation";
+import { findActiveLink, isChildActive } from "./sidebarActive";
 import { PRESET_CATEGORIES } from "../../data/productPresets";
+import { DESIGN_CATEGORIES, DESK_LINKS, SERVICE_CAPABILITIES } from "../../data/sectionNav";
 import styles from "./Sidebar.module.css";
 
 const SIDEBAR_CONFIG = {
@@ -15,6 +17,41 @@ const SIDEBAR_CONFIG = {
       { label: "전체 보기", path: "/product" },
       // Generated from the data file so the menu cannot drift from the categories.
       ...PRESET_CATEGORIES.map((category) => ({ label: category.label, path: `/product/${category.slug}` })),
+    ],
+  },
+  desk: {
+    title: "TwinverseDesk",
+    items: DESK_LINKS,
+  },
+  // Single-page sections: the links jump to sections inside the page.
+  services: {
+    title: "서비스",
+    items: [
+      { label: "전체 보기", path: "/services" },
+      {
+        label: "기능별 이용 안내",
+        path: "/services#capabilities",
+        defaultOpen: true,
+        children: SERVICE_CAPABILITIES.map((capability) => ({ label: capability.name, path: `/services#${capability.id}` })),
+      },
+      { label: "활용 사례", path: "/services#use-cases" },
+      { label: "자주 묻는 질문", path: "/services#faq" },
+      { label: "다음 기능", path: "/services#next" },
+    ],
+  },
+  designs: {
+    title: "디자인",
+    items: [
+      { label: "전체 보기", path: "/designs" },
+      { label: "작업 흐름", path: "/designs#design-workflow-title" },
+      { label: "실무 가이드", path: "/designs#design-guide" },
+      {
+        label: "디자인 라이브러리",
+        path: "/designs#design-catalog",
+        defaultOpen: true,
+        // The category param selects the filter on the page (DesignGallery reads it from the URL).
+        children: DESIGN_CATEGORIES.map((category) => ({ label: category.title, path: `/designs?category=${category.slug}#design-catalog` })),
+      },
     ],
   },
   community: {
@@ -73,7 +110,10 @@ const SIDEBAR_CONFIG = {
 };
 
 // Sections that stay reachable on phones as a horizontally scrolling strip.
-const MOBILE_STRIP_SECTIONS = new Set(["openclaw", "admin", "product"]);
+const MOBILE_STRIP_SECTIONS = new Set(["openclaw", "admin", "product", "desk", "services", "designs"]);
+
+// Long pages whose sidebar works as a table of contents: keep it in view while scrolling.
+const STICKY_SECTIONS = new Set(["desk", "services", "designs"]);
 
 const STORAGE_KEY = "twinverse:sidebar:collapsed";
 
@@ -84,11 +124,6 @@ function loadCollapsed() {
   } catch {
     return {};
   }
-}
-
-function isChildActive(item, pathname) {
-  if (!item.children) return false;
-  return item.children.some((c) => pathname === c.path || pathname.startsWith(c.path + "/"));
 }
 
 export default function Sidebar({ section }) {
@@ -109,38 +144,41 @@ export default function Sidebar({ section }) {
     setCollapsed((prev) => ({ ...prev, [key]: currentlyOpen }));
   };
 
-  const currentGroupKey = useMemo(() => {
-    if (!config) return null;
-    const match = config.items.find((item) => isChildActive(item, location.pathname));
-    return match ? match.path : null;
-  }, [config, location.pathname]);
+  // One current link per section; links sharing its path (a group and its first child) are all shown as current.
+  const activeLink = config ? findActiveLink(config.items, location) : null;
+  const activePath = activeLink?.path;
+  const ariaCurrentFor = (path) => (path === activePath ? activeLink.ariaCurrent : undefined);
+  const currentGroupKey = config?.items.find((item) => isChildActive(item, location, activePath))?.path ?? null;
 
   // Keep the current entry visible inside the mobile strip without moving the page.
+  // Only top-level rows count: nested links are hidden in the strip.
   const navRef = useRef(null);
   useEffect(() => {
     const nav = navRef.current;
-    const current = nav?.querySelector('[aria-current="page"]');
+    const current = nav?.querySelector(`.${styles.row} > [aria-current]`);
     if (!nav || !current || nav.scrollWidth <= nav.clientWidth) return;
     const navBox = nav.getBoundingClientRect();
     const box = current.getBoundingClientRect();
     if (box.left < navBox.left || box.right > navBox.right) {
       nav.scrollLeft += box.left - navBox.left - (navBox.width - box.width) / 2;
     }
-  }, [section, location.pathname]);
+  }, [section, activePath]);
 
   if (!config) return null;
 
   return (
-    <aside className={`${styles.sidebar} ${MOBILE_STRIP_SECTIONS.has(section) ? styles.mobileStrip : ""}`} aria-label={config.title}>
+    <aside className={`${styles.sidebar} ${MOBILE_STRIP_SECTIONS.has(section) ? styles.mobileStrip : ""} ${STICKY_SECTIONS.has(section) ? styles.sticky : ""}`} aria-label={config.title}>
+      <div className={styles.inner}>
       <h3 className={styles.title}>{config.title}</h3>
       <nav ref={navRef} className={styles.nav} aria-label={`${config.title} 메뉴`}>
         {config.items.map((item) => {
           const hasChildren = Array.isArray(item.children) && item.children.length > 0;
           const userCollapsed = collapsed[item.path];
           const isGroupActive = currentGroupKey === item.path;
+          // An explicit user choice wins; otherwise open when it holds the current link or is flagged defaultOpen.
           const isOpen = hasChildren
             ? userCollapsed === undefined
-              ? isGroupActive
+              ? isGroupActive || item.defaultOpen === true
               : !userCollapsed
             : false;
 
@@ -149,8 +187,8 @@ export default function Sidebar({ section }) {
               <div className={styles.row}>
                 <Link
                   to={item.path}
-                  aria-current={location.pathname === item.path ? "page" : undefined}
-                  className={`${styles.link} ${location.pathname === item.path ? styles.active : ""} ${hasChildren ? styles.linkWithToggle : ""}`}
+                  aria-current={ariaCurrentFor(item.path)}
+                  className={`${styles.link} ${item.path === activePath ? styles.active : ""} ${hasChildren ? styles.linkWithToggle : ""}`}
                 >
                   {item.label}
                 </Link>
@@ -174,7 +212,8 @@ export default function Sidebar({ section }) {
                     <Link
                       key={child.path}
                       to={child.path}
-                      className={`${styles.subLink} ${location.pathname === child.path ? styles.active : ""}`}
+                      aria-current={ariaCurrentFor(child.path)}
+                      className={`${styles.subLink} ${child.path === activePath ? styles.active : ""}`}
                     >
                       {child.label}
                     </Link>
@@ -185,6 +224,7 @@ export default function Sidebar({ section }) {
           );
         })}
       </nav>
+      </div>
     </aside>
   );
 }

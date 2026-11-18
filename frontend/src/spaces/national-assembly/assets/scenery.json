@@ -1,0 +1,204 @@
+{
+ "placements": {
+  "scenery-gate-1.glb": {
+   "position": [
+    0.0,
+    -1.517,
+    300.0
+   ],
+   "yawDeg": 0,
+   "doors": [
+    {
+     "name": "left",
+     "passageCentreX": -8.136,
+     "leaves": [
+      {
+       "node": "Door_L_Left",
+       "openYawDeg": 90.0,
+       "hinge": [
+        -10.2457,
+        1.5198,
+        3.3347
+       ],
+       "widthM": 2.1128,
+       "heightM": 5.037,
+       "maxFreeYawDeg": 91.0,
+       "openGapToSideWallM": 0.0371,
+       "openGapToCeilingM": 0.1533,
+       "openFootprint": {
+        "minX": -10.2285,
+        "maxX": -9.9236,
+        "minZ": 1.2227,
+        "maxZ": 3.3373
+       }
+      },
+      {
+       "node": "Door_L_Right",
+       "openYawDeg": -90.0,
+       "hinge": [
+        -6.0255,
+        1.5198,
+        3.3716
+       ],
+       "widthM": 2.11,
+       "heightM": 5.037,
+       "maxFreeYawDeg": -91.0,
+       "openGapToSideWallM": 0.0374,
+       "openGapToCeilingM": 0.1533,
+       "openFootprint": {
+        "minX": -6.3432,
+        "maxX": -6.0083,
+        "minZ": 1.2591,
+        "maxZ": 3.3702
+       }
+      }
+     ],
+     "trigger": {
+      "x": -8.136,
+      "z": 3.513,
+      "radius": 9
+     },
+     "blocker": {
+      "minX": -10.296,
+      "maxX": -5.976,
+      "minZ": 3.213,
+      "maxZ": 3.813
+     }
+    },
+    {
+     "name": "center",
+     "passageCentreX": -0.032,
+     "leaves": [
+      {
+       "node": "Door_C_Left",
+       "openYawDeg": 90.0,
+       "hinge": [
+        -2.5818,
+        1.51,
+        3.4016
+       ],
+       "widthM": 2.597,
+       "heightM": 5.427,
+       "maxFreeYawDeg": 91.2,
+       "openGapToSideWallM": 0.051,
+       "openGapToCeilingM": 0.188,
+       "openFootprint": {
+        "minX": -2.561,
+        "maxX": -2.2583,
+        "minZ": 0.805,
+        "maxZ": 3.4043
+       }
+      },
+      {
+       "node": "Door_C_Right",
+       "openYawDeg": -90.0,
+       "hinge": [
+        2.5186,
+        1.51,
+        3.4461
+       ],
+       "widthM": 2.5501,
+       "heightM": 5.427,
+       "maxFreeYawDeg": -91.0,
+       "openGapToSideWallM": 0.0419,
+       "openGapToCeilingM": 0.188,
+       "openFootprint": {
+        "minX": 2.2009,
+        "maxX": 2.5394,
+        "minZ": 0.8935,
+        "maxZ": 3.445
+       }
+      }
+     ],
+     "trigger": {
+      "x": -0.032,
+      "z": 3.584,
+      "radius": 9
+     },
+     "blocker": {
+      "minX": -2.632,
+      "maxX": 2.569,
+      "minZ": 3.284,
+      "maxZ": 3.884
+     }
+    },
+    {
+     "name": "right",
+     "passageCentreX": 8.072,
+     "leaves": [
+      {
+       "node": "Door_R_Left",
+       "openYawDeg": 90.0,
+       "hinge": [
+        5.9617,
+        1.5198,
+        3.4762
+       ],
+       "widthM": 2.1572,
+       "heightM": 5.037,
+       "maxFreeYawDeg": 91.0,
+       "openGapToSideWallM": 0.0372,
+       "openGapToCeilingM": 0.1533,
+       "openFootprint": {
+        "minX": 5.9789,
+        "maxX": 6.2842,
+        "minZ": 1.3194,
+        "maxZ": 3.4788
+       }
+      },
+      {
+       "node": "Door_R_Right",
+       "openYawDeg": -90.0,
+       "hinge": [
+        10.1819,
+        1.5198,
+        3.513
+       ],
+       "widthM": 2.11,
+       "heightM": 5.037,
+       "maxFreeYawDeg": -91.0,
+       "openGapToSideWallM": 0.0372,
+       "openGapToCeilingM": 0.1533,
+       "openFootprint": {
+        "minX": 9.8647,
+        "maxX": 10.1991,
+        "minZ": 1.4005,
+        "maxZ": 3.5117
+       }
+      }
+     ],
+     "trigger": {
+      "x": 8.072,
+      "z": 3.655,
+      "radius": 9
+     },
+     "blocker": {
+      "minX": 5.912,
+      "maxX": 10.232,
+      "minZ": 3.355,
+      "maxZ": 3.955
+     }
+    }
+   ]
+  },
+  "scenery-gate-2.glb": {
+   "position": [
+    0.0,
+    -1.517,
+    300.0
+   ],
+   "yawDeg": 0
+  }
+ },
+ "optional": {
+  "scenery-heritage.glb": {
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "yawDeg": 0,
+   "note": "heritage pieces at their final positions"
+  }
+ }
+}

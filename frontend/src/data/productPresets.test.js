@@ -3,7 +3,9 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { PRESET_CATEGORIES, findPreset, findPresetCategory } from "./productPresets";
 import { ASPECT_PATTERN, MEDIA_ACCESS, MEDIA_FILE_PATTERN } from "./presetMedia";
+import { hasSpaceScene } from "../spaces/registry";
 
+const FRONTEND_DIR = fileURLToPath(new URL("../../", import.meta.url));
 const PUBLIC_DIR = fileURLToPath(new URL("../../public/", import.meta.url));
 const SECTION_KINDS = ["steps", "list", "table"];
 
@@ -40,7 +42,26 @@ describe("PRESET_CATEGORIES", () => {
     for (const category of PRESET_CATEGORIES) {
       const ids = category.items.map((item) => item.id);
       expect(new Set(ids).size).toBe(ids.length);
+      for (const id of ids) expect(id).toMatch(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
     }
+  });
+
+  it("points every scene preset at a registered 3D space, only in the 3d-space category", () => {
+    for (const category of PRESET_CATEGORIES) {
+      for (const item of category.items) {
+        if (item.scene === undefined) continue;
+        expect(category.slug).toBe("3d-space");
+        expect(hasSpaceScene(item.scene)).toBe(true);
+      }
+    }
+  });
+
+  it("lists the National Assembly as an openable 3D space", () => {
+    const item = findPresetCategory("3d-space").items.find((entry) => entry.id === "national-assembly");
+    expect(item).toBeTruthy();
+    expect(item.scene).toBe("national-assembly");
+    expect(item.name).toBe("여의도 국회의사당");
+    expect(item.tags).toEqual(["건축", "야외", "WASD 이동"]);
   });
 });
 
@@ -77,7 +98,7 @@ describe("findPreset", () => {
 });
 
 describe("preset items", () => {
-  it("use URL-safe ids and a thumbnail that exists under frontend/public", () => {
+  it("use URL-safe ids and a thumbnail that exists (under frontend/public, or an imported asset)", () => {
     for (const category of PRESET_CATEGORIES) {
       for (const item of category.items) {
         expect(item.id).toMatch(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
@@ -86,7 +107,9 @@ describe("preset items", () => {
         if (item.thumbnail) {
           expect(item.thumbnail).toMatch(/^\/[A-Za-z0-9/._-]+$/);
           expect(item.thumbnail).not.toContain("..");
-          expect(existsSync(PUBLIC_DIR + item.thumbnail.slice(1)), item.thumbnail).toBe(true);
+          // An imported asset resolves to /src/... under the test runner; everything else lives in /public.
+          const base = item.thumbnail.startsWith("/src/") ? FRONTEND_DIR : PUBLIC_DIR;
+          expect(existsSync(base + item.thumbnail.slice(1)), item.thumbnail).toBe(true);
         }
         if (item.updatedAt) expect(item.updatedAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
       }

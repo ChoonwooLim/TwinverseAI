@@ -5,7 +5,8 @@ import { cineRecastDragon } from "./presets/cineRecastDragon";
  * the Product sidebar and the page metadata.
  *
  * To add a preset, add an object to the category's `items` array and it appears as a card.
- * A preset with `detail` also gets a page at /product/{slug}/{id}.
+ * A preset with `detail` also gets a page at /product/{slug}/{id}; one with `scene` opens a 3D space there.
+ * This module is part of the main bundle: it may import image URLs, never three.js or a scene.
  *
  * @typedef {Object} PresetItem
  * @property {string} id        Unique within its category, lowercase-hyphen (e.g. "night-city-dolly-in").
@@ -13,9 +14,11 @@ import { cineRecastDragon } from "./presets/cineRecastDragon";
  * @property {string} summary   One or two sentences on what the preset is for.
  * @property {string} [tool]    Tool or model the preset is made for.
  * @property {string[]} [tags]  Short keywords.
- * @property {string} [thumbnail] Image path under /public (e.g. "/presets/video/night-city.jpg").
+ * @property {string} [thumbnail] Image URL: an imported asset (content-hashed by Vite) or a path under /public.
  * @property {string} [source]  Path or URL of the source asset (e.g. a three.js scene module or a .glb file). Shown as text only, never loaded.
  * @property {string} [updatedAt] Last update date, YYYY-MM-DD.
+ * @property {string} [scene]   Key in src/spaces/registry.js when the preset has an openable 3D scene;
+ *                              the card then links to /product/{category}/{id}. Only used in "3d-space".
  * @property {PresetDetail} [detail] Full record shown on the preset's own page.
  */
 
@@ -85,6 +88,11 @@ import { cineRecastDragon } from "./presets/cineRecastDragon";
  * @property {PresetItem[]} items
  */
 
+// Preview images are imported through Vite (content-hashed, long-cached). The glob form keeps this
+// main-bundle module and its tests working while a space's assets are still being produced.
+const thumbnails = import.meta.glob("../spaces/*/assets/thumbnail.jpg", { eager: true, query: "?url", import: "default" });
+const nationalAssemblyThumbnail = thumbnails["../spaces/national-assembly/assets/thumbnail.jpg"];
+
 /** @type {PresetCategory[]} */
 export const PRESET_CATEGORIES = [
   {
@@ -113,7 +121,20 @@ export const PRESET_CATEGORIES = [
     label: "3D 공간 프리셋",
     desc: "three.js로 만든 3D 공간과 장면을 보관해 두고, 이후 영상 제작과 웹사이트 구축에서 골라 쓸 수 있게 모읍니다.",
     holds: ["three.js 장면 구성 (카메라·조명·환경)", "GLB 모델·텍스처 등 에셋 경로", "미리보기 이미지와 적용 대상"],
-    items: [],
+    items: [
+      {
+        id: "national-assembly",
+        name: "여의도 국회의사당",
+        summary:
+          "아바타로 국회의사당과 앞마당을 걸어서 둘러보는 3D 공간입니다. Blender로 모델링하고 three.js로 렌더링했으며, 측량 자료가 아닌 비례 모형이라 세부 치수는 실제와 다릅니다.",
+        tool: "Blender 5.2 · three.js r187",
+        tags: ["건축", "야외", "WASD 이동"],
+        thumbnail: nationalAssemblyThumbnail,
+        source: "frontend/src/spaces/national-assembly",
+        updatedAt: "2026-11-18",
+        scene: "national-assembly",
+      },
+    ],
   },
   {
     slug: "audio",

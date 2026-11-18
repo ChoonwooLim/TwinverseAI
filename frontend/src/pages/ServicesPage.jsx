@@ -18,14 +18,14 @@ export default function ServicesPage() {
       <p>가상 작업 공간부터 AI 운영 도구까지. TwinverseAI에서 현재 이용할 수 있는 기능과 접속 조건을 한곳에 정리했습니다.</p>
       <p className={styles.note}>기능 안내 기준 <time dateTime={CONTENT_REVIEWED_AT}>{CONTENT_REVIEWED_AT}</time></p>
     </IntroHero>
-    <section className={styles.section}>
+    <section id="capabilities" className={styles.section}>
       <h2>기능별 이용 안내</h2>
       <div className={styles.rows}>{CAPABILITIES.map((item) => <article id={item.id} key={item.id} className={styles.product}>
         <div><span className={styles.status}>{item.status}</span><h3>{item.name}</h3><p>{item.summary}</p></div>
         <div><p>{item.detail}</p><ul>{item.features.map((feature) => <li key={feature}>{feature}</li>)}</ul><CapabilityLink className={styles.textLink} item={item} /></div>
       </article>)}</div>
     </section>
-    <section className={styles.section}>
+    <section id="use-cases" className={styles.section}>
       <span className={styles.eyebrow}>WORK IN PRACTICE</span><h2>이런 작업에서 출발할 수 있습니다</h2>
       <ol className={styles.steps}>
         <li><h3>크리에이터의 기획</h3><p>디자인 참고안을 모으고 표현 방향을 비교합니다. 화면에 필요한 요소를 정리해 개발과 콘텐츠 작업의 기준으로 삼습니다.</p></li>
@@ -33,10 +33,10 @@ export default function ServicesPage() {
         <li><h3>팀의 공간 실험</h3><p>준비된 스트리밍 환경에서 브라우저 조작을 경험하고, 공간·장치·연결 조건별 개선점을 커뮤니티에 공유합니다.</p></li>
       </ol>
     </section>
-    <section className={styles.section}>
+    <section id="faq" className={styles.section}>
       <h2>이용 전에 궁금한 점</h2>{FAQ.map(([question, answer]) => <details key={question} className={styles.faq}><summary>{question}</summary><p>{answer}</p></details>)}
     </section>
-    <section className={styles.section}>
+    <section id="next" className={styles.section}>
       <h2>다음 기능도 함께 살펴보세요</h2><p className={styles.intro}>공간 속 AI 협업, 멀티유저 경험, 크리에이터 수익화까지. 현재의 기능 위에 어떤 경험을 더할지 로드맵에서 확인할 수 있습니다.</p><div className={styles.actions}><Link className={styles.button} to="/twinversedesk/plan">TwinverseDesk 개발계획</Link><Link className={styles.textLink} to="/community/qna">이용 질문 남기기 →</Link></div>
     </section>
   </div>;

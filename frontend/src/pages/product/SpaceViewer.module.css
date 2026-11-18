@@ -1,0 +1,48 @@
+/* Space viewer page: the viewport uses the full content width; text keeps a readable measure. */
+
+.page {
+  max-width: none;
+}
+
+.header {
+  max-width: 960px;
+}
+
+.controls {
+  max-width: 960px;
+  margin: var(--sp-8, 2rem) 0 var(--sp-4, 1rem);
+}
+
+.controlList {
+  display: grid;
+  gap: var(--sp-2, 0.5rem);
+  margin: 0;
+  font-family: var(--font-body, "Inter"), sans-serif;
+  font-size: var(--text-sm, 0.85rem);
+  line-height: 1.6;
+}
+
+.controlRow {
+  display: grid;
+  grid-template-columns: 7.5rem minmax(0, 1fr);
+  gap: var(--sp-3, 0.75rem);
+}
+
+.controlRow dt {
+  color: var(--text-primary, #fff);
+  font-weight: 600;
+}
+
+.controlRow dd {
+  margin: 0;
+  color: var(--text-secondary, #ccc);
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 768px) {
+  .controlRow {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+}

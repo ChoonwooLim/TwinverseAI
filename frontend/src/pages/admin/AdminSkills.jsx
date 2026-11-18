@@ -63,16 +63,42 @@ export default function AdminSkills() {
                         </div>
                       )}
                       <div className={styles.detailSection}>
-                        <h4 className={styles.detailLabel}>주요 기능</h4>
+                        <h4 className={styles.detailLabel}>{skill.labels?.features ?? "주요 기능"}</h4>
                         <ul className={styles.featureList}>
                           {skill.features.map((f, j) => (
                             <li key={j}>{f}</li>
                           ))}
                         </ul>
                       </div>
+                      {skill.tables?.map((table) => (
+                        <div key={table.title} className={styles.detailSection}>
+                          <h4 className={styles.detailLabel}>{table.title}</h4>
+                          <div className={styles.tableWrap} tabIndex={0} role="region" aria-label={table.title}>
+                            <table className={styles.table}>
+                              <thead>
+                                <tr>
+                                  {table.columns.map((column) => (
+                                    <th key={column} scope="col">{column}</th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {table.rows.map((row) => (
+                                  <tr key={row[0]}>
+                                    <th scope="row">{row[0]}</th>
+                                    {row.slice(1).map((cell, j) => (
+                                      <td key={j}>{cell}</td>
+                                    ))}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      ))}
                       {(skill.usage || skill.guides) && (
                         <div className={styles.detailSection}>
-                          <h4 className={styles.detailLabel}>사용법</h4>
+                          <h4 className={styles.detailLabel}>{skill.labels?.usage ?? "사용법"}</h4>
                           {skill.usage && <p className={styles.usageText}>{skill.usage}</p>}
                           {skill.guides && (
                             <ol className={styles.guideList}>
@@ -103,7 +129,7 @@ export default function AdminSkills() {
                       )}
                       {skill.tips && (
                         <div className={styles.detailSection}>
-                          <h4 className={styles.detailLabel}>실무 체크리스트</h4>
+                          <h4 className={styles.detailLabel}>{skill.labels?.tips ?? "실무 체크리스트"}</h4>
                           <ul className={styles.featureList}>
                             {skill.tips.map((tip, j) => (
                               <li key={j}>{tip}</li>

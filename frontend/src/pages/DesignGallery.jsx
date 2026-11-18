@@ -1,5 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import designsData from "../data/designs.json";
+import { designCategoryFromSlug, toCategorySlug } from "../data/sectionNav";
+import { KEEP_SCROLL_STATE_KEY } from "../components/layout/ScrollToHash";
 import styles from "./DesignGallery.module.css";
 
 const SOURCE_URL = designsData.sourceUrl;
@@ -371,7 +374,22 @@ function DesignDetailModal({ design, project, onClose, onSelect, isSelected }) {
 
 export default function DesignGallery() {
   const [search, setSearch] = useState("");
-  const [activeCategory, setActiveCategory] = useState("all");
+  // The ?category= slug is the source of truth so the sidebar can select a category.
+  const location = useLocation();
+  const navigate = useNavigate();
+  const activeCategory = designCategoryFromSlug(new URLSearchParams(location.search).get("category"))?.title ?? "all";
+  const setActiveCategory = (title) => {
+    const params = new URLSearchParams(location.search);
+    if (title === "all") params.delete("category");
+    else params.set("category", toCategorySlug(title));
+    const query = params.toString();
+    // Point the hash at the catalog so the sidebar highlights the same category as the tabs.
+    // Keep other params; replace the entry and leave the scroll position alone.
+    navigate(
+      { pathname: location.pathname, search: query ? `?${query}` : "", hash: "#design-catalog" },
+      { replace: true, preventScrollReset: true, state: { ...location.state, [KEEP_SCROLL_STATE_KEY]: true } },
+    );
+  };
   const [modalDesign, setModalDesign] = useState(null);
 
   const [projects, setProjects] = useState(() => {

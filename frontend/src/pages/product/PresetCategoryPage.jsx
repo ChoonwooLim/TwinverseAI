@@ -60,6 +60,12 @@ function PresetCard({ item, slug }) {
           </ul>
         )}
 
+        {item.scene && (
+          <Link to={`/product/${slug}/${item.id}`} className={styles.openLink}>
+            3D 공간 열기
+          </Link>
+        )}
+
         {detailPath && (
           <Link to={detailPath} className={`${styles.textLink} ${styles.detailLink}`} aria-label={`작업 기록 보기: ${item.name}`}>
             작업 기록 보기

@@ -146,6 +146,8 @@ html {
   font-size: 14px;
   -webkit-text-size-adjust: 100%;
   scroll-behavior: smooth;
+  /* Jump targets (#hash links, focus) land below the sticky 56px top bar. */
+  scroll-padding-top: 72px;
 }
 
 body {
