@@ -1,12 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { OPENCLAW_ITEMS } from "./openClawNavigation";
+import { PRESET_CATEGORIES } from "../../data/productPresets";
 import styles from "./Sidebar.module.css";
 
 const SIDEBAR_CONFIG = {
   openclaw: {
     title: "OpenClaw",
     items: OPENCLAW_ITEMS,
+  },
+  product: {
+    title: "Product",
+    items: [
+      { label: "전체 보기", path: "/product" },
+      // Generated from the data file so the menu cannot drift from the categories.
+      ...PRESET_CATEGORIES.map((category) => ({ label: category.label, path: `/product/${category.slug}` })),
+    ],
   },
   community: {
     title: "커뮤니티",
@@ -64,7 +73,7 @@ const SIDEBAR_CONFIG = {
 };
 
 // Sections that stay reachable on phones as a horizontally scrolling strip.
-const MOBILE_STRIP_SECTIONS = new Set(["openclaw", "admin"]);
+const MOBILE_STRIP_SECTIONS = new Set(["openclaw", "admin", "product"]);
 
 const STORAGE_KEY = "twinverse:sidebar:collapsed";
 

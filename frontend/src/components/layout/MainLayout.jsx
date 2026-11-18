@@ -13,6 +13,7 @@ function getSidebarSection(pathname) {
   if (pathname.startsWith("/community")) return "community";
   if (isOpenClawPath(pathname)) return "openclaw";
   if (pathname.startsWith("/admin")) return "admin";
+  if (pathname === "/product" || pathname.startsWith("/product/")) return "product";
   return null;
 }
 
