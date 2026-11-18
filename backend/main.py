@@ -16,18 +16,8 @@ from slowapi.errors import RateLimitExceeded
 from rate_limit import limiter
 import database
 from database import create_db_and_tables
-from routers import auth, admin, docs, skills, plugins, boards, comments, files, news, ps2_spawner, npc, npc_agent, admin_openclaw, admin_openclaw_console, design_md, email_reports
-
-
-def _get_uploads_dir() -> Path:
-    """업로드 디렉토리 결정: UPLOAD_DIR (Docker) > 프로젝트루트/uploads (로컬)"""
-    env_val = os.getenv("UPLOAD_DIR", "").strip()
-    if env_val:
-        d = Path(env_val)
-    else:
-        d = Path(__file__).resolve().parent.parent / "uploads"
-    d.mkdir(parents=True, exist_ok=True)
-    return d
+from routers import auth, admin, docs, skills, plugins, boards, comments, files, news, ps2_spawner, npc, npc_agent, admin_openclaw, admin_openclaw_console, design_md, email_reports, presets
+from upload_paths import get_uploads_dir as _get_uploads_dir, resolve_public_upload
 
 
 def _copy_gallery_defaults():
@@ -530,6 +520,7 @@ app.include_router(design_md.router, prefix="/api/design-md", tags=["design-md"]
 app.include_router(email_reports.ingest_router, prefix="/api/email-reports", tags=["email-reports"])
 app.include_router(email_reports.worker_router, prefix="/api/email-reports", tags=["email-reports-worker"])
 app.include_router(email_reports.admin_router, prefix="/api/admin/email-reports", tags=["admin-email-reports"])
+app.include_router(presets.router, prefix="/api/presets", tags=["presets"])
 
 @app.get("/health")
 def health_check():
@@ -565,8 +556,9 @@ from fastapi.responses import FileResponse
 
 @app.get("/uploads/{filename:path}")
 def serve_upload(filename: str):
-    filepath = _get_uploads_dir() / filename
-    if filepath.is_file():
+    # Refuses traversal, symlink escapes and the administrator-only _private folder.
+    filepath = resolve_public_upload(_get_uploads_dir(), filename)
+    if filepath is not None:
         return FileResponse(
             filepath,
             headers={"Content-Disposition": f'inline; filename="{filepath.name}"'},

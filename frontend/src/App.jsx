@@ -13,6 +13,7 @@ const ServicesPage = lazy(() => import("./pages/ServicesPage"));
 const DesignGallery = lazy(() => import("./pages/DesignGallery"));
 const ProductOverview = lazy(() => import("./pages/product/ProductOverview"));
 const PresetCategoryPage = lazy(() => import("./pages/product/PresetCategoryPage"));
+const PresetDetailPage = lazy(() => import("./pages/product/PresetDetailPage"));
 const SpaceViewerPage = lazy(() => import("./pages/product/SpaceViewerPage"));
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 const BoardPage = lazy(() => import("./pages/community/BoardPage"));
@@ -74,7 +75,10 @@ export default function App() {
             <Route path="/designs" element={<DesignGallery />} />
             <Route path="/product" element={<ProductOverview />} />
             <Route path="/product/:category" element={<PresetCategoryPage />} />
+            {/* The static "3d-space" segment outranks the dynamic one below, so 3D spaces open in the viewer. */}
             <Route path="/product/3d-space/:presetId" element={<SpaceViewerPage />} />
+            {/* Public page; its administrator-only media are gated inside the page and on the server. */}
+            <Route path="/product/:category/:presetId" element={<PresetDetailPage />} />
             <Route path="/login" element={<LoginPage />} />
 
             {/* TwinverseDesk */}

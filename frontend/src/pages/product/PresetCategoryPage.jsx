@@ -2,9 +2,10 @@ import { Link, useParams } from "react-router-dom";
 import { findPresetCategory } from "../../data/productPresets";
 import styles from "./Product.module.css";
 
-function PresetCard({ item, categorySlug }) {
+function PresetCard({ item, slug }) {
   const hasTags = Array.isArray(item.tags) && item.tags.length > 0;
   const hasMeta = Boolean(item.tool || item.source || item.updatedAt);
+  const detailPath = item.detail ? `/product/${slug}/${item.id}` : null;
 
   return (
     <li className={styles.presetCard}>
@@ -18,7 +19,13 @@ function PresetCard({ item, categorySlug }) {
         />
       )}
       <div className={styles.presetBody}>
-        <h3 className={styles.presetName}>{item.name}</h3>
+        <h3 className={styles.presetName}>
+          {detailPath ? (
+            <Link to={detailPath} className={styles.presetLink}>{item.name}</Link>
+          ) : (
+            item.name
+          )}
+        </h3>
         <p className={styles.presetSummary}>{item.summary}</p>
 
         {hasMeta && (
@@ -54,8 +61,14 @@ function PresetCard({ item, categorySlug }) {
         )}
 
         {item.scene && (
-          <Link to={`/product/${categorySlug}/${item.id}`} className={styles.openLink}>
+          <Link to={`/product/${slug}/${item.id}`} className={styles.openLink}>
             3D 공간 열기
+          </Link>
+        )}
+
+        {detailPath && (
+          <Link to={detailPath} className={`${styles.textLink} ${styles.detailLink}`} aria-label={`작업 기록 보기: ${item.name}`}>
+            작업 기록 보기
           </Link>
         )}
       </div>
@@ -103,7 +116,7 @@ export default function PresetCategoryPage() {
         {items.length > 0 ? (
           <ul className={styles.grid}>
             {items.map((item) => (
-              <PresetCard key={item.id} item={item} categorySlug={category.slug} />
+              <PresetCard key={item.id} item={item} slug={category.slug} />
             ))}
           </ul>
         ) : (

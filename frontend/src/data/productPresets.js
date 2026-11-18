@@ -1,8 +1,11 @@
+import { cineRecastDragon } from "./presets/cineRecastDragon";
+
 /**
  * Product preset library: single source of truth for the /product pages,
  * the Product sidebar and the page metadata.
  *
  * To add a preset, add an object to the category's `items` array and it appears as a card.
+ * A preset with `detail` also gets a page at /product/{slug}/{id}; one with `scene` opens a 3D space there.
  * This module is part of the main bundle: it may import image URLs, never three.js or a scene.
  *
  * @typedef {Object} PresetItem
@@ -16,6 +19,64 @@
  * @property {string} [updatedAt] Last update date, YYYY-MM-DD.
  * @property {string} [scene]   Key in src/spaces/registry.js when the preset has an openable 3D scene;
  *                              the card then links to /product/{category}/{id}. Only used in "3d-space".
+ * @property {PresetDetail} [detail] Full record shown on the preset's own page.
+ */
+
+/**
+ * @typedef {Object} PresetDetail
+ * @property {string} lead               Opening paragraph.
+ * @property {PresetFact[]} facts        Key figures, shown as a definition list.
+ * @property {PresetMediaItem[]} media   Videos, in display order.
+ * @property {PresetNotesRef} [privateNotes] Notes file shown to administrators only.
+ * @property {PresetSection[]} sections  Body sections, in display order.
+ */
+
+/**
+ * @typedef {Object} PresetFact
+ * @property {string} label
+ * @property {string} value
+ */
+
+/**
+ * Media files are never stored in this repository. File names must match
+ * MEDIA_FILE_PATTERN in presetMedia.js (no folders).
+ *
+ * @typedef {Object} PresetMediaItem
+ * @property {string} id       Unique within the preset.
+ * @property {string} title
+ * @property {string} caption
+ * @property {string} file     Video file name (e.g. "final.mp4").
+ * @property {string} poster   Poster image file name (e.g. "final-poster.jpg").
+ * @property {string} aspect   CSS aspect-ratio, "<number> / <number>" (e.g. "16 / 9"), reserved before loading.
+ * @property {"admin" | "public"} access
+ *   "admin": served by /api/presets/media/{presetId}/{file} to signed-in administrators only
+ *   (server folder UPLOAD_DIR/_private/presets/{presetId}/).
+ *   "public": served to everyone from /uploads/presets/{presetId}/{file}.
+ */
+
+/**
+ * @typedef {Object} PresetNotesRef
+ * @property {string} title    Heading of the notes block.
+ * @property {string} file     JSON file name: an array of { title: string, body: string }.
+ * @property {"admin"} access  Notes are always administrator-only.
+ */
+
+/**
+ * @typedef {Object} PresetSectionItem
+ * @property {string} title
+ * @property {string} body
+ */
+
+/**
+ * @typedef {Object} PresetSection
+ * @property {string} id       Unique within the preset, lowercase-hyphen; used as the in-page anchor.
+ * @property {string} title
+ * @property {"steps" | "list" | "table"} kind
+ *   "steps": numbered process (`items`); "list": unordered entries (`items`);
+ *   "table": `columns` and `rows`, every row as long as `columns`.
+ * @property {PresetSectionItem[]} [items]  For "steps" and "list".
+ * @property {string[]} [columns]           For "table".
+ * @property {string[][]} [rows]            For "table".
  */
 
 /**
@@ -39,7 +100,7 @@ export const PRESET_CATEGORIES = [
     label: "동영상 프리셋",
     desc: "영상 제작에 반복해서 쓰는 장면·카메라 워크·스타일 프롬프트와 생성 설정을 모읍니다.",
     holds: ["장면·카메라 워크 프롬프트", "모델·해상도·길이 등 생성 설정", "참고 영상과 결과물"],
-    items: [],
+    items: [cineRecastDragon],
   },
   {
     slug: "image",
@@ -97,4 +158,13 @@ export const PRESET_CATEGORIES = [
  */
 export function findPresetCategory(slug) {
   return PRESET_CATEGORIES.find((category) => category.slug === slug);
+}
+
+/**
+ * @param {string | undefined} categorySlug
+ * @param {string | undefined} presetId
+ * @returns {PresetItem | undefined}
+ */
+export function findPreset(categorySlug, presetId) {
+  return findPresetCategory(categorySlug)?.items.find((item) => item.id === presetId);
 }
