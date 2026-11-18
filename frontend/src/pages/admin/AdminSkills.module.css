@@ -325,6 +325,58 @@
   outline-offset: 2px;
 }
 
+.tableWrap {
+  overflow-x: auto;
+  border: 1px solid var(--border-subtle, rgba(255,255,255,0.06));
+  border-radius: var(--radius-sm, 5px);
+}
+
+.tableWrap:focus-visible {
+  outline: 2px solid var(--neon-cyan, #00d4ff);
+  outline-offset: 2px;
+}
+
+.table {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: collapse;
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-sm, 0.875rem);
+  line-height: 1.6;
+}
+
+.table th,
+.table td {
+  padding: 0.6rem 0.85rem;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,0.06));
+}
+
+.table thead th {
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: 700;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.05);
+  white-space: nowrap;
+}
+
+.table tbody th {
+  width: 1%;
+  font-weight: 600;
+  color: #ffffff;
+  white-space: nowrap;
+}
+
+.table td {
+  color: var(--text-secondary, #ccc);
+}
+
+.table tbody tr:last-child th,
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
 .promptList {
   list-style: none;
   padding: 0;
