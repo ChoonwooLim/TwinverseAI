@@ -10,6 +10,14 @@
   padding: var(--sp-8, 2rem) 0;
 }
 
+/* Table-of-contents sidebars follow the scroll, below the sticky 56px top bar. */
+.sticky .inner {
+  position: sticky;
+  top: calc(56px + var(--sp-8, 2rem));
+  max-height: calc(100vh - 56px - 2 * var(--sp-8, 2rem));
+  overflow-y: auto;
+}
+
 .title {
   font-family: var(--font-body, 'Inter'), sans-serif;
   font-size: 0.65rem;
@@ -179,6 +187,11 @@
     padding: 0.5rem 0;
     border-right: none;
     border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,0.06));
+  }
+  .sticky .inner {
+    position: static;
+    max-height: none;
+    overflow-y: visible;
   }
   .mobileStrip .title { margin: 0; padding: 0.5rem 1rem; }
   .mobileStrip .nav {

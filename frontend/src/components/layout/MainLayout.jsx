@@ -3,6 +3,7 @@ import { Outlet, useLocation } from "react-router-dom";
 import TopBar from "./TopBar";
 import Sidebar from "./Sidebar";
 import Footer from "./Footer";
+import ScrollToHash from "./ScrollToHash";
 import OpenClawConsoleSession from "./OpenClawConsoleSession";
 import RouteErrorBoundary from "../RouteErrorBoundary";
 import PageMetadata from "./PageMetadata";
@@ -14,6 +15,9 @@ function getSidebarSection(pathname) {
   if (isOpenClawPath(pathname)) return "openclaw";
   if (pathname.startsWith("/admin")) return "admin";
   if (pathname === "/product" || pathname.startsWith("/product/")) return "product";
+  if (pathname.startsWith("/twinversedesk/")) return "desk";
+  if (pathname === "/services") return "services";
+  if (pathname === "/designs") return "designs";
   return null;
 }
 
@@ -24,6 +28,7 @@ export default function MainLayout() {
   return (
     <div className={styles.layout}>
       <PageMetadata />
+      <ScrollToHash />
       <TopBar />
       <div className={styles.body}>
         {sidebarSection && <Sidebar section={sidebarSection} />}
