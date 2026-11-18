@@ -45,6 +45,31 @@ class FrontendStaticTests(unittest.TestCase):
         for path in ("assets/runtime.js", "favicon.svg"):
             self.assertNotIn("immutable", self.frontend.resolve(path).cache_control)
 
+    def test_hashed_3d_scene_assets_are_cached_and_typed(self):
+        import mimetypes
+
+        (self.assets / "national-assembly-Ab12Cd34.glb").write_bytes(b"glTF")
+        (self.assets / "sky_2k-Ef56Gh78.hdr").write_bytes(b"#?RADIANCE")
+        (self.assets / "3f2a9c1d4e5b6a7c8d9e0f1a-Ij90Kl12.ktx2").write_bytes(b"KTX 20")
+        (self.assets / "heightfield-gate-doors-open-CbIcqC-3.bin").write_bytes(b"\x00\x01")
+        (self.assets / "model.glb").write_bytes(b"glTF")
+        for path in (
+            "assets/national-assembly-Ab12Cd34.glb",
+            "assets/sky_2k-Ef56Gh78.hdr",
+            "assets/3f2a9c1d4e5b6a7c8d9e0f1a-Ij90Kl12.ktx2",
+            "assets/heightfield-gate-doors-open-CbIcqC-3.bin",
+        ):
+            with self.subTest(path=path):
+                result = self.frontend.resolve(path)
+                self.assertIsNotNone(result.path)
+                self.assertIn("immutable", result.cache_control)
+        self.assertNotIn("immutable", self.frontend.resolve("assets/model.glb").cache_control)
+        self.assertEqual(mimetypes.guess_type("a.glb")[0], "model/gltf-binary")
+        self.assertEqual(mimetypes.guess_type("a.hdr")[0], "image/vnd.radiance")
+        self.assertEqual(mimetypes.guess_type("a.ktx2")[0], "image/ktx2")
+        self.frontend.archive_current_assets()
+        self.assertTrue((self.archive / "national-assembly-Ab12Cd34.glb").is_file())
+
     def test_previous_deployment_chunk_survives_current_build_replacement(self):
         self.frontend.archive_current_assets()
         (self.assets / "index-abcdefgh.js").unlink()
