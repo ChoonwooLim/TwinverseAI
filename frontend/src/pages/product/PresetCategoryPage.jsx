@@ -2,7 +2,7 @@ import { Link, useParams } from "react-router-dom";
 import { findPresetCategory } from "../../data/productPresets";
 import styles from "./Product.module.css";
 
-function PresetCard({ item }) {
+function PresetCard({ item, categorySlug }) {
   const hasTags = Array.isArray(item.tags) && item.tags.length > 0;
   const hasMeta = Boolean(item.tool || item.source || item.updatedAt);
 
@@ -52,6 +52,12 @@ function PresetCard({ item }) {
             ))}
           </ul>
         )}
+
+        {item.scene && (
+          <Link to={`/product/${categorySlug}/${item.id}`} className={styles.openLink}>
+            3D 공간 열기
+          </Link>
+        )}
       </div>
     </li>
   );
@@ -97,7 +103,7 @@ export default function PresetCategoryPage() {
         {items.length > 0 ? (
           <ul className={styles.grid}>
             {items.map((item) => (
-              <PresetCard key={item.id} item={item} />
+              <PresetCard key={item.id} item={item} categorySlug={category.slug} />
             ))}
           </ul>
         ) : (

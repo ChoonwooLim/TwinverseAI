@@ -184,10 +184,32 @@
 
 .presetBody {
   display: flex;
+  flex: 1;
   flex-direction: column;
   gap: var(--sp-3, 0.75rem);
   padding: var(--sp-5, 1.25rem);
   min-width: 0;
+}
+
+.openLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-start;
+  min-height: 44px;
+  margin-top: auto;
+  padding: 0 var(--sp-5, 1.25rem);
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-sm, 0.85rem);
+  font-weight: 600;
+  color: #07131a;
+  background: var(--neon-cyan, #00d4ff);
+  border-radius: var(--radius-sm, 5px);
+  text-decoration: none;
+}
+
+.openLink:hover {
+  background: #33ddff;
 }
 
 .presetName {

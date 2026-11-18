@@ -1,0 +1,18 @@
+{
+  "name": "twinverse-space-asset-tools",
+  "private": true,
+  "type": "module",
+  "description": "Dev-time asset pipeline for the walkable 3D spaces. Nothing here ships in the runtime bundle.",
+  "scripts": {
+    "optimize": "node optimize-assets.mjs"
+  },
+  "devDependencies": {
+    "@gltf-transform/core": "4.5.1",
+    "@gltf-transform/extensions": "4.5.1",
+    "@gltf-transform/functions": "4.5.1",
+    "ktx2-encoder": "0.6.0",
+    "ktx2-encoder-legacy": "npm:ktx2-encoder@0.5.4",
+    "meshoptimizer": "1.3.0",
+    "sharp": "0.35.5"
+  }
+}
