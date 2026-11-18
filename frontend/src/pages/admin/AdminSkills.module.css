@@ -241,6 +241,140 @@
   border-left: 3px solid var(--neon-indigo, #667eea);
 }
 
+/* ── Extended detail: intro, step guides, code, prompts, links ── */
+
+.introText {
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--text-secondary, #ccc);
+  line-height: 1.75;
+  margin: 0 0 var(--sp-3, 0.75rem);
+}
+
+.introText:last-child {
+  margin-bottom: 0;
+}
+
+.guideList {
+  list-style: none;
+  padding: 0;
+  margin: var(--sp-5, 1.25rem) 0 0;
+  display: grid;
+  gap: var(--sp-5, 1.25rem);
+  counter-reset: guide;
+}
+
+.guide {
+  min-width: 0;
+}
+
+.guideTitle {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3, 0.75rem);
+  font-family: var(--font-display, 'Noto Sans KR'), sans-serif;
+  font-size: var(--text-sm, 0.875rem);
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0 0 var(--sp-2, 0.5rem);
+}
+
+.guideTitle::before {
+  counter-increment: guide;
+  content: counter(guide, decimal-leading-zero);
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: 700;
+  color: var(--neon-cyan, #00d4ff);
+  flex-shrink: 0;
+}
+
+.guideText {
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--text-secondary, #ccc);
+  line-height: 1.7;
+  margin: 0;
+}
+
+.guideText + .code {
+  margin-top: var(--sp-3, 0.75rem);
+}
+
+.code {
+  margin: 0;
+  padding: var(--sp-3, 0.75rem) var(--sp-4, 1rem);
+  background: rgba(0, 0, 0, 0.32);
+  border: 1px solid var(--border-subtle, rgba(255,255,255,0.06));
+  border-radius: var(--radius-sm, 5px);
+  overflow-x: auto;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.78rem;
+  line-height: 1.7;
+  color: #dbe7f5;
+  tab-size: 2;
+}
+
+.code code {
+  font: inherit;
+  white-space: pre;
+}
+
+.code:focus-visible {
+  outline: 2px solid var(--neon-cyan, #00d4ff);
+  outline-offset: 2px;
+}
+
+.promptList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: var(--sp-2, 0.5rem);
+}
+
+.promptList li {
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--text-secondary, #ccc);
+  line-height: 1.65;
+  padding: var(--sp-2, 0.5rem) var(--sp-3, 0.75rem);
+  background: rgba(0, 212, 255, 0.05);
+  border: 1px solid rgba(0, 212, 255, 0.16);
+  border-radius: var(--radius-sm, 5px);
+}
+
+.linkList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2, 0.5rem);
+}
+
+.linkList a {
+  display: inline-block;
+  font-family: var(--font-body, 'Inter'), sans-serif;
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--neon-cyan, #00d4ff);
+  text-decoration: none;
+  padding: 0.3em 0.75em;
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  border-radius: var(--radius-sm, 5px);
+  transition: background var(--dur-fast, 120ms), border-color var(--dur-fast, 120ms);
+}
+
+.linkList a:hover {
+  background: rgba(0, 212, 255, 0.1);
+  border-color: rgba(0, 212, 255, 0.45);
+}
+
+.linkList a:focus-visible {
+  outline: 2px solid var(--neon-cyan, #00d4ff);
+  outline-offset: 2px;
+}
+
 .desc {
   font-family: var(--font-body, 'Inter'), sans-serif;
   font-size: var(--text-sm, 0.875rem);
