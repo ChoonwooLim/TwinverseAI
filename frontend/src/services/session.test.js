@@ -10,6 +10,7 @@ import {
   logoutSession,
   needsBootRefresh,
   readToken,
+  readUser,
   refreshSession,
   storeSession,
   tokenSecondsLeft,
@@ -48,6 +49,21 @@ describe("tokenSecondsLeft", () => {
   it("returns null for missing or malformed tokens", () => {
     expect(tokenSecondsLeft(null, NOW_MS)).toBeNull();
     expect(tokenSecondsLeft("not-a-jwt", NOW_MS)).toBeNull();
+  });
+});
+
+describe("readUser", () => {
+  it("returns the user stored at sign-in", () => {
+    storeSession({ access_token: "x", user: USER });
+    expect(readUser()).toEqual(USER);
+  });
+
+  it("returns null when nothing or something unreadable is stored", () => {
+    expect(readUser()).toBeNull();
+    localStorage.setItem("user", "{not json");
+    expect(readUser()).toBeNull();
+    localStorage.setItem("user", '"admin"');
+    expect(readUser()).toBeNull();
   });
 });
 

@@ -11,6 +11,12 @@ const PAGES = {
   "/product": ["프리셋 라이브러리", "영상 제작과 웹사이트 구축에 반복해서 쓰는 프리셋을 종류별로 모아 두는 공간입니다."],
   // One entry per preset category, derived from the data file.
   ...Object.fromEntries(PRESET_CATEGORIES.map((c) => [`/product/${c.slug}`, [c.label, c.desc]])),
+  // One entry per preset that has its own detail page.
+  ...Object.fromEntries(
+    PRESET_CATEGORIES.flatMap((c) =>
+      c.items.filter((item) => item.detail).map((item) => [`/product/${c.slug}/${item.id}`, [item.name, item.summary]]),
+    ),
+  ),
   "/twinversedesk/analysis": ["TwinverseDesk 소개와 분석", "기존 2D TVDesk와 UE5 TwinverseDesk의 차이, 현재 구현과 스트리밍 이용 조건을 살펴보세요."],
   "/twinversedesk/plan": ["TwinverseDesk 개발계획", "TwinverseDesk의 현재 구현, 다음 목표와 단계별 검증 기준을 안내합니다."],
   "/twinversedesk/launch": ["TwinverseDesk 실행", "브라우저에서 TwinverseDesk를 시작하기 위한 로그인, 공간 선택, 서버 연결과 종료 방법을 확인하세요."],

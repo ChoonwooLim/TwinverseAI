@@ -30,6 +30,16 @@ export function readToken() {
   return storage()?.getItem(TOKEN_KEY) ?? null;
 }
 
+/** The user object stored at sign-in ({ username, role, ... }), or null if missing or unreadable. */
+export function readUser() {
+  try {
+    const user = JSON.parse(storage()?.getItem(USER_KEY) ?? "null");
+    return user !== null && typeof user === "object" ? user : null;
+  } catch {
+    return null;
+  }
+}
+
 export function decodeJwtPayload(token) {
   try {
     const part = token.split(".")[1];
