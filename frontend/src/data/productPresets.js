@@ -152,9 +152,9 @@ export const PRESET_CATEGORIES = [
         id: "spark-interactivity",
         name: "스플랫 레스토랑 인터랙티브 메뉴 (3DGS)",
         summary:
-          "GLB 3D 테이블과 스포트라이트 그림자 위에 실제 음식 3DGS 스캔 11종을 융합한 인터랙티브 쇼케이스입니다. 메뉴에서 요리를 선택하면 부드러운 페이드 전환과 함께 360도 오빗 시점으로 살펴볼 수 있습니다.",
+          "짙은 다크 스튜디오 무대 위에 실제 음식 3DGS 스캔 11종을 배치한 인터랙티브 쇼케이스입니다. 메뉴에서 요리를 선택하면 부드러운 페이드 전환과 함께 360도 오빗 시점으로 살펴볼 수 있습니다.",
         tool: "SparkJS 2.0 · three.js r187",
-        tags: ["3DGS", "메쉬 융합", "인터랙션"],
+        tags: ["3DGS", "다크 스튜디오", "인터랙션"],
         thumbnail: sparkInteractivityThumbnail,
         source: "frontend/src/spaces/spark-interactivity",
         updatedAt: "2026-11-19",

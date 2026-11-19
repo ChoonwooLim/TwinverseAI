@@ -171,13 +171,13 @@ export default function SparkInteractivityViewport({ sceneKey, title, poster }) 
           {status === "loading" && (
             <div className={styles.loadingPanel} role="status">
               <div className={styles.loadingRow}>
-                <span>3DGS 레스토랑 테이블 불러오는 중…</span>
+                <span>3DGS 요리 스캔 불러오는 중…</span>
                 <span className={styles.loadingPercent}>11종 요리</span>
               </div>
               <div className={styles.progressTrack}>
                 <div className={styles.progressFill} style={{ width: "100%", opacity: 0.7 }} />
               </div>
-              <span className={styles.loadingBytes}>GLB 테이블 + 3D 가우시안 스플랫 요리 융합 렌더링</span>
+              <span className={styles.loadingBytes}>다크 스튜디오 3D 가우시안 스플랫 인터랙티브 쇼케이스</span>
             </div>
           )}
         </div>
@@ -200,7 +200,7 @@ export default function SparkInteractivityViewport({ sceneKey, title, poster }) 
         {status === "ready" && (
           <div className={styles.topBar} data-ui>
             <span className={styles.badge}>
-              WebGL 2 · Mesh + 3DGS
+              WebGL 2 · SparkJS 2.0 3DGS
               {dishLoading && <span className={menuStyles.loadingTag}> · 요리 불러오는 중</span>}
             </span>
             <div className={styles.toolbar}>

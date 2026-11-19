@@ -1,113 +1,36 @@
 /**
- * Interactive 3DGS Restaurant scene (Mesh table + spotlight shadow + 11 switchable 3DGS food scans).
+ * Interactive 3DGS Restaurant scene — minimalist dark studio showcase with 11 switchable 3DGS food scans.
  * Lazy-loaded via src/spaces/registry.js; shares the SparkJS vendor chunk with spark-streaming-lod.
  */
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
-import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { SparkRenderer, SplatMesh, isMobile } from "../spark-streaming-lod/vendor/spark.module.min.js";
-import { FOOD_ITEMS, TABLE_MODEL_URL } from "./foods";
+import { FOOD_ITEMS } from "./foods";
 
 function easeInOutSine(x) {
   return -(Math.cos(Math.PI * x) - 1) / 2;
 }
 
 /**
- * Generates seamless woven linen albedo + bump maps for a fine-dining tablecloth look.
+ * Soft radial contact shadow texture placed beneath the dish on the dark studio surface.
  */
-function createLuxuryLinenMaterial(maxAnisotropy = 4) {
-  const size = 512;
-  const colorCanvas = document.createElement("canvas");
-  colorCanvas.width = size;
-  colorCanvas.height = size;
-  const cctx = colorCanvas.getContext("2d");
-
-  const bumpCanvas = document.createElement("canvas");
-  bumpCanvas.width = size;
-  bumpCanvas.height = size;
-  const bctx = bumpCanvas.getContext("2d");
-
-  // Warm alabaster ivory linen base
-  cctx.fillStyle = "#ece7de";
-  cctx.fillRect(0, 0, size, size);
-
-  bctx.fillStyle = "#808080";
-  bctx.fillRect(0, 0, size, size);
-
-  // Deterministic pseudo-random helper for organic slub threads
-  let seed = 1337;
-  const rand = () => {
-    seed = (seed * 16807) % 2147483647;
-    return (seed - 1) / 2147483646;
-  };
-
-  // Fine warp (vertical) and weft (horizontal) linen threads
-  const step = 4;
-  for (let x = 0; x < size; x += step) {
-    const shade = Math.floor((rand() - 0.5) * 10);
-    const v = 232 + shade;
-    cctx.fillStyle = `rgba(${v}, ${v - 4}, ${v - 11}, 0.42)`;
-    cctx.fillRect(x, 0, 2, size);
-
-    const bv = 138 + Math.floor((rand() - 0.5) * 28);
-    bctx.fillStyle = `rgba(${bv}, ${bv}, ${bv}, 0.55)`;
-    bctx.fillRect(x, 0, 2, size);
-  }
-
-  for (let y = 0; y < size; y += step) {
-    const shade = Math.floor((rand() - 0.5) * 10);
-    const v = 236 + shade;
-    cctx.fillStyle = `rgba(${v}, ${v - 4}, ${v - 10}, 0.38)`;
-    cctx.fillRect(0, y, size, 2);
-
-    const bv = 148 + Math.floor((rand() - 0.5) * 28);
-    bctx.fillStyle = `rgba(${bv}, ${bv}, ${bv}, 0.5)`;
-    bctx.fillRect(0, y, size, 2);
-  }
-
-  // Subtle cross-weave intersection highlights + gentle slub fibers
-  for (let y = 0; y < size; y += step * 2) {
-    for (let x = 0; x < size; x += step * 2) {
-      const alt = ((x + y) / (step * 2)) % 2 === 0;
-      bctx.fillStyle = alt ? "rgba(185, 185, 185, 0.35)" : "rgba(95, 95, 95, 0.25)";
-      bctx.fillRect(x, y, 2, 2);
-    }
-  }
-
-  const map = new THREE.CanvasTexture(colorCanvas);
-  map.wrapS = THREE.RepeatWrapping;
-  map.wrapT = THREE.RepeatWrapping;
-  map.repeat.set(16, 16);
-  map.colorSpace = THREE.SRGBColorSpace;
-  map.anisotropy = Math.min(maxAnisotropy, 8);
-
-  const bumpMap = new THREE.CanvasTexture(bumpCanvas);
-  bumpMap.wrapS = THREE.RepeatWrapping;
-  bumpMap.wrapT = THREE.RepeatWrapping;
-  bumpMap.repeat.set(16, 16);
-  bumpMap.anisotropy = Math.min(maxAnisotropy, 8);
-
-  const material = new THREE.MeshPhysicalMaterial({
-    color: new THREE.Color("#f0ebe2"),
-    map,
-    bumpMap,
-    bumpScale: 0.012,
-    roughness: 0.9,
-    metalness: 0.0,
-    sheen: 0.65,
-    sheenRoughness: 0.68,
-    sheenColor: new THREE.Color("#fffcf5"),
-  });
-
-  return {
-    material,
-    dispose() {
-      map.dispose();
-      bumpMap.dispose();
-      material.dispose();
-    },
-  };
+function createContactShadowTexture() {
+  const size = 256;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  const cx = size / 2;
+  const grad = ctx.createRadialGradient(cx, cx, size * 0.08, cx, cx, cx);
+  grad.addColorStop(0, "rgba(0, 0, 0, 0.72)");
+  grad.addColorStop(0.55, "rgba(0, 0, 0, 0.35)");
+  grad.addColorStop(1, "rgba(0, 0, 0, 0)");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, size, size);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
 }
 
 export default function SparkInteractivityScene({
@@ -135,7 +58,7 @@ export default function SparkInteractivityScene({
     callbacksRef.current = { onReady, onDishLoading, onError, onDeviceLost };
   }, [onReady, onDishLoading, onError, onDeviceLost]);
 
-  // Boot Three.js + SparkRenderer + OrbitControls + GLB table once per mount
+  // Boot Three.js + SparkRenderer + OrbitControls + dark studio stage once per mount
   useEffect(() => {
     const container = containerRef.current;
     const canvas = canvasRef.current;
@@ -148,18 +71,16 @@ export default function SparkInteractivityScene({
     let disposed = false;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color("#050810");
-    scene.fog = new THREE.FogExp2(0x050810, 0.26);
+    scene.background = new THREE.Color("#070911");
+    scene.fog = new THREE.FogExp2(0x070911, 0.42);
 
     const width = Math.max(1, container.clientWidth || window.innerWidth);
     const height = Math.max(1, container.clientHeight || window.innerHeight);
-    const camera = new THREE.PerspectiveCamera(65, width / height, 0.1, 1000);
-    camera.position.set(0, 0.9, -1.2);
+    const camera = new THREE.PerspectiveCamera(58, width / height, 0.1, 100);
+    camera.position.set(0, 0.72, -1.05);
 
     try {
       renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
-      renderer.shadowMap.enabled = true;
-      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
       renderer.setSize(width, height, false);
     } catch (err) {
@@ -184,63 +105,59 @@ export default function SparkInteractivityScene({
     }
 
     controls = new OrbitControls(camera, renderer.domElement);
-    controls.target.set(0.12, 0, 0);
-    controls.minDistance = 0.75;
-    controls.maxDistance = 2.4;
+    controls.target.set(0.08, 0.02, 0);
+    controls.minDistance = 0.65;
+    controls.maxDistance = 2.2;
+    controls.maxPolarAngle = Math.PI * 0.48;
     controls.enablePan = false;
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
     controls.update();
 
-    // Fine-dining warm neutral lighting
-    const hemiLight = new THREE.HemisphereLight(0xfffaf2, 0x1e2436, 0.55);
-    scene.add(hemiLight);
-
-    const spotLight = new THREE.SpotLight(0xfff3e2);
-    spotLight.position.set(0, 1.35, 0);
-    spotLight.castShadow = true;
-    spotLight.shadow.mapSize.width = 1024;
-    spotLight.shadow.mapSize.height = 1024;
-    spotLight.shadow.camera.near = 0.2;
-    spotLight.shadow.camera.far = 5;
-    spotLight.shadow.radius = 4;
-    spotLight.shadow.bias = -0.0005;
-    spotLight.angle = 0.95;
+    // Subtle dark-studio surface lighting
+    const spotLight = new THREE.SpotLight(0xdce6ff, 1.8);
+    spotLight.position.set(0, 2.2, 0);
+    spotLight.angle = 0.85;
     spotLight.penumbra = 1;
-    spotLight.intensity = 3.2;
     scene.add(spotLight);
 
-    const fillLight = new THREE.PointLight(0xffe9cf, 0.45);
-    fillLight.position.set(0.6, 0.4, -2.5);
-    scene.add(fillLight);
+    const rimLight = new THREE.DirectionalLight(0x8aa4d6, 0.35);
+    rimLight.position.set(-1.5, 1.2, 1.8);
+    scene.add(rimLight);
 
-    const linenFabric = createLuxuryLinenMaterial(renderer.capabilities.getMaxAnisotropy());
+    // Deep charcoal-obsidian studio plane (fades seamlessly into dark background fog)
+    const stageGeo = new THREE.CircleGeometry(6, 64);
+    const stageMat = new THREE.MeshStandardMaterial({
+      color: 0x0e1220,
+      roughness: 0.78,
+      metalness: 0.12,
+    });
+    const stage = new THREE.Mesh(stageGeo, stageMat);
+    stage.rotation.x = -Math.PI / 2;
+    stage.position.set(0, -0.02, 0);
+    scene.add(stage);
 
-    // Shadow caster disc for splat dishes
-    const shadowGeo = new THREE.CylinderGeometry(0.45, 0.45, 0.04, 40, 1);
-    const shadowMat = new THREE.MeshPhongMaterial({ colorWrite: false, depthWrite: false });
+    // Soft contact shadow directly under the dish
+    const shadowTex = createContactShadowTexture();
+    const shadowGeo = new THREE.PlaneGeometry(0.9, 0.9);
+    const shadowMat = new THREE.MeshBasicMaterial({
+      map: shadowTex,
+      transparent: true,
+      depthWrite: false,
+    });
     const shadow = new THREE.Mesh(shadowGeo, shadowMat);
+    shadow.rotation.x = -Math.PI / 2;
+    shadow.position.set(0, -0.015, 0);
     shadow.visible = false;
-    shadow.castShadow = true;
-    shadow.position.set(0, 0.1, 0);
     scene.add(shadow);
 
-    // Dark studio floor that fades cleanly into the background fog
-    const floorGeo = new THREE.PlaneGeometry(14, 14);
-    const floorMat = new THREE.MeshStandardMaterial({ color: 0x0b0e17, roughness: 0.95, metalness: 0.0 });
-    const floor = new THREE.Mesh(floorGeo, floorMat);
-    floor.rotation.x = -Math.PI / 2;
-    floor.position.set(0, -1.397, 0);
-    scene.add(floor);
-
-    const transitionLength = isMobile() ? 24 : 45;
+    const transitionLength = isMobile() ? 22 : 40;
     const state = {
       scene,
       camera,
       renderer,
       spark,
       controls,
-      table: null,
       shadow,
       shadowNextScale: 1,
       splatCache: new Map(),
@@ -250,9 +167,8 @@ export default function SparkInteractivityScene({
       fadeInTime: null,
       rotationAngle: 0,
       lastTime: 0,
-      pendingIndex: null,
-      readyTable: false,
       requestSeq: 0,
+      notifiedReady: false,
       switchTo(index) {
         const item = FOOD_ITEMS[index] ?? FOOD_ITEMS[0];
         const seq = ++state.requestSeq;
@@ -281,18 +197,20 @@ export default function SparkInteractivityScene({
             if (disposed || seq !== state.requestSeq) return;
             callbacksRef.current.onDishLoading?.(false);
 
+            if (!state.notifiedReady) {
+              state.notifiedReady = true;
+              callbacksRef.current.onReady?.({ backend: "webgl" });
+            }
+
+            const targetShadow = item.shadowSize > 0 ? item.shadowSize : 0.72;
             if (!state.currentFood) {
               splat.opacity = 1;
               state.currentFood = splat;
               state.nextFood = null;
               state.fadeOutTime = null;
               state.fadeInTime = null;
-              if (item.shadowSize > 0) {
-                shadow.visible = true;
-                shadow.scale.setScalar(item.shadowSize);
-              } else {
-                shadow.visible = false;
-              }
+              shadow.visible = true;
+              shadow.scale.setScalar(targetShadow);
               return;
             }
 
@@ -304,8 +222,7 @@ export default function SparkInteractivityScene({
             }
 
             state.nextFood = splat;
-            state.shadowNextScale = item.shadowSize;
-            shadow.visible = false;
+            state.shadowNextScale = targetShadow;
             state.fadeOutTime = 0;
             state.fadeInTime = null;
           })
@@ -325,8 +242,8 @@ export default function SparkInteractivityScene({
         renderer.setSize(w, h, false);
       },
       resetCamera() {
-        camera.position.set(0, 0.9, -1.2);
-        controls.target.set(0.12, 0, 0);
+        camera.position.set(0, 0.72, -1.05);
+        controls.target.set(0.08, 0.02, 0);
         controls.update();
       },
     };
@@ -341,42 +258,15 @@ export default function SparkInteractivityScene({
     resizeObserver = new ResizeObserver(() => state.resize());
     resizeObserver.observe(container);
 
-    // Load restaurant table GLB, then show initial dish
-    const gltfLoader = new GLTFLoader();
-    gltfLoader
-      .loadAsync(TABLE_MODEL_URL)
-      .then((gltf) => {
-        if (disposed) return;
-        state.table = gltf.scene;
-        state.table.traverse((node) => {
-          if (!node.isMesh) return;
-          const isCloth = node.name === "cover" || node.material?.name === "Fabric055";
-          if (isCloth) {
-            node.material = linenFabric.material;
-            node.receiveShadow = true;
-          }
-        });
-        scene.add(state.table);
-        state.readyTable = true;
-
-        const initialIdx = state.pendingIndex ?? 0;
-        state.switchTo(initialIdx);
-        callbacksRef.current.onReady?.({ backend: "webgl" });
-      })
-      .catch((err) => {
-        if (!disposed) callbacksRef.current.onError?.("asset", err);
-      });
-
     renderer.setAnimationLoop((time) => {
       if (disposed) return;
       const dt = state.lastTime ? Math.min((time - state.lastTime) / 1000, 0.1) : 0;
       state.lastTime = time;
 
       if (autoRotateRef.current) {
-        state.rotationAngle += dt * 0.1;
+        state.rotationAngle += dt * 0.12;
       }
 
-      if (state.table) state.table.rotation.y = state.rotationAngle;
       if (state.currentFood) state.currentFood.rotation.y = -state.rotationAngle;
       if (state.nextFood) state.nextFood.rotation.y = -state.rotationAngle;
 
@@ -394,12 +284,8 @@ export default function SparkInteractivityScene({
           }
           state.fadeOutTime = null;
           state.fadeInTime = 0;
-          if (state.shadowNextScale > 0) {
-            shadow.visible = true;
-            shadow.scale.setScalar(state.shadowNextScale);
-          } else {
-            shadow.visible = false;
-          }
+          shadow.visible = true;
+          shadow.scale.setScalar(state.shadowNextScale);
         }
       }
 
@@ -433,25 +319,22 @@ export default function SparkInteractivityScene({
         splat.dispose?.();
       }
       state.splatCache.clear();
+      stageGeo.dispose();
+      stageMat.dispose();
+      shadowTex.dispose();
       shadowGeo.dispose();
       shadowMat.dispose();
-      floorGeo.dispose();
-      floorMat.dispose();
-      linenFabric.dispose();
       scene.remove(spark);
       spark.dispose?.();
       renderer.dispose();
     };
   }, [apiRef]);
 
-  // Switch active dish when user picks another item from menu
+  // Load initial dish and switch cleanly when foodIndex changes
   useEffect(() => {
     const rt = runtimeRef.current;
     if (!rt) return;
-    rt.pendingIndex = foodIndex;
-    if (rt.readyTable) {
-      rt.switchTo(foodIndex);
-    }
+    rt.switchTo(foodIndex);
   }, [foodIndex]);
 
   return (
