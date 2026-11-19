@@ -149,6 +149,7 @@ export default function SparkInteractivityScene({
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color("#050810");
+    scene.fog = new THREE.FogExp2(0x050810, 0.26);
 
     const width = Math.max(1, container.clientWidth || window.innerWidth);
     const height = Math.max(1, container.clientHeight || window.innerHeight);
@@ -224,9 +225,9 @@ export default function SparkInteractivityScene({
     shadow.position.set(0, 0.1, 0);
     scene.add(shadow);
 
-    // Floor plane
-    const floorGeo = new THREE.PlaneGeometry(10, 10);
-    const floorMat = new THREE.MeshPhongMaterial({ color: 0x777777 });
+    // Dark studio floor that fades cleanly into the background fog
+    const floorGeo = new THREE.PlaneGeometry(14, 14);
+    const floorMat = new THREE.MeshStandardMaterial({ color: 0x0b0e17, roughness: 0.95, metalness: 0.0 });
     const floor = new THREE.Mesh(floorGeo, floorMat);
     floor.rotation.x = -Math.PI / 2;
     floor.position.set(0, -1.397, 0);
