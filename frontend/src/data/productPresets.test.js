@@ -77,7 +77,7 @@ describe("PRESET_CATEGORIES", () => {
     expect(item).toBeTruthy();
     expect(item.scene).toBe("spark-interactivity");
     expect(item.name).toBe("스플랫 레스토랑 인터랙티브 메뉴 (3DGS)");
-    expect(item.tags).toEqual(["3DGS", "다크 스튜디오", "인터랙션"]);
+    expect(item.tags).toEqual(["3DGS", "메쉬 융합", "인터랙션"]);
   });
 });
 
