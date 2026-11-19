@@ -13,8 +13,9 @@
 
 .worldTab[data-active="true"] {
   border-color: var(--neon-cyan, #00d4ff);
-  color: var(--text-primary, #fff);
-  background: rgba(0, 212, 255, 0.16);
+  color: var(--neon-cyan, #00d4ff);
+  background: rgba(8, 18, 36, 0.92);
+  box-shadow: 0 0 0 1px rgba(0, 212, 255, 0.25);
 }
 
 .worldBadge {
