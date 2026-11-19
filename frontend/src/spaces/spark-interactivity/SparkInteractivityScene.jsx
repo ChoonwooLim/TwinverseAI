@@ -13,6 +13,103 @@ function easeInOutSine(x) {
   return -(Math.cos(Math.PI * x) - 1) / 2;
 }
 
+/**
+ * Generates seamless woven linen albedo + bump maps for a fine-dining tablecloth look.
+ */
+function createLuxuryLinenMaterial(maxAnisotropy = 4) {
+  const size = 512;
+  const colorCanvas = document.createElement("canvas");
+  colorCanvas.width = size;
+  colorCanvas.height = size;
+  const cctx = colorCanvas.getContext("2d");
+
+  const bumpCanvas = document.createElement("canvas");
+  bumpCanvas.width = size;
+  bumpCanvas.height = size;
+  const bctx = bumpCanvas.getContext("2d");
+
+  // Warm alabaster ivory linen base
+  cctx.fillStyle = "#ece7de";
+  cctx.fillRect(0, 0, size, size);
+
+  bctx.fillStyle = "#808080";
+  bctx.fillRect(0, 0, size, size);
+
+  // Deterministic pseudo-random helper for organic slub threads
+  let seed = 1337;
+  const rand = () => {
+    seed = (seed * 16807) % 2147483647;
+    return (seed - 1) / 2147483646;
+  };
+
+  // Fine warp (vertical) and weft (horizontal) linen threads
+  const step = 4;
+  for (let x = 0; x < size; x += step) {
+    const shade = Math.floor((rand() - 0.5) * 10);
+    const v = 232 + shade;
+    cctx.fillStyle = `rgba(${v}, ${v - 4}, ${v - 11}, 0.42)`;
+    cctx.fillRect(x, 0, 2, size);
+
+    const bv = 138 + Math.floor((rand() - 0.5) * 28);
+    bctx.fillStyle = `rgba(${bv}, ${bv}, ${bv}, 0.55)`;
+    bctx.fillRect(x, 0, 2, size);
+  }
+
+  for (let y = 0; y < size; y += step) {
+    const shade = Math.floor((rand() - 0.5) * 10);
+    const v = 236 + shade;
+    cctx.fillStyle = `rgba(${v}, ${v - 4}, ${v - 10}, 0.38)`;
+    cctx.fillRect(0, y, size, 2);
+
+    const bv = 148 + Math.floor((rand() - 0.5) * 28);
+    bctx.fillStyle = `rgba(${bv}, ${bv}, ${bv}, 0.5)`;
+    bctx.fillRect(0, y, size, 2);
+  }
+
+  // Subtle cross-weave intersection highlights + gentle slub fibers
+  for (let y = 0; y < size; y += step * 2) {
+    for (let x = 0; x < size; x += step * 2) {
+      const alt = ((x + y) / (step * 2)) % 2 === 0;
+      bctx.fillStyle = alt ? "rgba(185, 185, 185, 0.35)" : "rgba(95, 95, 95, 0.25)";
+      bctx.fillRect(x, y, 2, 2);
+    }
+  }
+
+  const map = new THREE.CanvasTexture(colorCanvas);
+  map.wrapS = THREE.RepeatWrapping;
+  map.wrapT = THREE.RepeatWrapping;
+  map.repeat.set(16, 16);
+  map.colorSpace = THREE.SRGBColorSpace;
+  map.anisotropy = Math.min(maxAnisotropy, 8);
+
+  const bumpMap = new THREE.CanvasTexture(bumpCanvas);
+  bumpMap.wrapS = THREE.RepeatWrapping;
+  bumpMap.wrapT = THREE.RepeatWrapping;
+  bumpMap.repeat.set(16, 16);
+  bumpMap.anisotropy = Math.min(maxAnisotropy, 8);
+
+  const material = new THREE.MeshPhysicalMaterial({
+    color: new THREE.Color("#f0ebe2"),
+    map,
+    bumpMap,
+    bumpScale: 0.012,
+    roughness: 0.9,
+    metalness: 0.0,
+    sheen: 0.65,
+    sheenRoughness: 0.68,
+    sheenColor: new THREE.Color("#fffcf5"),
+  });
+
+  return {
+    material,
+    dispose() {
+      map.dispose();
+      bumpMap.dispose();
+      material.dispose();
+    },
+  };
+}
+
 export default function SparkInteractivityScene({
   className,
   style,
@@ -61,6 +158,7 @@ export default function SparkInteractivityScene({
     try {
       renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
       renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
       renderer.setSize(width, height, false);
     } catch (err) {
@@ -93,22 +191,29 @@ export default function SparkInteractivityScene({
     controls.dampingFactor = 0.08;
     controls.update();
 
-    // Lighting
-    const spotLight = new THREE.SpotLight(0xffcc88);
-    spotLight.position.set(0, 1, 0);
+    // Fine-dining warm neutral lighting
+    const hemiLight = new THREE.HemisphereLight(0xfffaf2, 0x1e2436, 0.55);
+    scene.add(hemiLight);
+
+    const spotLight = new THREE.SpotLight(0xfff3e2);
+    spotLight.position.set(0, 1.35, 0);
     spotLight.castShadow = true;
     spotLight.shadow.mapSize.width = 1024;
     spotLight.shadow.mapSize.height = 1024;
-    spotLight.shadow.camera.near = 0.1;
+    spotLight.shadow.camera.near = 0.2;
     spotLight.shadow.camera.far = 5;
-    spotLight.angle = 0.9;
+    spotLight.shadow.radius = 4;
+    spotLight.shadow.bias = -0.0005;
+    spotLight.angle = 0.95;
     spotLight.penumbra = 1;
-    spotLight.intensity = 3;
+    spotLight.intensity = 3.2;
     scene.add(spotLight);
 
-    const fillLight = new THREE.PointLight(0xffcc88, 0.25);
-    fillLight.position.set(0, 0, -3);
+    const fillLight = new THREE.PointLight(0xffe9cf, 0.45);
+    fillLight.position.set(0.6, 0.4, -2.5);
     scene.add(fillLight);
+
+    const linenFabric = createLuxuryLinenMaterial(renderer.capabilities.getMaxAnisotropy());
 
     // Shadow caster disc for splat dishes
     const shadowGeo = new THREE.CylinderGeometry(0.45, 0.45, 0.04, 40, 1);
@@ -242,8 +347,14 @@ export default function SparkInteractivityScene({
       .then((gltf) => {
         if (disposed) return;
         state.table = gltf.scene;
-        const tableCloth = state.table.children.find((item) => item.name === "cover");
-        if (tableCloth) tableCloth.receiveShadow = true;
+        state.table.traverse((node) => {
+          if (!node.isMesh) return;
+          const isCloth = node.name === "cover" || node.material?.name === "Fabric055";
+          if (isCloth) {
+            node.material = linenFabric.material;
+            node.receiveShadow = true;
+          }
+        });
         scene.add(state.table);
         state.readyTable = true;
 
@@ -325,6 +436,7 @@ export default function SparkInteractivityScene({
       shadowMat.dispose();
       floorGeo.dispose();
       floorMat.dispose();
+      linenFabric.dispose();
       scene.remove(spark);
       spark.dispose?.();
       renderer.dispose();
