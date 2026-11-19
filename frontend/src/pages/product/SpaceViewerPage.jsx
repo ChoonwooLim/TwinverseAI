@@ -3,6 +3,7 @@ import { findPresetCategory } from "../../data/productPresets";
 import { getSpaceViewerKind, hasSpaceScene } from "../../spaces/registry";
 import SpaceViewport from "../../spaces/SpaceViewport";
 import SparkLodViewport from "../../spaces/spark-streaming-lod/SparkLodViewport";
+import SparkInteractivityViewport from "../../spaces/spark-interactivity/SparkInteractivityViewport";
 import styles from "./Product.module.css";
 import viewer from "./SpaceViewer.module.css";
 
@@ -32,6 +33,20 @@ const SPARK_LOD_CONTROLS = [
   ["조작 해제", "Esc"],
 ];
 
+const SPARK_INTERACTIVITY_CONTROLS = [
+  ["메뉴 전환", "우측 스플랫 레스토랑 메뉴에서 11종 3DGS 요리를 클릭하면 페이드 애니메이션과 함께 즉시 교체됩니다."],
+  ["시점 회전", "마우스 왼쪽 드래그 · 터치는 한 손가락으로 끌기 (테이블 중심 오빗 회전)"],
+  ["확대·축소", "마우스 휠 · 터치는 두 손가락 오므리기·벌리기"],
+  ["자동 회전", "상단 '회전 일시정지 / 재생' 버튼으로 테이블·요리 자동 회전을 켜고 끌 수 있습니다."],
+  ["처음 시점으로", "상단 '처음 시점으로' 버튼으로 카메라 구도를 초기화합니다."],
+];
+
+const CONTROLS_BY_KIND = {
+  walkable: WALKABLE_CONTROLS,
+  "spark-lod": SPARK_LOD_CONTROLS,
+  "spark-interactivity": SPARK_INTERACTIVITY_CONTROLS,
+};
+
 export default function SpaceViewerPage() {
   const { presetId } = useParams();
   const category = findPresetCategory(CATEGORY_SLUG);
@@ -50,7 +65,7 @@ export default function SpaceViewerPage() {
   }
 
   const viewerKind = getSpaceViewerKind(preset.scene);
-  const controls = viewerKind === "spark-lod" ? SPARK_LOD_CONTROLS : WALKABLE_CONTROLS;
+  const controls = CONTROLS_BY_KIND[viewerKind] ?? WALKABLE_CONTROLS;
 
   return (
     <div className={`${styles.page} ${viewer.page}`}>
@@ -62,6 +77,8 @@ export default function SpaceViewerPage() {
 
       {viewerKind === "spark-lod" ? (
         <SparkLodViewport key={preset.id} sceneKey={preset.scene} title={preset.name} poster={preset.thumbnail} />
+      ) : viewerKind === "spark-interactivity" ? (
+        <SparkInteractivityViewport key={preset.id} sceneKey={preset.scene} title={preset.name} poster={preset.thumbnail} />
       ) : (
         <SpaceViewport key={preset.id} sceneKey={preset.scene} title={preset.name} poster={preset.thumbnail} />
       )}

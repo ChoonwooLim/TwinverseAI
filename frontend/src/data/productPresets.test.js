@@ -71,6 +71,14 @@ describe("PRESET_CATEGORIES", () => {
     expect(item.name).toBe("SparkJS 스트리밍 LOD (3DGS)");
     expect(item.tags).toEqual(["3DGS", "스트리밍 LOD", "WASD 이동"]);
   });
+
+  it("lists SparkJS Interactivity Restaurant as an openable 3D space", () => {
+    const item = findPresetCategory("3d-space").items.find((entry) => entry.id === "spark-interactivity");
+    expect(item).toBeTruthy();
+    expect(item.scene).toBe("spark-interactivity");
+    expect(item.name).toBe("스플랫 레스토랑 인터랙티브 메뉴 (3DGS)");
+    expect(item.tags).toEqual(["3DGS", "메쉬 융합", "인터랙션"]);
+  });
 });
 
 describe("findPresetCategory", () => {

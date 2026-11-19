@@ -1,0 +1,108 @@
+/**
+ * Interactive 3DGS restaurant showcase assets (from SparkJS examples/interactivity).
+ * Pure data module — never imports three.js or SparkJS.
+ */
+
+export const TABLE_MODEL_URL = "https://sparkjs.dev/assets/models/table.glb";
+
+export const FOOD_ITEMS = [
+  {
+    key: "branzino-amarin",
+    name: "브란지노 아마린",
+    enName: "Branzino Amarin",
+    url: "https://sparkjs.dev/assets/splats/food/branzino-amarin.spz",
+    scale: 0.3,
+    shadowSize: 1.0,
+    offsetY: 0,
+  },
+  {
+    key: "iberico-sandwich",
+    name: "이베리코 샌드위치",
+    enName: "Iberico Sandwich",
+    url: "https://sparkjs.dev/assets/splats/food/iberico-sandwich-by-reserve.spz",
+    scale: 0.6,
+    shadowSize: 0,
+    offsetY: -0.05,
+  },
+  {
+    key: "coral-caviar",
+    name: "코랄 캐비어",
+    enName: "Coral Caviar",
+    url: "https://sparkjs.dev/assets/splats/food/coral-caviar.spz",
+    scale: 0.4,
+    shadowSize: 0.7,
+    offsetY: 0,
+  },
+  {
+    key: "pad-thai",
+    name: "팟타이",
+    enName: "Pad Thai",
+    url: "https://sparkjs.dev/assets/splats/food/pad-thai.spz",
+    scale: 0.2,
+    shadowSize: 1.0,
+    offsetY: 0,
+  },
+  {
+    key: "prime-rib",
+    name: "프라임 립",
+    enName: "Prime Rib",
+    url: "https://sparkjs.dev/assets/splats/food/primerib-tamos.spz",
+    scale: 0.3,
+    shadowSize: 1.1,
+    offsetY: 0,
+  },
+  {
+    key: "double-double",
+    name: "더블-더블 버거",
+    enName: "Double-Double",
+    url: "https://sparkjs.dev/assets/splats/food/double-Double-from-InNOut.spz",
+    scale: 0.5,
+    shadowSize: 0.6,
+    offsetY: 0.03,
+  },
+  {
+    key: "gyro-kebab",
+    name: "기로 케밥",
+    enName: "Gyro Kebab",
+    url: "https://sparkjs.dev/assets/splats/food/gyro.spz",
+    scale: 0.13,
+    shadowSize: 0,
+    offsetY: -0.13,
+  },
+  {
+    key: "mels-steak-sandwich",
+    name: "멜스 스테이크 샌드위치",
+    enName: "Mels Steak Sandwich",
+    url: "https://sparkjs.dev/assets/splats/food/steaksandwich-mels.spz",
+    scale: 0.3,
+    shadowSize: 0,
+    offsetY: 0.08,
+  },
+  {
+    key: "clams-and-caviar",
+    name: "클램 & 캐비어",
+    enName: "Clams and Caviar",
+    url: "https://sparkjs.dev/assets/splats/food/clams-and-caviar-by-ikoyi.spz",
+    scale: 0.4,
+    shadowSize: 0.72,
+    offsetY: 0,
+  },
+  {
+    key: "tomahawk-niku",
+    name: "토마호크 스테이크",
+    enName: "Tomahawk Niku",
+    url: "https://sparkjs.dev/assets/splats/food/tomahawk-niku.spz",
+    scale: 0.3,
+    shadowSize: 1.0,
+    offsetY: 0,
+  },
+  {
+    key: "dh-burger",
+    name: "DH 버거",
+    enName: "Dh Burger",
+    url: "https://sparkjs.dev/assets/splats/food/burger-from-amboy.spz",
+    scale: 0.4,
+    shadowSize: 0.6,
+    offsetY: 0.04,
+  },
+];

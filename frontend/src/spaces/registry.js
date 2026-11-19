@@ -24,11 +24,13 @@ function lazyScene(load) {
 export const SPACE_SCENES = {
   "national-assembly": lazyScene(() => import("./national-assembly/NationalAssemblyScene")),
   "spark-streaming-lod": lazyScene(() => import("./spark-streaming-lod/SparkStreamingLodScene")),
+  "spark-interactivity": lazyScene(() => import("./spark-interactivity/SparkInteractivityScene")),
 };
 
 export const SPACE_VIEWER_KINDS = {
   "national-assembly": "walkable",
   "spark-streaming-lod": "spark-lod",
+  "spark-interactivity": "spark-interactivity",
 };
 
 export function hasSpaceScene(key) {
