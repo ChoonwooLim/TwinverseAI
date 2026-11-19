@@ -23,10 +23,20 @@ function lazyScene(load) {
 
 export const SPACE_SCENES = {
   "national-assembly": lazyScene(() => import("./national-assembly/NationalAssemblyScene")),
+  "spark-streaming-lod": lazyScene(() => import("./spark-streaming-lod/SparkStreamingLodScene")),
+};
+
+export const SPACE_VIEWER_KINDS = {
+  "national-assembly": "walkable",
+  "spark-streaming-lod": "spark-lod",
 };
 
 export function hasSpaceScene(key) {
   return typeof key === "string" && Object.hasOwn(SPACE_SCENES, key);
+}
+
+export function getSpaceViewerKind(key) {
+  return (typeof key === "string" && SPACE_VIEWER_KINDS[key]) || "walkable";
 }
 
 export function isSceneChunkError(error) {

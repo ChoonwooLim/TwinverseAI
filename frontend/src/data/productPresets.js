@@ -92,6 +92,7 @@ import { cineRecastDragon } from "./presets/cineRecastDragon";
 // main-bundle module and its tests working while a space's assets are still being produced.
 const thumbnails = import.meta.glob("../spaces/*/assets/thumbnail.jpg", { eager: true, query: "?url", import: "default" });
 const nationalAssemblyThumbnail = thumbnails["../spaces/national-assembly/assets/thumbnail.jpg"];
+const sparkStreamingLodThumbnail = thumbnails["../spaces/spark-streaming-lod/assets/thumbnail.jpg"];
 
 /** @type {PresetCategory[]} */
 export const PRESET_CATEGORIES = [
@@ -133,6 +134,18 @@ export const PRESET_CATEGORIES = [
         source: "frontend/src/spaces/national-assembly",
         updatedAt: "2026-11-18",
         scene: "national-assembly",
+      },
+      {
+        id: "spark-streaming-lod",
+        name: "SparkJS 스트리밍 LOD (3DGS)",
+        summary:
+          "수천만~1억 개 규모의 3D 가우시안 스플랫팅(3DGS) 월드를 시점 기반 LOD로 실시간 스트리밍 탐색하는 3D 공간입니다. Coit Tower(40M), 폴란드 해안 마을(100M), Hobbiton(24M), Cozy Spaceship(6M) 4개 월드를 바로 전환해 둘러볼 수 있습니다.",
+        tool: "SparkJS 2.0 · three.js r187",
+        tags: ["3DGS", "스트리밍 LOD", "WASD 이동"],
+        thumbnail: sparkStreamingLodThumbnail,
+        source: "frontend/src/spaces/spark-streaming-lod",
+        updatedAt: "2026-11-19",
+        scene: "spark-streaming-lod",
       },
     ],
   },
